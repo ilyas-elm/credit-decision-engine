@@ -50,6 +50,7 @@ code; the kernel versions used will be linked here.
 | Out-of-time splits by `WEEK_NUM` | `src/splits.py` | done |
 | Gini, weekly Gini, stability metric, PSI, calibration | `src/metrics.py` | done |
 | EMPCS profit + strategy curve | `src/profit.py` | done |
+| Champion scorecard (binning, selection, pdo_odds scaling) | `src/scorecard.py` | done |
 | Mondrian conformal refer band | `src/conformal.py` | done |
 | Synthetic fixtures matching the schema | `tests/fixtures.py` | done |
 | Kaggle push/poll/pull orchestration | `scripts/kaggle_run.py` | done, unexercised |
@@ -57,7 +58,7 @@ code; the kernel versions used will be linked here.
 | Data reconnaissance | `docs/DATA_NOTES.md` | blocked on data access |
 | Features, scorecard, challenger, decision layer, sampling bias | — | not started |
 
-92 tests, all on generated fixtures. The Kaggle plumbing is marked *unexercised*
+114 tests, all on generated fixtures. The Kaggle plumbing is marked *unexercised*
 because it has never been run against Kaggle — only against its own tests.
 
 ## Notes on three things worth knowing
@@ -74,6 +75,14 @@ itself. `tests/test_profit.py` pins this down and will fail if a future
 **Stability metric.** `mean(gini) + 88·min(0, slope) − 0.5·std(residuals)`,
 computed on the weekly Gini curve as the model produces it. Scores are never
 post-processed per week to improve it.
+
+**The IV floor is sample-size dependent.** IV is computed on the bins it
+chose, so it is biased upward and the bias shrinks with n. Over three pure-noise
+columns at an 8% event rate, max IV runs 0.0889 at n=2,000, 0.0117 at n=10,000
+and 0.0006 at n=200,000. The configured floor of 0.02 therefore screens noise
+against the full train set but **not** on the 3% local sample — so feature
+selection is a full-data decision, and the local sample exists to make the code
+run, not to decide which features live.
 
 **Why the refer band is class-conditional.** On synthetic exchangeable data at a
 3% default rate and a 90% coverage target, averaged over 300 calibration draws:

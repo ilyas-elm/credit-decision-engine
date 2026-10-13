@@ -29,6 +29,14 @@ leakage_gini = 0.50         # print univariate Gini above this for manual review
 psi_bins = 10
 
 # --- 3. Champion: scorecard ------------------------------------------------
+# NOTE on min_iv, measured (tests/test_scorecard.py): IV is computed on the bins
+# it chose, so it is biased upward, and the bias shrinks with n. Max IV over
+# three pure-noise columns at an 8% event rate:
+#   n=2,000 -> 0.0889 (4x ABOVE this floor) | n=10,000 -> 0.0117
+#   n=50,000 -> 0.0034                      | n=200,000 -> 0.0006
+# So 0.02 screens noise against the full ~900k train rows but NOT on the 3%
+# local sample. Feature-selection decisions belong to the full-data run; the
+# local sample is for making the code work, not for deciding which features live.
 [scorecard]
 monotonic_trend = "auto_asc_desc"
 min_iv = 0.02               # keep features at or above this IV

@@ -40,7 +40,13 @@ package = false
 # scripts/kaggle_run.py can ship that directory into a kernel unchanged.
 pythonpath = ["src", "scripts"]
 testpaths = ["tests"]
-filterwarnings = ["error::RuntimeWarning"]
+filterwarnings = [
+    "error::RuntimeWarning",
+    # ortools, pulled in by optbinning, emits these on import. Third-party and
+    # unactionable; silenced so a real warning is not lost in the noise.
+    "ignore:builtin type SwigPy.*has no __module__ attribute:DeprecationWarning",
+    "ignore:builtin type swigvarlink has no __module__ attribute:DeprecationWarning",
+]
 
 [tool.ruff]
 line-length = 100
