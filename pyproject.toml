@@ -1,0 +1,50 @@
+[project]
+name = "credit-decision-engine"
+version = "0.1.0"
+description = "Credit decision system on Home Credit data: scorecard champion, GBM challenger, conformal referral band, reject-inference experiment."
+readme = "README.md"
+# Pinned to the Kaggle image's minor version. 3.11 is also the floor for empulse.
+# ASSUMPTION, unverified: the Kaggle CPU image is on 3.11. Confirmed on the first
+# kernel push by printing python --version; if it differs, change this line and relock.
+requires-python = "==3.11.*"
+
+dependencies = [
+    # Data layer. polars does the lazy/streaming aggregation; pandas only at the
+    # model boundary, where optbinning and empulse insist on it.
+    "polars>=1.17",
+    "pyarrow>=18.0",
+    "numpy>=1.26,<2.2",
+    "pandas>=2.2",
+    # Models.
+    "scikit-learn>=1.5",
+    "lightgbm>=4.5",
+    "optbinning>=0.19",
+    "empulse>=0.5",
+    # Figures.
+    "matplotlib>=3.9",
+]
+
+[dependency-groups]
+dev = [
+    "kaggle>=2.2.4",
+    "pytest>=8.3",
+    "ruff>=0.8",
+]
+
+[tool.uv]
+# An application, not a library: nothing here gets built or installed as a wheel.
+package = false
+
+[tool.pytest.ini_options]
+# The brief puts modules directly under src/ (e.g. src/sampling_bias.py) so that
+# scripts/kaggle_run.py can ship that directory into a kernel unchanged.
+pythonpath = ["src", "scripts"]
+testpaths = ["tests"]
+filterwarnings = ["error::RuntimeWarning"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]

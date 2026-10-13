@@ -1,0 +1,15 @@
+{
+  "id": "KAGGLE_USERNAME/hc-make-sample",
+  "title": "hc-make-sample",
+  "code_file": "_bundled.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": true,
+  "enable_gpu": false,
+  "enable_tpu": false,
+  "enable_internet": true,
+  "competition_sources": ["home-credit-credit-risk-model-stability"],
+  "dataset_sources": [],
+  "kernel_sources": [],
+  "model_sources": []
+}

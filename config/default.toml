@@ -1,0 +1,112 @@
+# Every threshold, split proportion and experiment parameter lives here.
+# Changing a number is a config change with a one-line reason in the commit
+# message -- never a silent edit to chase a better result.
+
+[data]
+competition = "home-credit-credit-risk-model-stability"
+sample_dir = "data/sample"
+# Fraction of case_ids kept in the local development sample, stratified by
+# (WEEK_NUM, target). Target size on disk is under 1 GB.
+sample_fraction = 0.03
+sample_seed = 20251013
+
+# --- 1. Splits -------------------------------------------------------------
+# Out-of-time by WEEK_NUM. Never random K-fold across time.
+# Each held-out block has exactly one job; conformal calibration must see data
+# that nothing else was fitted on, or its coverage guarantee is void.
+[splits]
+train_frac = 0.60       # model fitting
+val_a_frac = 0.08       # early stopping and probability calibration
+val_b_frac = 0.07       # conformal calibration ONLY
+test_frac  = 0.25       # out-of-time evaluation, touched by nothing else
+
+# --- 2. Feature screening (fitted on train weeks only) ---------------------
+[screening]
+max_missing_rate = 0.95     # drop above this
+psi_drop = 0.25             # drop above this
+psi_flag = 0.10             # flag between psi_flag and psi_drop
+leakage_gini = 0.50         # print univariate Gini above this for manual review
+psi_bins = 10
+
+# --- 3. Champion: scorecard ------------------------------------------------
+[scorecard]
+monotonic_trend = "auto_asc_desc"
+min_iv = 0.02               # keep features at or above this IV
+max_abs_corr = 0.80         # for pairs above this, keep the higher-IV feature
+scaling_method = "pdo_odds"
+points_at_odds = 600.0
+target_odds = 50.0          # 50:1 good:bad
+pdo = 20.0
+
+# --- 4. Challenger: LightGBM ----------------------------------------------
+# Fixed, sensible parameters. No class rebalancing anywhere in this project.
+[challenger]
+n_estimators = 2000
+learning_rate = 0.03
+num_leaves = 31
+min_child_samples = 200
+feature_fraction = 0.7
+bagging_fraction = 0.8
+bagging_freq = 1
+lambda_l2 = 10.0
+early_stopping_rounds = 100
+seed = 20251013
+optuna_trials = 0           # <= 30 if ever enabled; 0 means fixed params only
+
+# --- 5. Profit / EMP assumptions ------------------------------------------
+# Parameter meanings are empulse's, verified against empcs_score's docstring and
+# behaviour -- not guessed:
+#   success_rate : probability the loan is paid back IN FULL
+#   default_rate : probability the ENTIRE loan is lost
+#   1 - success_rate - default_rate : uniform distribution of PARTIAL losses
+#   roi          : return on investment on a loan that is repaid
+# so success_rate + default_rate must not exceed 1.
+#
+# The centre point is the Verbraken et al. (2014) default used by empulse. These
+# are ASSUMPTIONS, not measurements: evaluation reports the sensitivity grid
+# rather than a single headline number.
+#
+# ENCODING, verified empirically (tests/test_profit.py): empcs_score expects the
+# DEFAULT class as 1 -- the same encoding as the Home Credit `target` column --
+# and y_score as the predicted PD. Pass `target` through untouched. Inverting it
+# makes the metric blind (an informative model and pure noise both score ~0.2557)
+# while returning a LARGER number, so the mistake flatters itself.
+[profit]
+success_rate = 0.55
+default_rate = 0.10
+roi = 0.2644
+[profit.sensitivity]
+success_rate = [0.45, 0.55, 0.65]
+default_rate = [0.05, 0.10, 0.20]
+roi = [0.20, 0.2644, 0.32]
+
+# --- 6. Decision layer ----------------------------------------------------
+[decision]
+# Mondrian (class-conditional) split conformal, calibrated on val B weeks only.
+conformal_alpha = 0.10
+# Cost of one manual review, in the same units as profit. Swept in the figure.
+review_cost = 0.01
+review_cost_grid = [0.0, 0.005, 0.01, 0.02, 0.05]
+# Characteristics a declined applicant could plausibly change. Excludes age and
+# history length: offering those as recourse would be dishonest.
+# Populated once docs/DATA_NOTES.md confirms the real column names.
+actionable_features = []
+
+# --- 7. Sampling-bias experiment ------------------------------------------
+# Separate windows from [splits] on purpose: this experiment needs its own
+# policy-fitting period that the main model never sees as a split boundary.
+[sampling_bias]
+policy_frac = 0.25          # fit the "old policy" scorecard
+dev_frac = 0.45             # apply the policy, hide the rejects' labels
+test_frac = 0.30            # full population with all labels: the ground truth
+reject_rates = [10, 20, 30, 50]
+# Features: top N by IV and LightGBM gain, computed on POLICY weeks only.
+# Reusing the main model's ranking would leak the labels this experiment hides.
+n_features = 40
+dev_subsample = 150_000
+n_trees = 400               # fixed for every arm: no early stopping, no tuning
+seeds = [0, 1, 2]
+parcelling_uplift = [1.5, 2.0]      # A4
+exploration_pct = [1, 2, 5]         # A6, random approvals; weight is 100/p
+self_learning_iters = 5             # A5
+self_learning_confidence = 0.05     # add rejects scored outside this band

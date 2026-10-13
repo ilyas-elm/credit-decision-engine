@@ -1,0 +1,36 @@
+# --- Competition data: never commit, not even samples (project brief, hard constraint) ---
+data/
+runs/
+*.parquet
+*.csv.gz
+*.zip
+
+# --- Credentials ---
+kaggle.json
+.kaggle/
+.env
+*.pem
+
+# --- Working process kept out of public view (project brief) ---
+notes/
+*.plan.md
+
+# --- Python ---
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+
+# --- macOS ---
+.DS_Store
+
+# --- Deliverables that survive the broad data patterns above ---
+!docs/feature_report.csv
+!docs/**/*.csv
+
+# --- Generated Kaggle bundles (built from src/ at push time) ---
+kaggle/*/_bundled.py
