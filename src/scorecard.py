@@ -254,7 +254,7 @@ class FittedScorecard:
         directions = self.trend_direction()
         return [int(directions.get(feature, 0)) for feature in feature_order]
 
-    def _bin_labels(self, X: pd.DataFrame) -> pd.DataFrame:
+    def bin_labels(self, X: pd.DataFrame) -> pd.DataFrame:
         """Which bin each row falls in, per characteristic, as the table names it.
 
         ``metric="bins"`` returns the bin label itself, which joins exactly to
@@ -264,16 +264,26 @@ class FittedScorecard:
         labels = self.model.binning_process_.transform(X[self.features], metric="bins")
         return pd.DataFrame(np.asarray(labels, dtype=object), columns=self.features, index=X.index)
 
-    def _points_by_bin(self, feature: str) -> dict[str, float]:
-        rows = self.table[self.table["Variable"] == feature]
+    def points_by_bin(self, feature: str, *, intervals_only: bool = False) -> dict[str, float]:
+        """Bin label to points, for one characteristic.
+
+        ``intervals_only`` drops the Special and Missing rows. Recourse needs
+        that: "withhold this value" is not advice, so those bins are not
+        destinations an applicant can be told to move to.
+        """
+        rows = (
+            _interval_rows(self.table, feature)
+            if intervals_only
+            else (self.table[self.table["Variable"] == feature])
+        )
         return dict(zip(rows["Bin"].astype(str), rows["Points"].astype(float), strict=True))
 
     def feature_points(self, X: pd.DataFrame) -> pd.DataFrame:
         """Points each characteristic awards each row."""
-        labels = self._bin_labels(X)
+        labels = self.bin_labels(X)
         out = {}
         for feature in self.features:
-            mapping = self._points_by_bin(feature)
+            mapping = self.points_by_bin(feature)
             column = labels[feature].astype(str)
             unknown = set(column.unique()) - set(mapping)
             if unknown:

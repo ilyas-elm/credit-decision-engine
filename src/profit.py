@@ -80,7 +80,14 @@ class ProfitAssumptions:
 
 @dataclass(frozen=True)
 class EmpcsResult:
-    """EMPCS and the acceptance fraction that achieves it."""
+    """EMPCS and the rate that achieves it.
+
+    ``optimal_acceptance_rate`` holds exactly what ``empcs_score.optimal_rate``
+    returns, which is the predicted-POSITIVE rate -- the fraction REJECTED under
+    this project's default=1 encoding, despite the field name inherited from
+    empulse's docstring. Use ``decision.Cutoff.empcs_implied_acceptance_rate``
+    for an acceptance fraction; the evidence is documented there.
+    """
 
     emp: float
     optimal_acceptance_rate: float

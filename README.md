@@ -52,16 +52,17 @@ code; the kernel versions used will be linked here.
 | EMPCS profit + strategy curve | `src/profit.py` | done |
 | Champion scorecard (binning, selection, pdo_odds scaling) | `src/scorecard.py` | done |
 | Mondrian conformal refer band | `src/conformal.py` | done |
+| Decision layer: cutoff, bands, reasons, recourse | `src/decision.py` | done |
 | Synthetic fixtures matching the schema | `tests/fixtures.py` | done |
 | Kaggle push/poll/pull orchestration | `scripts/kaggle_run.py` | done, unexercised |
 | `make-sample` + reconnaissance kernel | `kaggle/make-sample/` | done, unexercised |
 | Data reconnaissance | `docs/DATA_NOTES.md` | blocked on data access |
-| Features, scorecard, challenger, decision layer, sampling bias | — | not started |
+| Features, challenger, sampling bias | — | not started |
 
-114 tests, all on generated fixtures. The Kaggle plumbing is marked *unexercised*
+142 tests, all on generated fixtures. The Kaggle plumbing is marked *unexercised*
 because it has never been run against Kaggle — only against its own tests.
 
-## Notes on three things worth knowing
+## Notes on four things worth knowing
 
 **EMPCS label encoding.** The underlying formula (Verbraken et al., 2014) is
 written with the default class as 0, but the pinned `empulse` (0.13.0) performs
@@ -75,6 +76,18 @@ itself. `tests/test_profit.py` pins this down and will fail if a future
 **Stability metric.** `mean(gini) + 88·min(0, slope) − 0.5·std(residuals)`,
 computed on the weekly Gini curve as the model produces it. Scores are never
 post-processed per week to improve it.
+
+**`empcs` returns a rejection rate, not an acceptance rate.** The brief
+describes `empcs` as returning "the profit-maximizing acceptance fraction".
+`empcs_score.optimal_rate` actually returns the predicted-*positive* rate, and
+since the positive class here is default, that is the fraction **rejected**.
+Across nine bad-rate and loss-assumption combinations the raw value *rises* with
+the bad rate (0.028 at a 5% bad book to 0.174 at 30%) — the signature of a
+rejection rate — while `1 - rate` tracks the strategy curve's acceptance optimum
+throughout. Taken at face value it would have meant accepting 2.8% of a low-risk
+portfolio. The cutoff is set from the strategy curve; EMPCS's implied optimum is
+reported beside it, with the gap surfaced rather than reconciled, since the two
+optimise different objectives.
 
 **The IV floor is sample-size dependent.** IV is computed on the bins it
 chose, so it is biased upward and the bias shrinks with n. Over three pure-noise
