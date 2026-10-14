@@ -169,8 +169,15 @@ removing a characteristic changes the model and that is a human decision.
 less often (1.76 % vs 2.99 %), and the model over-predicts their risk (+0.0097)
 while under-predicting men's (−0.0061). This is miscalibration by group, not a
 threshold artefact, and it runs against the lower-risk group. **Audit only, no
-mitigation**, as scoped. The age-band audit returned no rows on the kernel
-despite resolving locally; the cause is unresolved and no age result is claimed.
+mitigation**, as scoped.
+
+**By age the disparity is larger.** Applicants in their 60s are approved at
+21.8 % and those 70+ at 8.6 %, against 61–68 % for everyone younger, while being
+the safest groups in the book (1.2–1.3 % default against 4.5 % for the 20s). The
+model predicts them as the riskiest — mean PD 3.8–3.9 % against a realised
+1.2 % — so a roughly threefold over-prediction becomes an approval gap at the
+cutoff. Age is excluded from recourse, so those applicants are told why and
+offered nothing to do about it.
 
 ## 7. Monitoring plan
 

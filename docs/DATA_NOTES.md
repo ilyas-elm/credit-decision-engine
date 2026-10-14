@@ -211,3 +211,24 @@ The sample moved individual IVs by up to 30 % in both directions and flipped one
 keep/drop decision (`delq_n_payment_months`, 0.0198 on the sample against 0.0225
 on the full data, either side of the 0.02 floor). The committed
 `docs/feature_report.csv` is the full-data one.
+
+## A column can stop being collected
+
+`static_cb_0.birthdate_574D` is 39.8 % populated overall, which looks usable.
+Collection of it **stops at about week 40**: coverage runs 82–99 % over weeks
+0–29, falls to 47 % at weeks 30–39, and is exactly **0.000 from week 40 onward**
+— so it is empty across every test week, and a fairness audit built on it came
+back empty while appearing to work locally on earlier weeks.
+
+Two columns carry the same information and survive:
+
+| column | overall | test weeks |
+|---|---|---|
+| `static_cb_0.birthdate_574D` | 0.398 | **0.0000** |
+| `static_cb_0.dateofbirth_337D` | 0.912 | 0.9657 |
+| `person_1.birth_259D` | 1.000 | **1.0000** |
+
+They agree: `birth_259D` and `dateofbirth_337D` give an identical age on 99.96 %
+of overlapping cases. **A column's overall fill rate says nothing about the
+period being measured**, and this is the same structural drift that makes
+`bureau_a_records` fail the PSI screen at 0.61.

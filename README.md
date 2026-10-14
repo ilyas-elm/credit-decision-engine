@@ -163,8 +163,32 @@ often** (1.8 % vs 3.0 %), and the model **over-predicts** their risk while
 miscalibration by group, in the direction that penalises the lower-risk group.
 Reported, not mitigated, as the brief requires.
 
-The age-band audit did **not** run: the column resolves locally but came back
-empty on the kernel, and the cause is unresolved. No age result is claimed.
+| age band | n | approval rate | observed default | mean PD |
+|---|---|---|---|---|
+| 20s | 27,384 | 0.613 | 0.0449 | 0.0228 |
+| 30s | 48,676 | 0.644 | 0.0273 | 0.0214 |
+| 40s | 45,188 | 0.678 | 0.0216 | 0.0187 |
+| 50s | 35,221 | 0.633 | 0.0158 | 0.0207 |
+| **60s** | 54,407 | **0.218** | **0.0123** | **0.0380** |
+| **70+** | 14,638 | **0.086** | **0.0131** | **0.0389** |
+
+Applicants in their 60s are approved at **21.8 %** and those 70+ at **8.6 %**,
+against 61–68 % for everyone younger — while being the **safest** groups in the
+book, defaulting at 1.2–1.3 % against 4.5 % for applicants in their 20s. The
+model predicts them as the **riskiest**: a mean PD of 3.8–3.9 % for a group that
+defaults at 1.2 %, roughly a threefold over-prediction, while under-predicting
+the youngest by about half.
+
+This is larger and more consequential than the disparity by sex, and it is the
+same failure in a sharper form: the model is miscalibrated by group and the
+cutoff then converts that into an approval gap. Age is in the *excluded* list
+for recourse, so a declined older applicant is told the truth about why and
+offered nothing to do about it — which is honest, and also the point at which
+an audit stops being an academic exercise.
+
+Verified before reporting: `birth_259D` gives ages 23–73 (1st–99th percentile,
+median 44) and agrees with the independent `dateofbirth_337D` on 99.96 % of
+overlapping cases.
 
 ## Question 3 — sampling bias
 

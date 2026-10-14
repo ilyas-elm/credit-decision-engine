@@ -1,0 +1,123 @@
+{
+  "alpha": 0.1,
+  "mondrian_thresholds": {
+    "0": 0.08590102940797806,
+    "1": 0.9813208803534508
+  },
+  "n_calibration": {
+    "0": 32290,
+    "1": 1110
+  },
+  "coverage_overall": {
+    "0": 0.9612268492281187,
+    "1": 0.7405536472014549
+  },
+  "marginal_coverage": {
+    "0": 0.979847210572847,
+    "1": 0.0
+  },
+  "band_counts": {
+    "approve": 114190,
+    "refer": 102054,
+    "decline": 9270
+  },
+  "operating_point": {
+    "success_rate": 0.05,
+    "default_rate": 0.8,
+    "roi": 0.02,
+    "acceptance_rate": 0.5150012859512048
+  },
+  "cutoff_acceptance_range": [
+    0.5150012859512048,
+    1.0
+  ],
+  "binding_points": 7,
+  "scorecard_sign_flips": {
+    "prev_amount_total": 0.998411134504138,
+    "prev_amount_mean": 0.9989405812922486
+  },
+  "refit_ranking_correlation": 0.996545029507011,
+  "recourse_reach": {
+    "below_cutoff_any_band": {
+      "n": 109373,
+      "mean_shortfall_points": 20.8,
+      "mean_actionable_headroom_points": 20.2,
+      "share_reachable": 0.5463
+    },
+    "decline_band": {
+      "n": 9270,
+      "mean_shortfall_points": 58.1,
+      "mean_actionable_headroom_points": 24.4,
+      "share_reachable": 0.0018
+    },
+    "refer_band": {
+      "n": 100103,
+      "mean_shortfall_points": 17.3,
+      "mean_actionable_headroom_points": 19.8,
+      "share_reachable": 0.5967
+    }
+  },
+  "fairness": {
+    "sex": [
+      {
+        "sex": "F",
+        "n": 145315,
+        "approval_rate": 0.4759866496920483,
+        "observed_default": 0.01756873000034408,
+        "mean_pd": 0.02729499346875879
+      },
+      {
+        "sex": "M",
+        "n": 80199,
+        "approval_rate": 0.5613785708051222,
+        "observed_default": 0.029875684235464283,
+        "mean_pd": 0.023770420360011982
+      }
+    ],
+    "age_band": [
+      {
+        "age_band": 20,
+        "n": 27384,
+        "approval_rate": 0.613387379491674,
+        "observed_default": 0.044916739702015776,
+        "mean_pd": 0.022784707298190807
+      },
+      {
+        "age_band": 30,
+        "n": 48676,
+        "approval_rate": 0.6436436847727833,
+        "observed_default": 0.027261894979045114,
+        "mean_pd": 0.021352358610027267
+      },
+      {
+        "age_band": 40,
+        "n": 45188,
+        "approval_rate": 0.6782774187837479,
+        "observed_default": 0.021576524741081703,
+        "mean_pd": 0.018651323888733515
+      },
+      {
+        "age_band": 50,
+        "n": 35221,
+        "approval_rate": 0.6325487635217626,
+        "observed_default": 0.015842821044263367,
+        "mean_pd": 0.020681594553387653
+      },
+      {
+        "age_band": 60,
+        "n": 54407,
+        "approval_rate": 0.21822559597110666,
+        "observed_default": 0.01225945190876174,
+        "mean_pd": 0.03801958165816388
+      },
+      {
+        "age_band": 70,
+        "n": 14638,
+        "approval_rate": 0.08614564831261101,
+        "observed_default": 0.01311654597622626,
+        "mean_pd": 0.038917764796096536
+      }
+    ]
+  },
+  "total_seconds": 96.5
+}
