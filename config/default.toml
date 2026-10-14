@@ -131,10 +131,27 @@ conformal_alpha = 0.10
 # Cost of one manual review, in the same units as profit. Swept in the figure.
 review_cost = 0.01
 review_cost_grid = [0.0, 0.005, 0.01, 0.02, 0.05]
-# Characteristics a declined applicant could plausibly change. Excludes age and
-# history length: offering those as recourse would be dishonest.
-# Populated once docs/DATA_NOTES.md confirms the real column names.
-actionable_features = []
+# Characteristics a declined applicant could plausibly change, named from the
+# real feature set. Everything here is a property of THIS application or of
+# behaviour the applicant still controls:
+#   afford_credit_to_taxincome   ask for a smaller loan
+#   afford_annuity_to_taxincome  smaller loan, or a longer term
+#   inq_last30d / inq_last90d    stop shopping for credit and wait
+#
+# Deliberately EXCLUDED, though several are among the strongest predictors:
+#   delq_*            past delinquency. It happened; it cannot be unhappened.
+#   prev_*rejected    prior rejection history, likewise.
+#   bureau_*          file depth, which is time served, not a choice.
+#   afford_taxincome_total  "earn more" is not recourse anyone can act on by
+#                     Tuesday, and offering it would be a glib non-answer.
+# These still appear in the principal reasons: an explanation that hid the real
+# drivers to keep the advice tidy would be the dishonest version.
+actionable_features = [
+    "afford_credit_to_taxincome",
+    "afford_annuity_to_taxincome",
+    "inq_last30d",
+    "inq_last90d",
+]
 
 # --- 7. Sampling-bias experiment ------------------------------------------
 # Separate windows from [splits] on purpose: this experiment needs its own

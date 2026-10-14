@@ -1,0 +1,15 @@
+{
+  "id": "KAGGLE_USERNAME/hc-decision",
+  "title": "hc-decision",
+  "code_file": "_bundled.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": true,
+  "enable_gpu": false,
+  "enable_tpu": false,
+  "enable_internet": true,
+  "competition_sources": ["home-credit-credit-risk-model-stability"],
+  "dataset_sources": [],
+  "kernel_sources": ["ilyaselmaazouzi/hc-features", "ilyaselmaazouzi/hc-models"],
+  "model_sources": []
+}

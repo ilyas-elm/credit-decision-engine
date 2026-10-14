@@ -58,6 +58,7 @@ __all__ = [
     "find_data_dir",
     "ScreeningParams",
     "screen_features",
+    "kept_features",
 ]
 
 DATE_FORMAT = "%Y-%m-%d"
@@ -568,6 +569,29 @@ def build_features(
         Path(out_path).parent.mkdir(parents=True, exist_ok=True)
         collected.write_parquet(out_path)
     return collected, family_of
+
+
+def kept_features(report_path: str | Path) -> list[str]:
+    """The features that survived screening, read from a feature report.
+
+    build_features deliberately emits EVERY feature it constructs, so the report
+    and the parquet can be inspected together. That makes it the caller's job to
+    apply the screen -- and a caller that forgets simply re-selects from the full
+    set. Observed exactly that: the champion scorecard picked up
+    bureau_a_records, which screening had dropped for PSI 0.614, because its IV
+    was healthy and nothing enforced the earlier decision. In a project about
+    model stability, that is the one feature the screen existed to exclude.
+    """
+    import pandas as pd
+
+    report = pd.read_csv(report_path)
+    missing = {"feature", "kept"} - set(report.columns)
+    if missing:
+        raise ValueError(f"{report_path} is missing {sorted(missing)}.")
+    kept = report.loc[report["kept"].astype(bool), "feature"].tolist()
+    if not kept:
+        raise ValueError(f"{report_path} marks no feature as kept.")
+    return kept
 
 
 # --- screening -----------------------------------------------------------

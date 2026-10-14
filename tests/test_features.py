@@ -415,3 +415,42 @@ def test_find_data_dir_handles_the_nested_competition_mount(tmp_path) -> None:
     flat = tmp_path / "flat"
     flat.mkdir()
     assert find_data_dir(flat) == flat
+
+
+def test_kept_features_reads_the_screening_decision(tmp_path) -> None:
+    """Downstream stages must honour the screen, not re-select around it.
+
+    features.parquet deliberately carries every feature that was built. The
+    champion scorecard picked up bureau_a_records anyway -- dropped for
+    PSI 0.614 -- because its IV was healthy and nothing enforced the earlier
+    decision. In a project about stability that is the one feature the screen
+    existed to exclude.
+    """
+    from features import kept_features
+
+    report = tmp_path / "feature_report.csv"
+    pd_mod = pytest.importorskip("pandas")
+    pd_mod.DataFrame(
+        {
+            "feature": ["good_a", "psi_dropped", "good_b", "low_iv"],
+            "kept": [True, False, True, False],
+            "reason": ["kept", "PSI 0.614 > 0.25", "kept", "IV 0.001 < 0.02"],
+        }
+    ).to_csv(report, index=False)
+
+    assert kept_features(report) == ["good_a", "good_b"]
+
+
+def test_kept_features_rejects_a_malformed_or_empty_report(tmp_path) -> None:
+    from features import kept_features
+
+    pd_mod = pytest.importorskip("pandas")
+    bad = tmp_path / "bad.csv"
+    pd_mod.DataFrame({"feature": ["a"]}).to_csv(bad, index=False)
+    with pytest.raises(ValueError, match="missing"):
+        kept_features(bad)
+
+    empty = tmp_path / "empty.csv"
+    pd_mod.DataFrame({"feature": ["a"], "kept": [False]}).to_csv(empty, index=False)
+    with pytest.raises(ValueError, match="no feature as kept"):
+        kept_features(empty)

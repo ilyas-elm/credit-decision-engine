@@ -62,6 +62,13 @@ def ensure_packages() -> None:
     print("[models] installed", flush=True)
 
 
+def find_feature_report() -> Path:
+    matches = sorted(INPUT_ROOT.rglob("feature_report.csv"))
+    if not matches:
+        raise SystemExit(f"No feature_report.csv under {INPUT_ROOT}; screening cannot be applied.")
+    return matches[0]
+
+
 def find_features() -> Path:
     """Locate features.parquet in whichever directory the upstream kernel mounts at.
 
@@ -87,6 +94,7 @@ def main() -> None:
     from challenger import ChallengerParams, fit_challenger
     from config import load_config
     from evaluation import comparison_table, evaluate, write_figures
+    from features import kept_features
     from profit import ProfitAssumptions
     from scorecard import ScorecardParams, fit_scorecard, iv_table, select_features
     from splits import SPLIT_ORDER, split_weeks
@@ -95,7 +103,13 @@ def main() -> None:
     features = pl.read_parquet(find_features())
     print(f"[models] {features.height:,} rows x {features.width} cols", flush=True)
 
-    feature_cols = [c for c in features.columns if c not in ("case_id", "WEEK_NUM", "target")]
+    # Honour the screening decisions. features.parquet carries every feature
+    # that was built, not just the survivors, so without this the scorecard's
+    # own IV rule happily re-selects something the PSI screen dropped.
+    built = [c for c in features.columns if c not in ("case_id", "WEEK_NUM", "target")]
+    feature_cols = [c for c in kept_features(find_feature_report()) if c in built]
+    print(f"[models] screening kept {len(feature_cols)} of {len(built)} built; "
+          f"excluded {sorted(set(built) - set(feature_cols))}", flush=True)
     blocks = split_weeks(features["WEEK_NUM"].unique().to_list(), cfg.splits)
     split_of_week = {w: name for name, ws in blocks.items() for w in ws}
     split = features["WEEK_NUM"].replace_strict(split_of_week, default="?", return_dtype=pl.Utf8)
