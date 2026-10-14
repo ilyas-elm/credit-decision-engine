@@ -175,24 +175,74 @@ def test_username_placeholder_is_substituted_from_the_environment(monkeypatch) -
     assert committed["id"].startswith("KAGGLE_USERNAME/")
 
 
-def test_missing_credentials_name_both_manual_steps(monkeypatch, tmp_path) -> None:
-    monkeypatch.delenv("KAGGLE_USERNAME", raising=False)
-    monkeypatch.delenv("KAGGLE_KEY", raising=False)
-    monkeypatch.setenv("KAGGLE_CONFIG_DIR", str(tmp_path))
+def test_missing_credentials_name_both_manual_steps(monkeypatch) -> None:
+    """The check delegates to the CLI, so an unauthenticated CLI must surface
+    the real instructions -- OAuth login, not the kaggle.json that CLI 2.x
+    no longer uses.
+    """
+
+    class _Failed:
+        returncode = 1
+
+    monkeypatch.setattr(kaggle_run.shutil, "which", lambda name: "/usr/bin/kaggle")
+    monkeypatch.setattr(subprocess, "run", lambda *a, **k: _Failed())
     with pytest.raises(StageError) as excinfo:
         kaggle_run.check_credentials()
     message = str(excinfo.value)
     assert "Accept the competition rules" in message
-    assert "chmod 600" in message
+    assert "kaggle auth login" in message
+    assert "KAGGLE_API_TOKEN" in message
+    # The old scheme must not be advertised any more.
+    assert "kaggle.json" in message and "no kaggle.json" in message.lower()
 
 
-def test_credentials_are_accepted_from_a_token_file(monkeypatch, tmp_path) -> None:
-    monkeypatch.delenv("KAGGLE_USERNAME", raising=False)
-    monkeypatch.delenv("KAGGLE_KEY", raising=False)
-    monkeypatch.setenv("KAGGLE_CONFIG_DIR", str(tmp_path))
-    (tmp_path / "kaggle.json").write_text(json.dumps({"username": "u", "key": "k"}))
+def test_an_authenticated_cli_passes_the_check(monkeypatch) -> None:
+    class _Ok:
+        returncode = 0
+
+    monkeypatch.setattr(kaggle_run.shutil, "which", lambda name: "/usr/bin/kaggle")
+    monkeypatch.setattr(subprocess, "run", lambda *a, **k: _Ok())
     kaggle_run.check_credentials()
-    assert kaggle_run.kaggle_username() == "u"
+
+
+def test_a_missing_cli_is_reported_clearly(monkeypatch) -> None:
+    monkeypatch.setattr(kaggle_run.shutil, "which", lambda name: None)
+    with pytest.raises(StageError, match="not on PATH"):
+        kaggle_run.check_credentials()
+
+
+def test_the_access_token_is_never_captured(monkeypatch) -> None:
+    """The probe must discard stdout: it prints a live credential."""
+    seen = {}
+
+    class _Ok:
+        returncode = 0
+
+    def _spy(args, **kwargs):
+        seen.update(kwargs)
+        return _Ok()
+
+    monkeypatch.setattr(kaggle_run.shutil, "which", lambda name: "/usr/bin/kaggle")
+    monkeypatch.setattr(subprocess, "run", _spy)
+    kaggle_run.check_credentials()
+    assert seen.get("stdout") is subprocess.DEVNULL
+    assert "capture_output" not in seen
+
+
+def test_username_falls_back_to_config(monkeypatch, tmp_path) -> None:
+    """CLI 2.x stores no username, so it comes from config or the environment."""
+    monkeypatch.delenv("KAGGLE_USERNAME", raising=False)
+    with pytest.raises(StageError, match="No Kaggle username available"):
+        kaggle_run.kaggle_username()
+
+
+def test_username_error_names_both_ways_to_set_it(monkeypatch) -> None:
+    monkeypatch.delenv("KAGGLE_USERNAME", raising=False)
+    with pytest.raises(StageError) as excinfo:
+        kaggle_run.kaggle_username()
+    message = str(excinfo.value)
+    assert "config/default.toml" in message
+    assert "KAGGLE_USERNAME" in message
 
 
 # --- Busy-kernel guard ---------------------------------------------------
@@ -202,7 +252,7 @@ def test_credentials_are_accepted_from_a_token_file(monkeypatch, tmp_path) -> No
 def test_a_busy_kernel_is_not_pushed_over(monkeypatch, status: str) -> None:
     """Pushing over a live run would queue a second 12 h session and race outputs."""
     monkeypatch.setenv("KAGGLE_USERNAME", "someuser")
-    monkeypatch.setenv("KAGGLE_KEY", "somekey")
+    monkeypatch.setattr(kaggle_run, "check_credentials", lambda: None)
     monkeypatch.setattr(kaggle_run, "kernel_status", lambda ref: status)
 
     def _fail(*args, **kwargs):
@@ -212,10 +262,8 @@ def test_a_busy_kernel_is_not_pushed_over(monkeypatch, status: str) -> None:
     assert kaggle_run.main(["make-sample"]) == 2
 
 
-def test_dry_run_needs_no_credentials(monkeypatch, tmp_path) -> None:
+def test_dry_run_needs_no_credentials(monkeypatch) -> None:
     monkeypatch.delenv("KAGGLE_USERNAME", raising=False)
-    monkeypatch.delenv("KAGGLE_KEY", raising=False)
-    monkeypatch.setenv("KAGGLE_CONFIG_DIR", str(tmp_path))
 
     def _fail(*args, **kwargs):
         raise AssertionError("a dry run must not touch the Kaggle CLI")

@@ -2,6 +2,13 @@
 # Changing a number is a config change with a one-line reason in the commit
 # message -- never a silent edit to chase a better result.
 
+# Kaggle CLI 2.x authenticates with a single OAuth/API token and stores no
+# username, so the kernel id cannot be derived from the credentials and the
+# username has to be stated. Not a secret (it is the public profile URL) but
+# personal, so it ships empty; $KAGGLE_USERNAME overrides it.
+[kaggle]
+username = ""
+
 [data]
 competition = "home-credit-credit-risk-model-stability"
 sample_dir = "data/sample"

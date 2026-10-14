@@ -232,17 +232,38 @@ USERNAME_PLACEHOLDER = "KAGGLE_USERNAME"
 
 
 def kaggle_username() -> str:
-    """The account's username, from the environment or kaggle.json."""
+    """The account's username, for building the kernel id.
+
+    Kaggle CLI 2.x authenticates with a single OAuth/API token and no longer
+    stores a username anywhere: `kaggle config` holds only competition, path and
+    proxy, and there is no kaggle.json. So the username cannot be discovered
+    from the credentials and has to be supplied.
+
+    $KAGGLE_USERNAME wins when set; otherwise [kaggle] username in config. A
+    Kaggle username is not a secret -- it is the public profile URL -- but it is
+    personal, so the committed default is empty and the placeholder stays in the
+    kernel metadata.
+    """
     from_env = os.environ.get("KAGGLE_USERNAME")
     if from_env:
         return from_env
-    token = Path(os.environ.get("KAGGLE_CONFIG_DIR", Path.home() / ".kaggle")) / "kaggle.json"
-    if token.is_file():
-        try:
-            return json.loads(token.read_text())["username"]
-        except (json.JSONDecodeError, KeyError) as exc:
-            raise StageError(f"Could not read a username out of {token}: {exc}") from None
-    raise StageError(f"No Kaggle username available (checked $KAGGLE_USERNAME and {token}).")
+
+    try:
+        from config import load_config
+
+        configured = load_config().raw.get("kaggle", {}).get("username", "")
+    except Exception:  # config is optional for this path
+        configured = ""
+    if configured:
+        return str(configured)
+
+    raise StageError(
+        "No Kaggle username available, and the CLI cannot supply one.\n"
+        "  Set it in config/default.toml:   [kaggle]\n"
+        '                                   username = "your-kaggle-username"\n'
+        "  or export KAGGLE_USERNAME=your-kaggle-username\n"
+        "It is the name in your profile URL, kaggle.com/<username>."
+    )
 
 
 def resolve_metadata(stage: Stage) -> dict:
@@ -278,17 +299,39 @@ def _kaggle(*args: str, check: bool = True) -> subprocess.CompletedProcess:
 
 
 def check_credentials() -> None:
-    """Fail early, with the two manual steps spelled out."""
-    env_ok = bool(os.environ.get("KAGGLE_USERNAME") and os.environ.get("KAGGLE_KEY"))
-    token = Path(os.environ.get("KAGGLE_CONFIG_DIR", Path.home() / ".kaggle")) / "kaggle.json"
-    if env_ok or token.is_file():
+    """Fail early if the CLI cannot authenticate.
+
+    Delegated to the CLI rather than probing for a file. Kaggle CLI 2.x accepts
+    OAuth credentials cached by `kaggle auth login`, $KAGGLE_API_TOKEN, or a
+    token in ~/.kaggle/access_token -- and the old kaggle.json with a username
+    and key is gone entirely. Asking the CLI covers all of them and cannot drift
+    from whatever it supports next.
+
+    The access token is never captured: stdout goes to DEVNULL and only the exit
+    status is read.
+    """
+    exe = shutil.which("kaggle")
+    if exe is None:
+        raise StageError(
+            "The `kaggle` CLI is not on PATH. It is a dev dependency of this repo: "
+            "run through `uv run python scripts/kaggle_run.py`, or `uv sync`."
+        )
+    probe = subprocess.run(
+        [exe, "auth", "print-access-token"],
+        stdout=subprocess.DEVNULL,  # never capture the token
+        stderr=subprocess.DEVNULL,
+    )
+    if probe.returncode == 0:
         return
     raise StageError(
-        "No Kaggle credentials found.\n"
-        f"  1. Accept the competition rules at kaggle.com/competitions/{COMPETITION} "
-        "-- the API refuses to serve the data until you do.\n"
-        f"  2. Put kaggle.json at {token} and `chmod 600` it.\n"
-        "Alternatively export KAGGLE_USERNAME and KAGGLE_KEY."
+        "Kaggle CLI is not authenticated.\n"
+        "  1. Accept the competition rules at\n"
+        f"     https://www.kaggle.com/competitions/{COMPETITION}/rules\n"
+        "     The API refuses to serve the data until you do.\n"
+        "  2. Log in:  uv run kaggle auth login\n"
+        "     That opens a browser; credentials are cached locally.\n"
+        "     Or generate a token at https://www.kaggle.com/settings/api and\n"
+        "     export KAGGLE_API_TOKEN=... (there is no kaggle.json in CLI 2.x)."
     )
 
 
