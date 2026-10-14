@@ -37,6 +37,12 @@ import time
 from pathlib import Path
 
 OUTPUT = Path("/kaggle/working")
+
+#: Acceptance rate at which arms are compared on profit. The profit-maximising
+#: cutoff is degenerate on this portfolio (100% approval, where profit does not
+#: depend on the model at all), so arms are compared where a cutoff actually
+#: binds -- the operating point the decision layer uses.
+PROFIT_ACCEPTANCE = 0.515
 INPUT_ROOT = Path("/kaggle/input")
 
 
@@ -81,7 +87,7 @@ def main() -> None:
     from calibrate import assess_calibration
     from config import load_config
     from metrics import gini
-    from profit import ProfitAssumptions
+    from profit import ProfitAssumptions, strategy_curve
     from sampling_bias import (
         SamplingBiasParams,
         build_arm,
@@ -258,6 +264,19 @@ def main() -> None:
                     g_acc = gini(y_te[accepted_te], pd_te[accepted_te])
                     cal = assess_calibration(y_te, pd_te)
                     cal_acc = assess_calibration(y_te[accepted_te], pd_te[accepted_te])
+                    # Profit on the FULL test population at a FIXED acceptance
+                    # rate, not at each arm's own optimum.
+                    #
+                    # The optimum is useless here: at these assumptions the book
+                    # is profitable at every cutoff, so every arm's optimum is
+                    # 100% approval and the profit there is identical for every
+                    # model (61,715 for the oracle and for pure noise alike).
+                    # Comparing arms needs a cutoff that BINDS, where a better
+                    # ranking approves fewer bads and earns more. PROFIT_ACCEPTANCE
+                    # is the binding operating point the decision layer uses.
+                    curve = strategy_curve(y_te, pd_te, assumptions, n_points=201)
+                    at = int(np.argmin(np.abs(curve["approval_rate"] - PROFIT_ACCEPTANCE)))
+                    profit_full = float(curve["profit"][at])
                     rows.append(
                         {
                             "reject_rate": reject_rate,
@@ -271,6 +290,7 @@ def main() -> None:
                             "brier_full": cal.brier,
                             "citl_gap_full": cal.gap,
                             "citl_gap_accepted_only": cal_acc.gap,
+                            "profit_full": profit_full,
                             "seconds": round(time.time() - t, 1),
                             "note": training.note,
                         }
@@ -316,7 +336,47 @@ def main() -> None:
 
     arms = pd.DataFrame(rows)
     arms.to_csv(OUTPUT / "arms.csv", index=False)
-    pd.DataFrame(exploration_rows).to_csv(OUTPUT / "exploration.csv", index=False)
+
+    # Exploration economics: what the budget BOUGHT, against what it cost.
+    explore = pd.DataFrame(exploration_rows)
+    if not explore.empty:
+        for model_type in ("lightgbm", "scorecard"):
+            base_profit = arms[
+                (arms.model == model_type) & (arms.base_arm == "A1_accepts_only")
+            ].set_index("reject_rate")["profit_full"]
+            arm_profit = arms[
+                (arms.model == model_type) & (arms.base_arm == "A6_exploration")
+            ].set_index(["reject_rate", "arm", "seed"])["profit_full"]
+            # itertuples, not iterrows: iterrows coerces each row to a single
+            # dtype, which turned explore_pct 1 into 1.0 and built the key
+            # "A6_exploration_p1.0", matching nothing and yielding silent NaN.
+            gains = [
+                arm_profit.get(
+                    (int(r.reject_rate), f"A6_exploration_p{int(r.explore_pct)}", int(r.seed)),
+                    float("nan"),
+                )
+                - base_profit.get(int(r.reject_rate), float("nan"))
+                for r in explore.itertuples()
+            ]
+            explore[f"profit_gain_vs_A1_{model_type}"] = gains
+            explore[f"net_vs_A1_{model_type}"] = (
+                explore[f"profit_gain_vs_A1_{model_type}"] - explore["realised_loss_cost"]
+            )
+        print("\n=== EXPLORATION ECONOMICS: gain vs cost (mean over seeds) ===", flush=True)
+        print(
+            explore.groupby(["reject_rate", "explore_pct"])[
+                [
+                    "realised_loss_cost",
+                    "profit_gain_vs_A1_lightgbm",
+                    "net_vs_A1_lightgbm",
+                ]
+            ]
+            .mean()
+            .round(2)
+            .to_string(),
+            flush=True,
+        )
+    explore.to_csv(OUTPUT / "exploration.csv", index=False)
 
     print("\n=== RAW Gini on the full test population (mean over seeds) ===", flush=True)
     raw = (
