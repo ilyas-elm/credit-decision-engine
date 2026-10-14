@@ -4,9 +4,9 @@ A credit decision system — not just a classifier — built on the Kaggle
 *Home Credit: Credit Risk Model Stability* data, and evaluated the way a credit
 risk team evaluates models: out-of-time, on calibration, stability and profit.
 
-> **Status: in progress.** Questions 1 and 2 have full-data numbers below.
-> Question 3, the sampling-bias experiment, is built and tested but not yet run,
-> and is marked _pending_ until it is.
+> **Status: in progress.** All three questions have full-data numbers below.
+> The decision layer (cutoff, refer band, reasons, recourse) is built and tested
+> but has not yet been run on the full data.
 
 ## The three questions
 
@@ -73,7 +73,70 @@ any selection decision.
 [Calibration by bucket](docs/figures/calibration.png) ·
 [Strategy curve](docs/figures/strategy_curve.png)
 
-_Pending:_ sampling-bias recovery, evaluation bias.
+![Evaluation bias](docs/figures/evaluation_bias.png)
+
+[Sampling-bias recovery](docs/figures/sampling_bias_recovery.png)
+
+## Question 3 — sampling bias
+
+Kernel `ilyaselmaazouzi/hc-sampling-bias`: 160 fits, 17.7 min. Policy weeks
+0–22, development 23–63 (labels hidden for the rejected), test 64–91 with every
+label. 150k development cases per arm, identical features and fixed
+hyperparameters throughout, three seeds on the stochastic arms.
+
+**Limitation, which bounds every number here:** the Home Credit data already
+contains booked loans only. The real rejects are gone. This simulates a *second*
+selection policy on top of an already-selected population.
+
+### How wrong is the lender's own validation?
+
+Measured on the test weeks its policy would have approved, against the truth
+over everyone:
+
+| reject rate | 10 % | 20 % | 30 % | 50 % |
+|---|---|---|---|---|
+| LightGBM | −0.068 | −0.075 | −0.075 | −0.069 |
+| scorecard | −0.100 | −0.129 | −0.141 | −0.150 |
+
+A lender measuring on its own approved book **understates its Gini by 7 to 15
+points** — range restriction, not a modelling fault. The scorecard is hurt
+roughly twice as badly as the challenger, and its bias grows steadily with the
+reject rate while the challenger's is flat.
+
+### Which fix recovers the most?
+
+Share of the A0 − A1 gap recovered, LightGBM. Blank where the gap is below
+0.01 Gini and a ratio against it would be noise:
+
+| arm | r=20 % | r=30 % | r=50 % |
+|---|---|---|---|
+| A2 hard cutoff | −0.30 | 0.37 | 0.42 |
+| A3 fuzzy | 0.11 | 0.15 | 0.45 |
+| A4 parcelling | −0.01 | −0.04 | −0.41 |
+| A5 self-learning | −0.38 | 0.30 | **0.62** |
+| A6 exploration | −4.42 | −3.51 | −2.30 |
+
+Three things come out of this:
+
+1. **Reject inference only helps when the selection is severe.** At a 20 % reject
+   rate nothing beats simply discarding the rejects. By 50 % the best arm
+   recovers about 62 % of the lost signal — and the gap is only 0.09 Gini to
+   begin with.
+2. **The exploration budget is catastrophic here, and the reason is variance,
+   not cost.** The money is trivial: 450 explored loans at r=30 % cost 8.5 units
+   of realised loss. But the inverse-propensity weight of 100/p gives a few
+   hundred cases the same total weight as 45,000, and the result swamps the
+   training set — A6 has the largest seed-to-seed spread of any arm (sd 0.11
+   against 0.05 for parcelling). Correct weighting, ruinous variance.
+3. **The scorecard has almost no gap to recover at all.** At 10 % and 20 %
+   reject rates its accepts-only model is *better* than its oracle (0.438 vs
+   0.419), so the recovery ratio is undefined and is reported as such. Binned
+   logistic regression is markedly more robust to this selection than the GBM.
+
+**Against Kozodoi et al. (2024):** this agrees. Reject inference gave modest and
+inconsistent gains, and fixing the *evaluation* mattered more — here the
+evaluation bias (7–15 Gini points, present at every reject rate) is larger and
+far more consistent than anything any inference arm recovered.
 
 ## How to reproduce
 
@@ -110,9 +173,9 @@ code; the kernel versions used will be linked here.
 | Data reconnaissance | [`docs/DATA_NOTES.md`](docs/DATA_NOTES.md) | **done, on full data** |
 | Feature build (polars, 6 families) | `src/features.py` | **done, run on full data** |
 | Feature screening + report | [`docs/feature_report.csv`](docs/feature_report.csv) | **done, full data** |
-| Sampling-bias experiment (arms A0-A6) | `src/sampling_bias.py` | done, not yet run |
+| Sampling-bias experiment (arms A0-A6) | `src/sampling_bias.py` | **done, run on full data** |
 
-252 tests, all on generated fixtures. Two kernels have been run end to end on the real
+258 tests, all on generated fixtures. Two kernels have been run end to end on the real
 competition data.
 
 ## Environment
