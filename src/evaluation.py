@@ -58,6 +58,7 @@ __all__ = [
     "plot_weekly_gini",
     "plot_calibration",
     "plot_strategy_curve",
+    "plot_referral_economics",
     "write_figures",
 ]
 
@@ -279,6 +280,53 @@ def plot_strategy_curve(evaluations: list[ModelEvaluation], path: str | Path) ->
         ax.legend(fontsize=8)
     ax_bad.set_title("Risk as approvals loosen")
     ax_profit.set_title("Profit, with the optimum marked")
+    return _finish(fig, path)
+
+
+def plot_referral_economics(
+    economics: dict[str, np.ndarray],
+    path: str | Path,
+    *,
+    label: str = "refer band",
+) -> Path:
+    """Expected loss avoided against the cost of reviewing, by review price.
+
+    The brief's "share referred vs expected loss avoided, with a review-cost
+    parameter". Plotted as a net benefit so the break-even price is readable off
+    the axis rather than inferred from two lines: that price is the number a
+    review desk is actually deciding about.
+    """
+    costs = np.asarray(economics["review_cost"], dtype=float)
+    net = np.asarray(economics["net_benefit"], dtype=float)
+    avoided = float(np.asarray(economics["loss_avoided"], dtype=float)[0])
+    share = float(np.asarray(economics["share_referred"], dtype=float)[0])
+
+    fig, ax = plt.subplots(figsize=(8, 4.6))
+    ax.plot(costs, net, marker="o", lw=1.8, label=f"net benefit ({label})")
+    ax.axhline(0, color="k", lw=1)
+    ax.fill_between(costs, 0, net, where=net >= 0, alpha=0.15, color="tab:green")
+    ax.fill_between(costs, 0, net, where=net < 0, alpha=0.15, color="tab:red")
+
+    # Break-even price, by linear interpolation between the bracketing points.
+    sign = np.sign(net)
+    crossing = np.flatnonzero(sign[:-1] * sign[1:] < 0)
+    if crossing.size:
+        i = int(crossing[0])
+        frac = net[i] / (net[i] - net[i + 1])
+        break_even = costs[i] + frac * (costs[i + 1] - costs[i])
+        ax.axvline(break_even, ls="--", lw=1.2, color="grey")
+        ax.annotate(
+            f"break-even {break_even:.3f}/review",
+            (break_even, 0), textcoords="offset points", xytext=(6, 14), fontsize=9,
+        )
+    ax.set_xlabel("cost per manual review")
+    ax.set_ylabel("net benefit (loss avoided − review cost)")
+    ax.set_title(
+        f"The refer band stops paying for itself\n"
+        f"{share:.1%} referred, {avoided:,.0f} of loss avoided (perfect reviewer)"
+    )
+    ax.grid(alpha=0.3)
+    ax.legend(fontsize=9)
     return _finish(fig, path)
 
 

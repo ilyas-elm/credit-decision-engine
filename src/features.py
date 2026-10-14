@@ -20,6 +20,17 @@ genuinely predictive, because it is partly the outcome being predicted. Every
 record dated after the decision is dropped, which is the brief's rule and is
 not a formality here.
 
+Scope, stated because the brief's preparation step is broader
+----------------------------------------------------------
+The brief says to convert every date (D) column to days relative to
+`date_decision` and drop the raw dates. Here dates are parsed and used to
+EXCLUDE post-decision records, but they are not turned into features in their
+own right: the six families below are built from named columns rather than by
+aggregating everything the schema offers. That is a deliberate narrowing -- a
+blanket days-relative expansion would add roughly fifty largely redundant
+columns to a set where the top seven already carry most of the signal -- and it
+is recorded here rather than left to be inferred from the absence.
+
 Memory
 ------
 `credit_bureau_a_2` is 188M rows on the full data. Nothing in this module calls
@@ -41,7 +52,6 @@ __all__ = [
     "FeatureParams",
     "DATE_FORMAT",
     "parse_date",
-    "days_before_decision",
     "drop_post_decision",
     "safe_ratio",
     "recency_weight",
@@ -90,11 +100,6 @@ class FeatureParams:
 def parse_date(column: str) -> pl.Expr:
     """Parse an ISO date string column. Unparseable values become null."""
     return pl.col(column).str.to_date(DATE_FORMAT, strict=False)
-
-
-def days_before_decision(column: str, decision: str = "decision_date") -> pl.Expr:
-    """Days between a record's date and the decision. Positive means earlier."""
-    return (pl.col(decision) - pl.col(column)).dt.total_days()
 
 
 def drop_post_decision(

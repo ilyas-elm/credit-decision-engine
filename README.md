@@ -76,7 +76,8 @@ any selection decision.
 
 ![Evaluation bias](docs/figures/evaluation_bias.png)
 
-[Sampling-bias recovery](docs/figures/sampling_bias_recovery.png)
+[Sampling-bias recovery](docs/figures/sampling_bias_recovery.png) ·
+[Referral economics](docs/figures/referral_economics.png)
 
 ## Question 2 — the cutoff and the review band
 
@@ -123,7 +124,8 @@ The bands separate risk monotonically, which is the minimum one should demand.
 A 45 % referral rate is far beyond any real review desk, and that is a direct
 consequence of α = 0.10 on a 3 % default book.
 
-**The review band stops paying for itself between 0.01 and 0.02** per review:
+**The review band stops paying for itself at 0.019 per review**
+([figure](docs/figures/referral_economics.png)):
 against 1,982 units of loss avoided (assuming a *perfect* reviewer — an upper
 bound, not an estimate), 102,054 reviews cost 1,021 at 0.01 and 2,041 at 0.02.
 

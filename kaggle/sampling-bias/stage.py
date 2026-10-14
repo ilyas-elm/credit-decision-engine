@@ -319,8 +319,12 @@ def main() -> None:
     pd.DataFrame(exploration_rows).to_csv(OUTPUT / "exploration.csv", index=False)
 
     print("\n=== RAW Gini on the full test population (mean over seeds) ===", flush=True)
-    raw = (arms.groupby(["model", "base_arm", "reject_rate"])["gini_full"]
-           .mean().unstack("reject_rate").round(4))
+    raw = (
+        arms.groupby(["model", "base_arm", "reject_rate"])["gini_full"]
+        .mean()
+        .unstack("reject_rate")
+        .round(4)
+    )
     print(raw.to_string(), flush=True)
 
     print("\n=== A0 - A1 gap, which recovery is expressed against ===", flush=True)
@@ -330,9 +334,11 @@ def main() -> None:
             o = sel[sel.base_arm == "A0_oracle"]["gini_full"].mean()
             a1 = sel[sel.base_arm == "A1_accepts_only"]["gini_full"].mean()
             usable = (o - a1) >= 0.01
-            print(f"   {model:10} r={rr:>2}%  A0 {o:+.4f}  A1 {a1:+.4f}  gap {o - a1:+.4f}"
-                  f"   {'' if usable else '<- no gap to recover; recovery reported as NaN'}",
-                  flush=True)
+            print(
+                f"   {model:10} r={rr:>2}%  A0 {o:+.4f}  A1 {a1:+.4f}  gap {o - a1:+.4f}"
+                f"   {'' if usable else '<- no gap to recover; recovery reported as NaN'}",
+                flush=True,
+            )
 
     print("\n=== RECOVERY: share of the A0-A1 Gini gap recovered (mean over seeds) ===", flush=True)
     piv = (

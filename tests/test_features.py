@@ -454,3 +454,85 @@ def test_kept_features_rejects_a_malformed_or_empty_report(tmp_path) -> None:
     pd_mod.DataFrame({"feature": ["a"], "kept": [False]}).to_csv(empty, index=False)
     with pytest.raises(ValueError, match="no feature as kept"):
         kept_features(empty)
+
+
+# --- post-decision leakage, through the real pipeline --------------------
+
+
+def _competition_shaped(tmp_path, *, post_decision_dpd: float = 999.0):
+    """A base table plus a bureau payment history straddling the decision date.
+
+    Pre-decision months carry DPD 10; post-decision months carry a value that
+    cannot be mistaken for anything else. Any feature that reflects the latter
+    is reading the future.
+    """
+    import datetime as dt
+
+    decision = dt.date(2020, 6, 15)
+    base = pl.DataFrame(
+        {
+            "case_id": [1, 2, 3],
+            "date_decision": [decision.isoformat()] * 3,
+            "MONTH": [202006] * 3,
+            "WEEK_NUM": [10, 11, 12],
+            "target": [0, 1, 0],
+        }
+    )
+    rows = []
+    for case_id in (1, 2, 3):
+        for month in (1, 2, 3):  # well before the decision
+            rows.append({"case_id": case_id, "num_group1": 0, "num_group2": month,
+                         "pmts_dpd_1073P": 10.0, "pmts_overdue_1140A": 100.0,
+                         "pmts_month_158T": float(month), "pmts_year_1139T": 2020.0})
+        for month in (9, 10, 11):  # AFTER the decision
+            rows.append({"case_id": case_id, "num_group1": 0, "num_group2": month,
+                         "pmts_dpd_1073P": post_decision_dpd,
+                         "pmts_overdue_1140A": 9_999.0,
+                         "pmts_month_158T": float(month), "pmts_year_1139T": 2020.0})
+    base.write_parquet(tmp_path / "train_base.parquet")
+    pl.DataFrame(rows).write_parquet(tmp_path / "train_credit_bureau_a_2.parquet")
+    return base
+
+
+def test_the_feature_build_ignores_post_decision_payment_months(tmp_path) -> None:
+    """The brief's "no post-decision dates" requirement, end to end.
+
+    delinquency_features filters the payment month against date_decision inline
+    rather than through drop_post_decision, so testing that helper in isolation
+    leaves this path uncovered. On the real data 8.4 % of bureau payment rows
+    post-date their own decision and the maximum post-decision DPD carries a
+    univariate Gini of +0.097 against the target: it is partly the outcome being
+    predicted, so this is the difference between a model and a time machine.
+    """
+    _competition_shaped(tmp_path)
+    feats, _ = build_features(tmp_path, FeatureParams())
+
+    assert feats.height == 3
+    # Only the pre-decision months exist as far as the features are concerned.
+    assert feats["delq_dpd_max"].to_list() == [10.0, 10.0, 10.0]
+    assert feats["delq_n_payment_months"].to_list() == [3, 3, 3]
+    assert feats["delq_overdue_max"].max() == pytest.approx(100.0)
+    assert feats["delq_dpd_max"].max() < 999.0, "a post-decision DPD reached the features"
+
+
+def test_that_test_would_fail_if_the_filter_were_removed(tmp_path) -> None:
+    """Guards the guard: prove the fixture actually contains future rows.
+
+    Without this, the assertions above would also pass on data that simply had
+    no post-decision months, and would be protecting nothing.
+    """
+    import datetime as dt
+
+    _competition_shaped(tmp_path)
+    raw = pl.read_parquet(tmp_path / "train_credit_bureau_a_2.parquet")
+    decision = dt.date(2020, 6, 15)
+    future = raw.filter(
+        pl.date(
+            pl.col("pmts_year_1139T").cast(pl.Int32),
+            pl.col("pmts_month_158T").cast(pl.Int32),
+            1,
+        )
+        > pl.lit(decision)
+    )
+    assert future.height == 9, "the fixture plants no post-decision rows"
+    assert future["pmts_dpd_1073P"].max() == 999.0

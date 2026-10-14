@@ -246,3 +246,36 @@ def test_the_three_acceptance_figures_are_written(evaluations, tmp_path) -> None
 def test_figures_work_for_a_single_model(evaluations, tmp_path) -> None:
     paths = write_figures(evaluations[:1], tmp_path)
     assert all(p.is_file() for p in paths.values())
+
+
+def test_referral_figure_marks_the_break_even_price(tmp_path) -> None:
+    """The brief's section-6 figure: share referred vs loss avoided, by cost."""
+    from evaluation import plot_referral_economics
+
+    economics = {
+        "review_cost": np.array([0.0, 0.005, 0.01, 0.02, 0.05]),
+        "share_referred": np.full(5, 0.45),
+        "n_referred": np.full(5, 102_054),
+        "loss_avoided": np.full(5, 1981.6),
+        "total_review_cost": np.array([0.0, 510.3, 1020.5, 2041.1, 5102.7]),
+        "net_benefit": np.array([1981.6, 1471.3, 961.1, -59.5, -3121.1]),
+    }
+    path = plot_referral_economics(economics, tmp_path / "referral.png")
+    assert path.is_file()
+    assert path.read_bytes()[:8] == b"\x89PNG\r\n\x1a\n"
+    assert path.stat().st_size > 5_000
+
+
+def test_referral_figure_handles_a_band_that_always_pays(tmp_path) -> None:
+    """No break-even inside the swept range: the plot must still render."""
+    from evaluation import plot_referral_economics
+
+    economics = {
+        "review_cost": np.array([0.0, 0.01]),
+        "share_referred": np.full(2, 0.1),
+        "n_referred": np.full(2, 100),
+        "loss_avoided": np.full(2, 5000.0),
+        "total_review_cost": np.array([0.0, 1.0]),
+        "net_benefit": np.array([5000.0, 4999.0]),
+    }
+    assert plot_referral_economics(economics, tmp_path / "r.png").is_file()
