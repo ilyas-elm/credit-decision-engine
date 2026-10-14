@@ -26,7 +26,9 @@ from pathlib import Path
 
 import polars as pl
 
-INPUT = Path("/kaggle/input/home-credit-credit-risk-model-stability")
+COMPETITION = "home-credit-credit-risk-model-stability"
+INPUT_ROOT = Path("/kaggle/input")
+INPUT = INPUT_ROOT / COMPETITION
 OUTPUT = Path("/kaggle/working")
 SAMPLE_DIR = OUTPUT / "sample"
 
@@ -56,6 +58,43 @@ COLUMNS_OF_INTEREST = {
 # test_base and the kernel would have sampled a few hundred unlabeled rows and
 # then failed on the missing target.
 TABLE_PREFIX = "train"
+
+
+def describe_input_root() -> str:
+    """What is actually mounted, for when the expected path is not there."""
+    if not INPUT_ROOT.is_dir():
+        return f"{INPUT_ROOT} does not exist."
+    lines = [f"{INPUT_ROOT} contains:"]
+    for child in sorted(INPUT_ROOT.iterdir()):
+        lines.append(f"  {child.name}/" if child.is_dir() else f"  {child.name}")
+        if child.is_dir():
+            for sub in sorted(child.iterdir())[:8]:
+                lines.append(f"    {sub.name}{'/' if sub.is_dir() else ''}")
+    return "\n".join(lines)
+
+
+def find_input_dir() -> Path:
+    """Locate the mounted competition data.
+
+    The mount point is not assumed: the first run failed with zero tables
+    because the data was not at /kaggle/input/<competition-slug>. Rather than
+    guess again, this looks for the slug, then for any mounted directory that
+    actually contains parquet_files/train, and otherwise fails with a listing of
+    what IS mounted -- which answers the question in one run instead of two.
+    """
+    if (INPUT / "parquet_files" / TABLE_PREFIX).is_dir():
+        return INPUT
+    if INPUT_ROOT.is_dir():
+        for child in sorted(INPUT_ROOT.iterdir()):
+            if child.is_dir() and (child / "parquet_files" / TABLE_PREFIX).is_dir():
+                print(f"[make-sample] data found at {child}, not {INPUT}", flush=True)
+                return child
+        # Fall back to anything holding parquet at all.
+        for child in sorted(INPUT_ROOT.iterdir()):
+            if child.is_dir() and any(child.rglob("*.parquet")):
+                print(f"[make-sample] parquet found under {child}", flush=True)
+                return child
+    raise SystemExit(f"Competition data not found under {INPUT_ROOT}.\n{describe_input_root()}")
 
 
 def discover_tables(prefix: str = TABLE_PREFIX) -> dict[str, list[Path]]:
@@ -144,7 +183,11 @@ def column_search(tables: dict[str, list[Path]]) -> dict:
 
 
 def main() -> None:
+    global INPUT
     SAMPLE_DIR.mkdir(parents=True, exist_ok=True)
+    print(f"[make-sample] {describe_input_root()}", flush=True)
+    INPUT = find_input_dir()
+    print(f"[make-sample] reading from {INPUT}", flush=True)
     tables = discover_tables()
     print(f"[make-sample] {len(tables)} logical tables", flush=True)
 
