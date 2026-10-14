@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import io
 import json
+import os
 import subprocess
 import sys
 import zipfile
@@ -184,7 +185,7 @@ def test_missing_credentials_name_both_manual_steps(monkeypatch) -> None:
     class _Failed:
         returncode = 1
 
-    monkeypatch.setattr(kaggle_run.shutil, "which", lambda name: "/usr/bin/kaggle")
+    monkeypatch.setattr(kaggle_run, "kaggle_executable", lambda: "/usr/bin/kaggle")
     monkeypatch.setattr(subprocess, "run", lambda *a, **k: _Failed())
     with pytest.raises(StageError) as excinfo:
         kaggle_run.check_credentials()
@@ -200,15 +201,28 @@ def test_an_authenticated_cli_passes_the_check(monkeypatch) -> None:
     class _Ok:
         returncode = 0
 
-    monkeypatch.setattr(kaggle_run.shutil, "which", lambda name: "/usr/bin/kaggle")
+    monkeypatch.setattr(kaggle_run, "kaggle_executable", lambda: "/usr/bin/kaggle")
     monkeypatch.setattr(subprocess, "run", lambda *a, **k: _Ok())
     kaggle_run.check_credentials()
 
 
 def test_a_missing_cli_is_reported_clearly(monkeypatch) -> None:
     monkeypatch.setattr(kaggle_run.shutil, "which", lambda name: None)
-    with pytest.raises(StageError, match="not on PATH"):
+    monkeypatch.setattr(kaggle_run.sys, "executable", "/nowhere/bin/python")
+    with pytest.raises(StageError, match="was not found beside the interpreter"):
         kaggle_run.check_credentials()
+
+
+def test_the_cli_is_found_beside_the_interpreter() -> None:
+    """Invoking .venv/bin/python directly leaves .venv/bin off PATH, so the
+    resolver must not depend on PATH. This is the real venv, not a mock.
+    """
+    import sys as _sys
+    from pathlib import Path as _Path
+
+    expected = _Path(_sys.executable).parent / "kaggle"
+    if expected.is_file():
+        assert kaggle_run.kaggle_executable() == str(expected)
 
 
 def test_the_access_token_is_never_captured(monkeypatch) -> None:
@@ -222,7 +236,7 @@ def test_the_access_token_is_never_captured(monkeypatch) -> None:
         seen.update(kwargs)
         return _Ok()
 
-    monkeypatch.setattr(kaggle_run.shutil, "which", lambda name: "/usr/bin/kaggle")
+    monkeypatch.setattr(kaggle_run, "kaggle_executable", lambda: "/usr/bin/kaggle")
     monkeypatch.setattr(subprocess, "run", _spy)
     kaggle_run.check_credentials()
     assert seen.get("stdout") is subprocess.DEVNULL
@@ -394,3 +408,77 @@ def test_the_base_table_is_selected_by_exact_name_not_by_suffix() -> None:
     unfiltered = sorted({n.split("/")[-1].replace(".parquet", "") for n in REAL_PARQUET_NAMES})
     first_base_like = next(k for k in unfiltered if k.endswith("_base"))
     assert first_base_like == "test_base", "the hazard this guards against is gone"
+
+
+def test_the_script_resolves_the_username_when_run_as_a_script(tmp_path) -> None:
+    """Run it the way a person does, not the way pytest imports it.
+
+    pytest puts src/ on sys.path via pythonpath, so every in-process test sees a
+    config loader that a real `python scripts/kaggle_run.py` invocation could not
+    import. That gap hid a failure once; this closes it by using a subprocess.
+    """
+    script = REPO_ROOT / "scripts" / "kaggle_run.py"
+    result = subprocess.run(
+        [sys.executable, str(script), "make-sample", "--dry-run"],
+        capture_output=True,
+        text=True,
+        cwd=tmp_path,  # also proves it does not depend on the working directory
+    )
+    assert result.returncode == 0, result.stderr
+    assert "make-sample" in result.stdout
+
+    # And the username resolves in that same out-of-process context.
+    probe = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "import sys; sys.path.insert(0, r'%s');"
+            "import kaggle_run;"
+            "print(kaggle_run.kaggle_username())" % (REPO_ROOT / "scripts"),
+        ],
+        capture_output=True,
+        text=True,
+        cwd=tmp_path,
+        env={k: v for k, v in os.environ.items() if k != "KAGGLE_USERNAME"},
+    )
+    assert probe.returncode == 0, probe.stderr
+    assert probe.stdout.strip(), "username came back empty out of process"
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "Cannot access kernel 'u/k' (Permission 'kernels.get' was denied).",
+        "404 - Not Found",
+        "Kernel not found",
+    ],
+)
+def test_a_kernel_that_does_not_exist_yet_reads_as_absent(monkeypatch, message: str) -> None:
+    """Kaggle reports a never-pushed kernel as a permission error, not a 404.
+
+    Treating that as a hard failure blocked the very first push of every new
+    stage, since the status check runs before the kernel can possibly exist.
+    """
+
+    class _Result:
+        returncode = 1
+        stdout = ""
+        stderr = message
+
+    monkeypatch.setattr(kaggle_run, "kaggle_executable", lambda: "/usr/bin/kaggle")
+    monkeypatch.setattr(subprocess, "run", lambda *a, **k: _Result())
+    assert kaggle_run.kernel_status("u/k") == "absent"
+
+
+def test_an_unrecognised_status_error_still_raises(monkeypatch) -> None:
+    """Absent-detection must not swallow genuine failures."""
+
+    class _Result:
+        returncode = 1
+        stdout = ""
+        stderr = "500 Internal Server Error"
+
+    monkeypatch.setattr(kaggle_run, "kaggle_executable", lambda: "/usr/bin/kaggle")
+    monkeypatch.setattr(subprocess, "run", lambda *a, **k: _Result())
+    with pytest.raises(StageError, match="Could not read status"):
+        kaggle_run.kernel_status("u/k")

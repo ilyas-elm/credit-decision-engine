@@ -40,6 +40,12 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SRC_DIR = REPO_ROOT / "src"
+
+# Run as a script, scripts/ is on sys.path but src/ is not, so the project's own
+# config loader would not import. pytest hides this by setting pythonpath, which
+# is exactly why it has to be done here too.
+if str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
 KAGGLE_DIR = REPO_ROOT / "kaggle"
 RUNS_DIR = REPO_ROOT / "runs"
 
@@ -248,12 +254,12 @@ def kaggle_username() -> str:
     if from_env:
         return from_env
 
-    try:
-        from config import load_config
+    # Deliberately not wrapped in a bare except: swallowing an ImportError here
+    # once turned "src/ is not on sys.path" into "no username available", which
+    # sent the search in entirely the wrong direction.
+    from config import load_config
 
-        configured = load_config().raw.get("kaggle", {}).get("username", "")
-    except Exception:  # config is optional for this path
-        configured = ""
+    configured = load_config().raw.get("kaggle", {}).get("username", "")
     if configured:
         return str(configured)
 
@@ -282,13 +288,29 @@ def resolve_metadata(stage: Stage) -> dict:
 # --- Kaggle CLI ----------------------------------------------------------
 
 
-def _kaggle(*args: str, check: bool = True) -> subprocess.CompletedProcess:
-    exe = shutil.which("kaggle")
-    if exe is None:
+def kaggle_executable() -> str:
+    """Locate the kaggle CLI.
+
+    Looks beside the running interpreter first. `kaggle` is a dev dependency of
+    this project, so when the script runs under .venv/bin/python the CLI is at
+    .venv/bin/kaggle whether or not that directory is on PATH -- which it is not
+    when the script is invoked by its interpreter directly.
+    """
+    beside = Path(sys.executable).parent / "kaggle"
+    if beside.is_file():
+        return str(beside)
+    found = shutil.which("kaggle")
+    if found is None:
         raise StageError(
-            "The `kaggle` CLI is not on PATH. It is a dev dependency of this repo: "
-            "run through `uv run python scripts/kaggle_run.py`, or `uv sync`."
+            "The `kaggle` CLI was not found beside the interpreter "
+            f"({beside}) or on PATH. It is a dev dependency of this repo: run "
+            "`uv sync`, then invoke this script with .venv/bin/python."
         )
+    return found
+
+
+def _kaggle(*args: str, check: bool = True) -> subprocess.CompletedProcess:
+    exe = kaggle_executable()
     result = subprocess.run([exe, *args], capture_output=True, text=True)
     if check and result.returncode != 0:
         raise StageError(
@@ -310,12 +332,7 @@ def check_credentials() -> None:
     The access token is never captured: stdout goes to DEVNULL and only the exit
     status is read.
     """
-    exe = shutil.which("kaggle")
-    if exe is None:
-        raise StageError(
-            "The `kaggle` CLI is not on PATH. It is a dev dependency of this repo: "
-            "run through `uv run python scripts/kaggle_run.py`, or `uv sync`."
-        )
+    exe = kaggle_executable()
     probe = subprocess.run(
         [exe, "auth", "print-access-token"],
         stdout=subprocess.DEVNULL,  # never capture the token
@@ -341,7 +358,14 @@ def kernel_status(ref: str) -> str:
     blob = (result.stdout + result.stderr).strip()
     if result.returncode != 0:
         lowered = blob.lower()
-        if "not found" in lowered or "404" in lowered:
+        # A kernel that has never been pushed reports as a PERMISSION error,
+        # not a 404: the API will not confirm whether a kernel it will not show
+        # you exists at all. Since `ref` is always built from this account's own
+        # username, a denial here means "not created yet" rather than "someone
+        # else's". Observed verbatim on the first push of a new stage:
+        #   Cannot access kernel '<user>/<slug>' (Permission 'kernels.get' was denied)
+        absent_markers = ("not found", "404", "permission", "denied", "cannot access")
+        if any(marker in lowered for marker in absent_markers):
             return "absent"
         raise StageError(f"Could not read status of {ref}:\n{blob}")
     for status in (*BUSY_STATUSES, *TERMINAL_STATUSES):
