@@ -56,7 +56,7 @@ appears in two splits and that the blocks are strictly ordered in time.
 
 **Features.** 36 built in six families (delinquency, utilisation, inquiry
 velocity, previous applications, affordability, bureau depth); 25 survive
-screening; 16 enter the scorecard. Delinquency dominates — and only exists
+screening; 13 enter the scorecard. Delinquency dominates — and only exists
 because `credit_bureau_a_2` proved to be a *monthly payment history*, which is
 what makes recency-weighted DPD computable. The strongest single feature is
 `delq_dpd_mean` (IV 0.326).
@@ -87,14 +87,14 @@ Test weeks 69–91, 225,514 cases, fitted on by nothing.
 
 | | scorecard | LightGBM |
 |---|---|---|
-| Gini | 0.3956 | **0.4264** |
-| mean weekly Gini | 0.3864 | **0.4205** |
+| Gini | 0.3944 | **0.4264** |
+| mean weekly Gini | 0.3854 | **0.4205** |
 | Gini slope / week | +0.0026 | +0.0019 |
 | Gini residual sd | **0.0521** | 0.0592 |
-| **stability metric** | 0.3604 | **0.3909** |
+| **stability metric** | 0.3594 | **0.3909** |
 | Brier | 0.02131 | **0.02117** |
 | worst-week calibration gap | 0.0095 | **0.0084** |
-| score PSI vs train | 0.4929 | **0.4202** |
+| score PSI vs train | 0.5028 | **0.4202** |
 
 The challenger adds about **3 Gini points** and keeps them once stability is
 measured. Note *why*: neither model decays — both slopes are positive — so the
@@ -120,14 +120,14 @@ conformal at α = 0.10, calibrated on val_b:
 | | coverage | target |
 |---|---|---|
 | non-default | 0.960 | 0.90 ✓ |
-| **default** | **0.744** | 0.90 ✗ — below target in **23 of 23 weeks** |
+| **default** | **0.747** | 0.90 ✗ — below target in **23 of 23 weeks** |
 
 Conformal guarantees coverage *under exchangeability*; these weeks are not
 exchangeable with val_b. It is still worth having — a **marginal** threshold
 covers the default class **0.000** of the time, so Mondrian moves it from 0 % to
-74 % — but the guarantee should not be quoted as holding.
+75 % — but the guarantee should not be quoted as holding.
 
-At the tightest binding cutoff (51.5 % acceptance) the bands separate risk
+At the tightest binding cutoff (71.5 % acceptance) the bands separate risk
 monotonically: approve 50.6 % at 1.1 % bad, refer 45.3 % at 2.9 %, decline 4.1 %
 at 7.8 %. A **45 % referral rate is beyond any real review desk** and follows
 directly from α = 0.10 on a 3 % default book; α is the lever, and moving it is a
@@ -154,16 +154,20 @@ more than inferring the labels.
 **EMP assumptions are assumptions**, and at the literature's values the profit
 analysis is degenerate (§4). Every profit number is reported across a grid.
 
-**Drift is real and unaddressed.** Score PSI is 0.42–0.49 train-to-test, above
+**Drift is real and unaddressed.** Score PSI is 0.42–0.50 train-to-test, above
 any conventional alert threshold, and it is the direct cause of the conformal
 coverage failure.
 
-**Two scorecard sign flips.** `prev_amount_mean` and `prev_amount_total` score
-*more* points as their event rate rises, because their multivariate coefficients
-are negative. Worth ~0.8 points on a 600-point scale, so the headline numbers
-stand, but the table is locally unreadable and credit review would reject them.
-Detected and reported by `FittedScorecard.sign_flips()`; **not** dropped, because
-removing a characteristic changes the model and that is a human decision.
+**Sign flips: found, measured and removed.** Three characteristics scored *more*
+points as their event rate rose, because their multivariate coefficients came out
+negative — the table read "the more you previously borrowed, the safer you are".
+The cause was joint collinearity in the previous-applications family rather than
+any one column: pairwise pruning at 0.80 still left a cluster correlated
+0.60–0.78 (condition number 15.1), so excluding one flip merely moved it to the
+next. They are now barred in config, at a **measured cost of 0.0012 Gini and
+0.0010 stability** — about 0.3 % relative, 16 characteristics down to 13. The
+scorecard now reads correctly end to end, which is the champion's whole purpose.
+`FittedScorecard.sign_flips()` guards against regression.
 
 **Fairness.** Women are approved less often (47.6 % vs 56.1 %) while defaulting
 less often (1.76 % vs 2.99 %), and the model over-predicts their risk (+0.0097)
@@ -172,7 +176,7 @@ threshold artefact, and it runs against the lower-risk group. **Audit only, no
 mitigation**, as scoped.
 
 **By age the disparity is larger.** Applicants in their 60s are approved at
-25.9 % and those 70+ at 12.3 %, against 61–68 % for everyone younger, while being
+25.4 % and those 70+ at 11.8 %, against 61–68 % for everyone younger, while being
 the safest groups in the book (1.2–1.3 % default against 4.5 % for the 20s). The
 model predicts them as the riskiest — mean PD 3.7–3.8 % against a realised
 1.2 % — so a roughly threefold over-prediction becomes an approval gap at the
@@ -194,7 +198,7 @@ absent from every tax registry as earning nothing rather than unknown, putting
 34 % of the book in the lowest income bin beside genuinely low earners. Fixing
 it lifted the champion (Gini 0.376 to 0.396, stability 0.340 to 0.360) while
 leaving the challenger unmoved, and raised approval for the 70+ group from 8.6 %
-to 12.3 %. The disparity survives: the Missing bin still pools retirees with
+to 11.8 %. The disparity survives: the Missing bin still pools retirees with
 working-age applicants who have no employment record, for whom that absence
 genuinely is risky. The remaining fix needs a pension and benefit income source,
 which this dataset does not contain. Attributed and partly reduced, not
@@ -228,7 +232,7 @@ the drift evidence shows.
 
 ## 8. Reproducing
 
-`uv sync && uv run pytest` — 265 tests on synthetic fixtures; no competition data
+`uv sync && uv run pytest` — 267 tests on synthetic fixtures; no competition data
 is committed and none is needed. Full-data results come from re-running the
 kernels in `kaggle/` from committed code: `make-sample`, `env-probe`, `features`,
 `models`, `sampling-bias`, `decision`.

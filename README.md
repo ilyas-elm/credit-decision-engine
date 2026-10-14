@@ -27,24 +27,28 @@ Full data, 1,526,659 cases, evaluated out-of-time on the last 23 weeks
 
 | | scorecard | LightGBM | better |
 |---|---|---|---|
-| Gini | 0.3956 | **0.4264** | challenger |
-| mean weekly Gini | 0.3864 | **0.4205** | challenger |
+| Gini | 0.3944 | **0.4264** | challenger |
+| mean weekly Gini | 0.3854 | **0.4205** | challenger |
 | Gini slope / week | +0.0026 | +0.0019 | — (both rising) |
 | Gini residual sd | **0.0521** | 0.0592 | champion |
-| **stability metric** | 0.3604 | **0.3909** | challenger |
+| **stability metric** | 0.3594 | **0.3909** | challenger |
 | Brier | 0.02131 | **0.02117** | challenger |
 | calibration-in-the-large, worst week | 0.0095 | **0.0084** | challenger |
-| score PSI vs train | 0.4929 | **0.4202** | challenger |
+| score PSI vs train | 0.5028 | **0.4202** | challenger |
 | EMPCS | ≈0 | ≈0 | — (see below) |
 
-**Question 1 — what the challenger adds.** About **3 Gini points** (0.396 →
+The champion is a **13-characteristic** scorecard with **no sign flips**: every
+characteristic scores fewer points as its risk rises, so the table reads
+correctly end to end.
+
+**Question 1 — what the challenger adds.** About **3 Gini points** (0.394 →
 0.426), and it keeps them once stability is measured: the stability metric moves
-0.360 → 0.391. The margin narrowed from 5 points after an income-encoding fix
+0.359 → 0.391. The margin narrowed from 5 points after an income-encoding fix
 that helped the scorecard and left the challenger unmoved (below). Neither model's Gini decays over the test weeks — both
 slopes are positive, so the metric's 88× falling-slope penalty never engages
 and the gap is driven by level, not trend. The challenger is also *slightly*
 better calibrated and noticeably more stable in its score distribution
-(PSI 0.42 vs 0.49). The one thing the champion wins is week-to-week smoothness
+(PSI 0.42 vs 0.50). The one thing the champion wins is week-to-week smoothness
 (residual sd 0.047 vs 0.051).
 
 It is a real but unspectacular gain, bought with hundreds of trees against a
@@ -63,7 +67,7 @@ degeneracy there is a result about the assumptions rather than something to
 tune away. Under this portfolio's economics, the model's value is not in
 choosing an approval cutoff.
 
-Score PSI above 0.25 for **both** models (0.49 and 0.42) is worth flagging: in
+Score PSI above 0.25 for **both** models (0.50 and 0.42) is worth flagging: in
 production that is an alert threshold, and it reflects genuine drift over 92 weeks rather than
 a modelling defect. Test-week PSI is reported here only — it is never used for
 any selection decision.
@@ -93,8 +97,8 @@ the test weeks:
 
 | | coverage | target |
 |---|---|---|
-| non-default | 0.961 | 0.90 ✓ |
-| **default** | **0.741** | 0.90 ✗ — **below target in 23 of 23 weeks** |
+| non-default | 0.960 | 0.90 ✓ |
+| **default** | **0.747** | 0.90 ✗ — **below target in 23 of 23 weeks** |
 
 Split conformal guarantees coverage *under exchangeability*, and these weeks are
 not exchangeable with val_b: the default rate and the score distribution both
@@ -104,22 +108,22 @@ than assume it.
 
 It is still worth doing. A **marginal** threshold on the same data covers the
 default class **0.000** of the time — it is the majority class's threshold wearing
-a guarantee. Mondrian takes that from 0 % to 74 %. Short of its promise, and
+a guarantee. Mondrian takes that from 0 % to 75 %. Short of its promise, and
 vastly better than the alternative.
 
 ### Where the cutoff sits
 
 Swept across all 21 assumption points: the profit-maximising acceptance rate
-runs from **51.5 % to 100 %**, and **only 7 of 21 points bind at all**. At the
+runs from **71.5 % to 100 %**, and **only 7 of 21 points bind at all**. At the
 literature's assumptions the answer remains "approve everyone". The layer is
 exercised at the tightest binding corner (roi 0.02, LGD-heavy), giving 51.5 %
 acceptance:
 
 | band | share | bad rate |
 |---|---|---|
-| approve | 50.6 % | 0.011 |
-| refer | 45.3 % | 0.029 |
-| decline | 4.1 % | 0.078 |
+| approve | 51.3 % | 0.011 |
+| refer | 44.4 % | 0.029 |
+| decline | 4.3 % | 0.078 |
 
 The bands separate risk monotonically, which is the minimum one should demand.
 A 45 % referral rate is far beyond any real review desk, and that is a direct
@@ -142,21 +146,21 @@ How far recourse is from clearing the cutoff, in scorecard points:
 
 | population | n | short by | actionable headroom | reachable |
 |---|---|---|---|---|
-| decline band | 9,270 | 58.1 | 24.4 | **0.2 %** |
-| refer band | 100,103 | 17.3 | 19.8 | **59.7 %** |
+| decline band | 9,701 | 55.0 | 25.7 | **3.9 %** |
+| refer band | 100,034 | 15.8 | 20.6 | **77.6 %** |
 
 Outright declines sit about three times further from the cutoff than anything an
 applicant can change: for them recourse is genuinely infeasible, and saying so is
 more honest than inventing advice. The referred population is a different
-question — **60 % of them could reach the cutoff** by borrowing less or waiting
+question — **78 % of them could reach the cutoff** by borrowing less or waiting
 out recent credit searches.
 
 ### Fairness audit (audit only, no mitigation)
 
 | sex | n | approval rate | observed default | mean PD |
 |---|---|---|---|---|
-| F | 145,315 | 0.489 | 0.0176 | 0.0278 |
-| M | 80,199 | 0.566 | 0.0299 | 0.0247 |
+| F | 145,315 | 0.485 | 0.0176 | 0.0278 |
+| M | 80,199 | 0.564 | 0.0299 | 0.0247 |
 
 Women are approved **less often** (47.6 % vs 56.1 %) while defaulting **less
 often** (1.8 % vs 3.0 %), and the model **over-predicts** their risk while
@@ -166,14 +170,14 @@ Reported, not mitigated, as the brief requires.
 
 | age band | n | approval rate | observed default | mean PD |
 |---|---|---|---|---|
-| 20s | 27,384 | 0.607 | 0.0449 | 0.0246 |
-| 30s | 48,676 | 0.639 | 0.0273 | 0.0230 |
-| 40s | 45,188 | 0.675 | 0.0216 | 0.0200 |
-| 50s | 35,221 | 0.635 | 0.0158 | 0.0217 |
-| **60s** | 54,407 | **0.259** | **0.0123** | **0.0369** |
-| **70+** | 14,638 | **0.123** | **0.0131** | **0.0378** |
+| 20s | 27,384 | 0.606 | 0.0449 | 0.0244 |
+| 30s | 48,676 | 0.636 | 0.0273 | 0.0229 |
+| 40s | 45,188 | 0.673 | 0.0216 | 0.0200 |
+| 50s | 35,221 | 0.632 | 0.0158 | 0.0217 |
+| **60s** | 54,407 | **0.254** | **0.0123** | **0.0370** |
+| **70+** | 14,638 | **0.118** | **0.0131** | **0.0380** |
 
-Applicants in their 60s are approved at **25.9 %** and those 70+ at **12.3 %**,
+Applicants in their 60s are approved at **25.4 %** and those 70+ at **11.8 %**,
 against 61–68 % for everyone younger — while being the **safest** groups in the
 book, defaulting at 1.2–1.3 % against 4.5 % for applicants in their 20s. The
 model predicts them as the **riskiest**: a mean PD of 3.8–3.9 % for a group that
