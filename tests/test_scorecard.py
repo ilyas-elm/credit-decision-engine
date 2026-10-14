@@ -361,7 +361,8 @@ def test_sign_flips_are_detected_and_reported(frame, params) -> None:
 
     for feature in fitted.features:
         rows = fitted.points_table()
-        rows = rows[(rows["characteristic"] == feature) & (~rows["bin"].isin(["Special", "Missing"]))]
+        rows = rows[rows["characteristic"] == feature]
+        rows = rows[~rows["bin"].isin(["Special", "Missing"])]
         corr = np.corrcoef(rows["event_rate"], rows["points"])[0, 1]
         assert corr < 0, f"{feature} scores more points for more risk"
 

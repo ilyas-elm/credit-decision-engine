@@ -523,3 +523,35 @@ def test_the_unpacked_bundle_can_load_config(tmp_path: Path) -> None:
     )
     assert result.returncode == 0, result.stderr
     assert result.stdout.startswith("ok ")
+
+
+def test_a_transient_auth_failure_is_retried(monkeypatch) -> None:
+    """The OAuth access token refreshes lazily, so one failed probe is not proof
+    of missing credentials. Observed aborting a push against good credentials.
+    """
+    calls = {"n": 0}
+
+    class _R:
+        def __init__(self, rc):
+            self.returncode = rc
+
+    def _run(args, **kwargs):
+        calls["n"] += 1
+        return _R(1 if calls["n"] == 1 else 0)
+
+    monkeypatch.setattr(kaggle_run, "kaggle_executable", lambda: "/usr/bin/kaggle")
+    monkeypatch.setattr(kaggle_run.time, "sleep", lambda s: None)
+    monkeypatch.setattr(subprocess, "run", _run)
+    kaggle_run.check_credentials()
+    assert calls["n"] == 2, "the probe was not retried"
+
+
+def test_credentials_genuinely_absent_still_fail(monkeypatch) -> None:
+    class _R:
+        returncode = 1
+
+    monkeypatch.setattr(kaggle_run, "kaggle_executable", lambda: "/usr/bin/kaggle")
+    monkeypatch.setattr(kaggle_run.time, "sleep", lambda s: None)
+    monkeypatch.setattr(subprocess, "run", lambda *a, **k: _R())
+    with pytest.raises(StageError, match="kaggle auth login"):
+        kaggle_run.check_credentials()

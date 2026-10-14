@@ -356,13 +356,21 @@ def check_credentials() -> None:
     status is read.
     """
     exe = kaggle_executable()
-    probe = subprocess.run(
-        [exe, "auth", "print-access-token"],
-        stdout=subprocess.DEVNULL,  # never capture the token
-        stderr=subprocess.DEVNULL,
-    )
-    if probe.returncode == 0:
-        return
+    # Retried once. The OAuth access token is short-lived and the CLI refreshes
+    # it lazily, so a probe can fail and the very next call succeed -- observed
+    # mid-session, where it aborted a push against perfectly good credentials.
+    # Only a genuine lack of credentials fails both attempts.
+    for attempt in range(2):
+        probe = subprocess.run(
+            [exe, "auth", "print-access-token"],
+            stdout=subprocess.DEVNULL,  # never capture the token
+            stderr=subprocess.DEVNULL,
+        )
+        if probe.returncode == 0:
+            return
+        if attempt == 0:
+            print("[kaggle_run] auth probe failed; refreshing and retrying", file=sys.stderr)
+            time.sleep(5)
     raise StageError(
         "Kaggle CLI is not authenticated.\n"
         "  1. Accept the competition rules at\n"
