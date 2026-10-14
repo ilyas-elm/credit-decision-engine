@@ -16,7 +16,7 @@ change to reverse it.
 
 Two models are maintained:
 
-- **Champion:** a monotone, binned, 16-characteristic logistic-regression
+- **Champion:** a monotone, binned, 13-characteristic logistic-regression
   scorecard on a `pdo_odds` points scale (600 points at 50:1 odds, PDO 20). It
   is the model whose decisions are explained.
 - **Challenger:** LightGBM under monotone constraints inherited from the
