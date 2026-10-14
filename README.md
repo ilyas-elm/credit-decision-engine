@@ -4,8 +4,10 @@ A credit decision system — not just a classifier — built on the Kaggle
 *Home Credit: Credit Risk Model Stability* data, and evaluated the way a credit
 risk team evaluates models: out-of-time, on calibration, stability and profit.
 
-> **Status: in progress.** All three questions have full-data numbers below.
-> `MODEL.md` is not yet written, and CI has not been run against a remote.
+> **Status:** all three questions have full-data numbers below, and
+> [MODEL.md](MODEL.md) documents the model for review. CI has not been run
+> against a remote; the closest local equivalent (fresh clone, `uv sync
+> --frozen`, lint, 260 tests) passes.
 
 ## The three questions
 
@@ -335,6 +337,12 @@ almost entirely by non-defaulters. Mondrian lands on target for both classes.
 This is measured on exchangeable data, which is the favourable case; the real
 data drifts, so coverage is reported per class *per test week* rather than
 assumed.
+
+## Model documentation
+
+[MODEL.md](MODEL.md) — purpose, data, design choices, out-of-time performance,
+calibration and stability, limitations, and a monitoring plan with thresholds
+set from the variation actually observed rather than from convention.
 
 ## Stack
 
