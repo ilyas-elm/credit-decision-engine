@@ -52,7 +52,7 @@ better calibrated and noticeably more stable in its score distribution
 (residual sd 0.047 vs 0.051).
 
 It is a real but unspectacular gain, bought with hundreds of trees against a
-16-characteristic scorecard, under monotone constraints taken from the champion's own binning so
+13-characteristic scorecard, under monotone constraints taken from the champion's own binning so
 the challenger could not exploit relationships the scorecard was forbidden.
 
 **The profit comparison is degenerate, and that is the finding.** A loan is
@@ -116,7 +116,7 @@ vastly better than the alternative.
 Swept across all 21 assumption points: the profit-maximising acceptance rate
 runs from **71.5 % to 100 %**, and **only 7 of 21 points bind at all**. At the
 literature's assumptions the answer remains "approve everyone". The layer is
-exercised at the tightest binding corner (roi 0.02, LGD-heavy), giving 51.5 %
+exercised at the tightest binding corner (roi 0.02, LGD-heavy), giving 71.5 %
 acceptance:
 
 | band | share | bad rate |

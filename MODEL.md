@@ -215,7 +215,7 @@ not from convention.
 | **Gini trend** | slope +0.0017 /wk | 8-week slope < 0 | 8-week slope < −0.003 (the metric penalises this 88×) |
 | **calibration in the large** | worst week 0.008, range −0.003 to +0.009 | any week \|gap\| > 0.010 | 2 consecutive weeks \|gap\| > 0.015 |
 | **score PSI vs train** | median 0.42, range 0.30–0.71 | weekly PSI > 0.60 | weekly PSI > 0.75, or 4-week median > 0.60 |
-| **conformal coverage, default class** | 0.741, target 0.90 | any week < 0.70 | 4-week mean < 0.65 |
+| **conformal coverage, default class** | 0.747, target 0.90 | any week < 0.70 | 4-week mean < 0.65 |
 | **referral rate** | 45.3 % | outside 35–55 % | outside 30–60 % |
 | **approved bad rate** | 1.1 % | > 1.5 % over 4 weeks | > 2.0 % over 4 weeks |
 

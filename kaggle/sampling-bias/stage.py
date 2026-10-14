@@ -41,7 +41,11 @@ OUTPUT = Path("/kaggle/working")
 #: Acceptance rate at which arms are compared on profit. The profit-maximising
 #: cutoff is degenerate on this portfolio (100% approval, where profit does not
 #: depend on the model at all), so arms are compared where a cutoff actually
-#: binds -- the operating point the decision layer uses.
+#: binds. Any binding rate serves, since the comparison is between arms at the
+#: SAME rate; this one was the decision layer's operating point when the grid
+#: was run. That operating point has since moved to 71.5% as the champion
+#: changed, which does not invalidate the arm comparison but does mean the two
+#: numbers are no longer the same thing.
 PROFIT_ACCEPTANCE = 0.515
 INPUT_ROOT = Path("/kaggle/input")
 
