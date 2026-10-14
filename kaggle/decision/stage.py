@@ -79,7 +79,7 @@ def main() -> None:
         one_minus_prob,
     )
     from decision import DecisionEngine, choose_cutoff, referral_economics
-    from features import find_data_dir, table_paths
+    from features import find_data_dir, kept_features, table_paths
     from profit import ProfitAssumptions, expected_loss_fraction
     from scorecard import ScorecardParams, fit_scorecard, select_features
 
@@ -89,7 +89,13 @@ def main() -> None:
 
     features = pl.read_parquet(_find("features.parquet"))
     preds = pl.read_parquet(_find("predictions.parquet"))
-    feature_cols = [c for c in features.columns if c not in ("case_id", "WEEK_NUM", "target")]
+    # Honour the screening decisions, exactly as the models stage does. Without
+    # this the refit champion re-selects features the PSI screen dropped, and
+    # then explains decisions with a different model than the one that made
+    # them -- bureau_a_records turned up in the principal reasons that way.
+    built = [c for c in features.columns if c not in ("case_id", "WEEK_NUM", "target")]
+    feature_cols = [c for c in kept_features(_find("feature_report.csv")) if c in built]
+    print(f"[dec] screening kept {len(feature_cols)} of {len(built)} built features", flush=True)
     joined = features.join(
         preds.select("case_id", "split", "pd_scorecard", "score_scorecard", "pd_lightgbm"),
         on="case_id",
@@ -305,6 +311,43 @@ def main() -> None:
         print(f"[dec] most common principal reasons: {reasons.most_common(6)}", flush=True)
         (OUTPUT / "decide_examples.json").write_text(json.dumps(examples[:25], indent=2))
 
+    # --- how far is recourse from working, per band ------------------------
+    # decide() only attaches recourse to a DECLINE, which on its own makes the
+    # result look like a flat "recourse never works". It does not: outright
+    # declines are decisively bad, while the much larger REFERRED population
+    # sits within reach of the actionable characteristics. Reporting the
+    # shortfall against the available headroom separates those two.
+    best_points = champion.max_points()
+    awarded_points = champion.feature_points(X_te)
+    headroom = np.zeros(len(X_te))
+    for feature in engine.actionable_features:
+        headroom += np.maximum(best_points[feature] - awarded_points[feature].to_numpy(), 0.0)
+    shortfall = cutoff.score_threshold - scores_te
+
+    reach = {}
+    for label, mask in (
+        ("below_cutoff_any_band", scores_te < cutoff.score_threshold),
+        ("decline_band", bands == Band.DECLINE),
+        ("refer_band", bands == Band.REFER),
+    ):
+        m = mask & (shortfall > 0)
+        if not m.any():
+            continue
+        reach[label] = {
+            "n": int(m.sum()),
+            "mean_shortfall_points": round(float(shortfall[m].mean()), 1),
+            "mean_actionable_headroom_points": round(float(headroom[m].mean()), 1),
+            "share_reachable": round(float((headroom[m] >= shortfall[m]).mean()), 4),
+        }
+    print("\n[dec] how far recourse is from clearing the cutoff:", flush=True)
+    for label, r in reach.items():
+        print(
+            f"[dec]   {label:22} n={r['n']:>7,}  short {r['mean_shortfall_points']:>5.1f} pts  "
+            f"headroom {r['mean_actionable_headroom_points']:>5.1f} pts  "
+            f"reachable {r['share_reachable']:.1%}",
+            flush=True,
+        )
+
     # --- fairness audit ----------------------------------------------------
     audit = {}
     try:
@@ -386,6 +429,7 @@ def main() -> None:
         "binding_points": int(len(binding)),
         "scorecard_sign_flips": flips,
         "refit_ranking_correlation": order_match,
+        "recourse_reach": reach,
         "fairness": audit,
         "total_seconds": round(time.time() - started, 1),
     }
