@@ -228,12 +228,22 @@ class FittedScorecard:
         direction ``auto_asc_desc`` resolved to. A feature whose event rate is
         not monotone across bins gets 0 rather than a guessed sign: a wrong
         monotone constraint on the challenger is worse than none.
+
+        A feature whose IV falls below ``params.min_iv`` also gets 0, however
+        monotone it looks. Binned into a handful of bins, pure noise is
+        frequently monotone by chance -- on the test fixtures a noise column
+        drew a confident -1 -- and constraining the challenger on that is
+        constraining it on nothing. The same configured threshold that decides
+        whether a feature is worth selecting decides whether its trend is worth
+        believing.
         """
         directions: dict[str, int] = {}
         for feature in self.features:
-            rates = _interval_rows(self.table, feature)["Event rate"].to_numpy(dtype=float)
+            rows = _interval_rows(self.table, feature)
+            rates = rows["Event rate"].to_numpy(dtype=float)
             rates = rates[~np.isnan(rates)]
-            if rates.size < 2:
+            feature_iv = float(rows["IV"].astype(float).sum())
+            if rates.size < 2 or feature_iv < self.params.min_iv:
                 directions[feature] = 0
                 continue
             diffs = np.diff(rates)

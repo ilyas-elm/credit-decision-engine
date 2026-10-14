@@ -152,3 +152,15 @@ def test_strategy_curve_honours_per_loan_exposure() -> None:
 def test_strategy_curve_rejects_mismatched_exposure() -> None:
     with pytest.raises(ValueError, match="exposure has"):
         strategy_curve(np.array([0, 1]), np.array([0.1, 0.2]), exposure=np.ones(3))
+
+
+def test_assumptions_load_from_config_ignoring_the_sensitivity_subtable() -> None:
+    """[profit] nests the sensitivity grid, so it cannot be splatted wholesale."""
+    from config import load_config
+
+    section = load_config()["profit"]
+    assert "sensitivity" in section, "fixture assumption no longer holds"
+    assumptions = ProfitAssumptions.from_config(section)
+    assert assumptions.success_rate == section["success_rate"]
+    assert assumptions.default_rate == section["default_rate"]
+    assert assumptions.roi == section["roi"]

@@ -53,13 +53,17 @@ code; the kernel versions used will be linked here.
 | Champion scorecard (binning, selection, pdo_odds scaling) | `src/scorecard.py` | done |
 | Mondrian conformal refer band | `src/conformal.py` | done |
 | Decision layer: cutoff, bands, reasons, recourse | `src/decision.py` | done |
+| Isotonic calibration (shared) | `src/calibrate.py` | done |
+| Challenger: LightGBM with monotone constraints | `src/challenger.py` | done |
+| Shared evaluation + the three figures | `src/evaluation.py` | done |
 | Synthetic fixtures matching the schema | `tests/fixtures.py` | done |
 | Kaggle push/poll/pull orchestration | `scripts/kaggle_run.py` | done, unexercised |
 | `make-sample` + reconnaissance kernel | `kaggle/make-sample/` | done, unexercised |
 | Data reconnaissance | `docs/DATA_NOTES.md` | blocked on data access |
-| Features, challenger, sampling bias | — | not started |
+| Feature build (polars) | — | blocked on data access |
+| Sampling-bias experiment | `src/sampling_bias.py` | not started |
 
-142 tests, all on generated fixtures. The Kaggle plumbing is marked *unexercised*
+176 tests, all on generated fixtures. The Kaggle plumbing is marked *unexercised*
 because it has never been run against Kaggle — only against its own tests.
 
 ## Notes on four things worth knowing

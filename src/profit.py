@@ -70,6 +70,17 @@ class ProfitAssumptions:
                 "probability mass left for partial losses."
             )
 
+    @classmethod
+    def from_config(cls, section: dict) -> ProfitAssumptions:
+        """Build from the [profit] table, ignoring its nested sub-tables.
+
+        [profit] carries the sensitivity grid as a sub-table, so the section
+        cannot be splatted in wholesale. Centralised here rather than left to
+        every caller to remember.
+        """
+        known = {f for f in cls.__dataclass_fields__}
+        return cls(**{k: v for k, v in section.items() if k in known})
+
     def as_kwargs(self) -> dict[str, float]:
         return {
             "success_rate": self.success_rate,

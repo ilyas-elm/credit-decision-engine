@@ -323,3 +323,23 @@ def test_reasons_include_non_actionable_drivers(frame, params) -> None:
     reasons = fitted.principal_reasons(X, top_n=1)
     top_names = {row[0][0] for row in reasons}
     assert "falling" in top_names
+
+
+def test_a_weak_feature_gets_no_monotone_constraint(frame, params) -> None:
+    """Noise that happens to bin monotonically must not constrain the challenger.
+
+    Observed on a real run: a pure-noise column was binned into a monotone
+    sequence and drew a confident -1. Constraining the challenger on that is
+    constraining it on nothing, so the direction is gated on the same IV floor
+    that governs selection.
+    """
+    X, y = frame
+    fitted = fit_scorecard(X, y, params, features=["rising", "falling", "useless"])
+    directions = fitted.trend_direction()
+
+    ivs = iv_table(X, y, params).set_index("feature")
+    assert ivs.loc["useless", "iv"] < params.min_iv
+    assert directions["useless"] == 0, "a sub-threshold feature claimed a trend"
+    # The informative ones keep their signs.
+    assert directions["rising"] == 1
+    assert directions["falling"] == -1
