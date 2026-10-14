@@ -345,3 +345,73 @@ def test_params_load_from_config() -> None:
     assert sp.max_missing_rate == 0.95
     assert sp.psi_drop == 0.25 and sp.psi_flag == 0.10
     assert math.isclose(sp.leakage_gini, 0.50)
+
+
+# --- multi-part tables ---------------------------------------------------
+
+
+def test_table_paths_collects_numbered_parts_in_order(tmp_path) -> None:
+    """The full data splits big tables across numbered parts; the sample does not."""
+    from features import table_paths
+
+    for name in (
+        "train_credit_bureau_a_2_0",
+        "train_credit_bureau_a_2_2",
+        "train_credit_bureau_a_2_10",  # sorts before _2 as a string, after it as a number
+        "train_credit_bureau_a_1_0",
+        "train_base",
+    ):
+        pl.DataFrame({"case_id": [1]}).write_parquet(tmp_path / f"{name}.parquet")
+
+    parts = table_paths(tmp_path, "train_credit_bureau_a_2")
+    assert [p.stem for p in parts] == [
+        "train_credit_bureau_a_2_0",
+        "train_credit_bureau_a_2_2",
+        "train_credit_bureau_a_2_10",
+    ], "parts must be ordered numerically, not lexicographically"
+    assert [p.stem for p in table_paths(tmp_path, "train_base")] == ["train_base"]
+
+
+def test_table_paths_does_not_over_match_a_longer_name(tmp_path) -> None:
+    """`train_static_0` must not swallow `train_static_cb_0`, nor depth suffixes."""
+    from features import table_paths
+
+    for name in ("train_static_0_0", "train_static_0_1", "train_static_cb_0", "train_applprev_2"):
+        pl.DataFrame({"case_id": [1]}).write_parquet(tmp_path / f"{name}.parquet")
+
+    assert [p.stem for p in table_paths(tmp_path, "train_static_0")] == [
+        "train_static_0_0",
+        "train_static_0_1",
+    ]
+    assert [p.stem for p in table_paths(tmp_path, "train_static_cb_0")] == ["train_static_cb_0"]
+    assert table_paths(tmp_path, "train_applprev_1") == []
+
+
+def test_build_reads_a_table_split_across_parts(tmp_path) -> None:
+    tables, _ = make_dataset(n_cases=400, n_weeks=10, seed=6)
+    base = tables["train_base"]
+    base.write_parquet(tmp_path / "train_base.parquet")
+    # Split one table in two, as the competition does.
+    static = tables["train_static_0_0"]
+    half = static.height // 2
+    static[:half].write_parquet(tmp_path / "train_static_0_0.parquet")
+    static[half:].write_parquet(tmp_path / "train_static_0_1.parquet")
+
+    feats, _ = build_features(tmp_path, FeatureParams())
+    assert feats.height == 400
+    # Affordability comes from static_0; it must see both halves.
+    assert "afford_credit_amount" in feats.columns
+    assert feats["afford_credit_amount"].null_count() == 0
+
+
+def test_find_data_dir_handles_the_nested_competition_mount(tmp_path) -> None:
+    """Data mounts at /kaggle/input/competitions/<slug>/, not /kaggle/input/<slug>/."""
+    from features import find_data_dir
+
+    nested = tmp_path / "competitions" / "home-credit" / "parquet_files" / "train"
+    nested.mkdir(parents=True)
+    assert find_data_dir(tmp_path) == nested
+    # A directory that already holds the tables is returned unchanged.
+    flat = tmp_path / "flat"
+    flat.mkdir()
+    assert find_data_dir(flat) == flat

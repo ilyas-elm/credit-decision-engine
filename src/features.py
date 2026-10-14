@@ -54,6 +54,8 @@ __all__ = [
     "bureau_depth_features",
     "FAMILY_BUILDERS",
     "build_features",
+    "table_paths",
+    "find_data_dir",
     "ScreeningParams",
     "screen_features",
 ]
@@ -151,9 +153,53 @@ def base_frame(sample_dir: str | Path) -> pl.LazyFrame:
     return pl.scan_parquet(path).with_columns(parse_date("date_decision").alias("decision_date"))
 
 
+def table_paths(directory: str | Path, table: str) -> list[Path]:
+    """Every parquet part belonging to one logical table, in part order.
+
+    The local sample writes one file per table; the competition splits the
+    larger ones across numbered parts (`train_static_0_0.parquet`,
+    `train_credit_bureau_a_2_10.parquet`). Matching is exact-or-underscore-digits
+    rather than a bare `table*` glob, which would let `train_static_0` swallow
+    anything merely starting with that text.
+    """
+    directory = Path(directory)
+    if not directory.is_dir():
+        return []
+    exact = directory / f"{table}.parquet"
+    parts = sorted(
+        (p for p in directory.glob(f"{table}_*.parquet") if p.stem[len(table) + 1 :].isdigit()),
+        key=lambda p: int(p.stem[len(table) + 1 :]),
+    )
+    return ([exact] if exact.is_file() else []) + parts
+
+
 def _scan(sample_dir: str | Path, table: str) -> pl.LazyFrame | None:
-    path = Path(sample_dir) / f"{table}.parquet"
-    return pl.scan_parquet(path) if path.exists() else None
+    paths = table_paths(sample_dir, table)
+    if not paths:
+        return None
+    if len(paths) == 1:
+        return pl.scan_parquet(paths[0])
+    # Parts can disagree on a column's dtype (a column that is all-null in one
+    # part reads as Null), so align schemas rather than letting concat fail.
+    return pl.concat([pl.scan_parquet(p) for p in paths], how="diagonal_relaxed")
+
+
+def find_data_dir(root: str | Path, prefix: str = "train") -> Path:
+    """Locate the directory holding `parquet_files/<prefix>` under a mount root.
+
+    Competition data does not mount where the documentation implies: it appears
+    at /kaggle/input/competitions/<slug>/, not /kaggle/input/<slug>/. Searching
+    for the layout rather than assuming a path means a changed mount costs
+    nothing. Falls back to `root` itself when it already holds the tables, which
+    is how the local sample directory is passed in.
+    """
+    root = Path(root)
+    if (root / "parquet_files" / prefix).is_dir():
+        return root / "parquet_files" / prefix
+    for candidate in sorted(root.rglob("parquet_files")):
+        if (candidate / prefix).is_dir():
+            return candidate / prefix
+    return root
 
 
 def _with_decision(frame: pl.LazyFrame, base: pl.LazyFrame) -> pl.LazyFrame:
