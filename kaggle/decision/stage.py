@@ -363,14 +363,42 @@ def main() -> None:
                 .collect(engine="streaming")
             )
         if cb:
-            birth = (
-                pl.concat([pl.scan_parquet(p) for p in cb], how="diagonal_relaxed")
-                .select("case_id", pl.col("birthdate_574D").alias("birth"))
-                .collect(engine="streaming")
-            )
-            demo = (
-                birth if demo is None else demo.join(birth, on="case_id", how="full", coalesce=True)
-            )
+            # DATA_NOTES records two birth columns. Try each and report what is
+            # actually there: the first run produced an entirely empty age audit
+            # while the same code found 40% coverage locally, and a guess cost a
+            # whole run. A diagnostic costs one line.
+            scan = pl.concat([pl.scan_parquet(p) for p in cb], how="diagonal_relaxed")
+            available = scan.collect_schema().names()
+            birth = None
+            for column in ("birthdate_574D", "dateofbirth_337D"):
+                if column not in available:
+                    print(f"[dec] {column}: ABSENT from static_cb_0", flush=True)
+                    continue
+                candidate = scan.select(
+                    "case_id", pl.col(column).cast(pl.Utf8, strict=False).alias("birth")
+                ).collect(engine="streaming")
+                nulls = candidate["birth"].null_count()
+                print(
+                    f"[dec] {column}: {candidate.height:,} rows, {nulls:,} null "
+                    f"({nulls / max(candidate.height, 1):.1%}), dtype "
+                    f"{candidate.schema['birth']}, sample "
+                    f"{candidate.filter(pl.col('birth').is_not_null())['birth'].head(2).to_list()}",
+                    flush=True,
+                )
+                if nulls < candidate.height:
+                    birth = candidate
+                    break
+            if birth is not None:
+                demo = (
+                    birth
+                    if demo is None
+                    else demo.join(birth, on="case_id", how="full", coalesce=True)
+                )
+                print(
+                    f"[dec] demo after join: {demo.height:,} rows, "
+                    f"birth null {demo['birth'].null_count():,}",
+                    flush=True,
+                )
         if demo is not None:
             t = (
                 te.select("case_id", "target")
