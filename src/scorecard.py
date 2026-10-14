@@ -255,6 +255,39 @@ class FittedScorecard:
                 directions[feature] = 0
         return directions
 
+    def sign_flips(self) -> dict[str, float]:
+        """Characteristics whose points move the WRONG way against their own risk.
+
+        Within a characteristic, a bin with a higher event rate must score FEWER
+        points. When the logistic regression gives a characteristic a negative
+        coefficient -- usually because it shares its signal with correlated
+        characteristics -- the multivariate scorecard inverts the univariate
+        relationship, and the table starts saying things like "the more you
+        previously borrowed, the safer you are".
+
+        Credit model review rejects those: the scorecard stops being readable,
+        which is the whole reason for preferring one to a black box. Returns the
+        offenders mapped to their event-rate/points correlation, which is ~-1 for
+        a well-behaved characteristic and ~+1 for a flipped one.
+
+        Reported rather than silently dropped. Removing a characteristic changes
+        the model, and that is a decision for a person.
+        """
+        flips: dict[str, float] = {}
+        for feature in self.features:
+            rows = _interval_rows(self.table, feature)
+            if len(rows) < 3:
+                continue
+            rates = rows["Event rate"].to_numpy(dtype=float)
+            points = rows["Points"].to_numpy(dtype=float)
+            if np.std(rates) < 1e-12 or np.std(points) < 1e-12:
+                continue
+            correlation = float(np.corrcoef(rates, points)[0, 1])
+            # Correct behaviour is a NEGATIVE correlation: more risk, fewer points.
+            if correlation > 0:
+                flips[feature] = correlation
+        return flips
+
     def monotone_constraints(self, feature_order: list[str]) -> list[int]:
         """LightGBM ``monotone_constraints``, aligned to a given column order.
 

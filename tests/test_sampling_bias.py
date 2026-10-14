@@ -308,6 +308,45 @@ def test_recovery_share_reports_harm_rather_than_clipping() -> None:
 def test_recovery_share_is_nan_when_there_is_no_gap() -> None:
     # A ratio against a near-zero denominator is amplified noise, not a result.
     assert math.isnan(recovery_share(0.5, 0.5, 0.7))
+    assert math.isnan(recovery_share(0.505, 0.5, 0.7)), "gap below the floor"
+
+
+def test_recovery_share_refuses_a_negative_gap() -> None:
+    """Hiding the rejects' labels sometimes makes the model BETTER.
+
+    Measured on the full data for the scorecard arms: A0 oracle 0.407 against
+    A1 accepts-only 0.434. The denominator is then negative, so an arm far worse
+    than both scores a large POSITIVE recovery -- the catastrophic A5 arm came
+    out at +2320%. There is no gap to recover and the honest answer is NaN.
+    """
+    oracle, accepts_only = 0.4071, 0.4338
+    assert oracle - accepts_only < 0
+    assert math.isnan(recovery_share(oracle, accepts_only, -0.1867))
+    assert math.isnan(recovery_share(oracle, accepts_only, 0.45))
+
+
+def test_a5_pseudo_labels_are_scale_free(scenario) -> None:
+    """Confidence is a quantile, not an absolute probability.
+
+    At a 3% base rate no predicted PD approaches 0.5, so an absolute rule admits
+    rejects and labels every one of them GOOD -- the opposite of A2. Measured
+    before the fix at Gini 0.02 (LightGBM) and -0.19 (scorecard).
+    """
+    # PDs that never cross 0.5, as a real low-default-rate model produces.
+    reject_pd = np.linspace(0.01, 0.30, scenario.n_rejected)
+    out = build_arm(
+        "A5_self_learning", scenario,
+        reject_pd=reject_pd, confidence=0.10, iterations=2,
+    )
+    n_acc = int(scenario.accepted.sum())
+    pseudo = out.y[n_acc:]
+    assert pseudo.size > 0, "no rejects admitted at all"
+    assert set(np.unique(pseudo)) == {0.0, 1.0}, (
+        f"pseudo-labels are all one class ({np.unique(pseudo)}); the rule is "
+        "not scale-free"
+    )
+    # Roughly balanced: the top and bottom quantiles are symmetric.
+    assert 0.3 < pseudo.mean() < 0.7
 
 
 def test_evaluation_bias_reports_the_direction_and_size() -> None:

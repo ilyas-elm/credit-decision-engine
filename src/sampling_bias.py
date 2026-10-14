@@ -52,6 +52,7 @@ __all__ = [
     "ARMS",
     "build_arm",
     "select_features",
+    "MIN_RECOVERY_GAP",
     "recovery_share",
     "evaluation_bias",
     "exploration_cost",
@@ -366,13 +367,25 @@ def arm_a5_self_learning(
     rejected_idx = np.flatnonzero(scenario.rejected)
     reject_pd = np.asarray(reject_pd, dtype=float).ravel()
 
+    # Confidence is a QUANTILE of the reject score distribution, not an absolute
+    # probability. An absolute rule is unusable at a 3% base rate: no predicted
+    # PD approaches 0.5, so "confidently bad" never fires and "pd >= 0.5" labels
+    # every admitted reject GOOD -- the exact opposite of A2, and measured here
+    # at Gini 0.02 (LightGBM) and -0.19 (scorecard) before the fix. Quantiles
+    # make the rule scale-free, so the same configuration behaves sensibly
+    # whatever the base rate.
     admitted = np.zeros(rejected_idx.size, dtype=bool)
+    pseudo_all = np.zeros(rejected_idx.size, dtype=float)
     for step in range(1, iterations + 1):
-        widen = confidence * step
-        admitted |= (reject_pd <= widen) | (reject_pd >= 1.0 - widen)
+        q = min(confidence * step, 0.5)
+        low, high = np.quantile(reject_pd, [q, 1.0 - q])
+        is_good = reject_pd <= low
+        is_bad = reject_pd >= high
+        admitted |= is_good | is_bad
+        pseudo_all[is_bad] = 1.0
 
     keep = rejected_idx[admitted]
-    pseudo = (reject_pd[admitted] >= 0.5).astype(float)
+    pseudo = pseudo_all[admitted]
 
     X = pd.concat([scenario.X.iloc[accepted_idx], scenario.X.iloc[keep]], ignore_index=True)
     y = np.concatenate([scenario.y_observed[accepted_idx], pseudo])
@@ -477,18 +490,37 @@ def select_features(
     return combined[:n_features]
 
 
-def recovery_share(oracle: float, accepts_only: float, arm: float) -> float:
+#: Smallest A0 - A1 Gini gap worth expressing a recovery against. Below this the
+#: ratio is dominated by its denominator; 0.01 Gini is about the smallest
+#: difference anyone would act on.
+MIN_RECOVERY_GAP = 0.01
+
+
+def recovery_share(
+    oracle: float, accepts_only: float, arm: float, *, min_gap: float = MIN_RECOVERY_GAP
+) -> float:
     """Share of the A0 - A1 gap an arm recovered.
 
     1.0 means the arm matched the oracle; 0.0 means it matched accepts-only;
     negative means it did worse than doing nothing, which is a real and
     frequently observed outcome and is reported rather than clipped.
 
-    NaN when the gap is negligible: a ratio against a near-zero denominator is
-    noise amplified, not a result.
+    Returns NaN unless the oracle beats accepts-only by at least ``min_gap``.
+    Two cases make the ratio meaningless and both occur in this data:
+
+    * **A negligible gap.** Dividing by it amplifies noise into a percentage.
+    * **A NEGATIVE gap**, where hiding the rejects' labels made the model
+      BETTER. Measured here for the scorecard arms: A0 0.407 against A1 0.434.
+      The ratio then has a negative denominator, so an arm that is far worse
+      than both scores a large POSITIVE "recovery" -- the catastrophic A5 arm
+      came out at +2320% before this guard. There is no gap to recover, and the
+      honest answer is to say so rather than to print a number.
+
+    Raw Gini for every arm is reported alongside, so a NaN here never hides a
+    result; it only refuses to express one as a ratio it cannot support.
     """
     gap = oracle - accepts_only
-    if abs(gap) < 1e-12:
+    if not np.isfinite(gap) or gap < min_gap:
         return float("nan")
     return float((arm - accepts_only) / gap)
 

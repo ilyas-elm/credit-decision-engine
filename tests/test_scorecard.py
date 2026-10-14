@@ -343,3 +343,43 @@ def test_a_weak_feature_gets_no_monotone_constraint(frame, params) -> None:
     # The informative ones keep their signs.
     assert directions["rising"] == 1
     assert directions["falling"] == -1
+
+
+def test_sign_flips_are_detected_and_reported(frame, params) -> None:
+    """A characteristic whose points rise with its own event rate is a defect.
+
+    Found on the full-data scorecard: prev_amount_mean had an event rate rising
+    from 2.92% to 3.95% across its bins while its points rose too, because the
+    multivariate coefficient came out negative. The table then reads "the more
+    you previously borrowed, the safer you are", which fails model review.
+    """
+    X, y = frame
+    fitted = fit_scorecard(X, y, params, features=["rising", "falling"])
+    flips = fitted.sign_flips()
+    # These two are clean: more risk, fewer points.
+    assert flips == {}, f"unexpected sign flip: {flips}"
+
+    for feature in fitted.features:
+        rows = fitted.points_table()
+        rows = rows[(rows["characteristic"] == feature) & (~rows["bin"].isin(["Special", "Missing"]))]
+        corr = np.corrcoef(rows["event_rate"], rows["points"])[0, 1]
+        assert corr < 0, f"{feature} scores more points for more risk"
+
+
+def test_sign_flip_detection_catches_an_inverted_characteristic() -> None:
+    """Constructed inversion, so the detector is not merely returning empty."""
+    from scorecard import FittedScorecard
+
+    table = pd.DataFrame(
+        {
+            "Variable": ["x"] * 4,
+            "Bin": ["(-inf, 1)", "[1, 2)", "[2, 3)", "[3, inf)"],
+            "Event rate": [0.01, 0.02, 0.03, 0.04],
+            "Points": [10.0, 20.0, 30.0, 40.0],  # rising with risk: wrong
+            "WoE": [0.5, 0.1, -0.1, -0.5],
+            "IV": [0.01] * 4,
+        }
+    )
+    fitted = FittedScorecard(model=None, features=["x"], params=ScorecardParams(), table=table)
+    flips = fitted.sign_flips()
+    assert "x" in flips and flips["x"] == pytest.approx(1.0)
