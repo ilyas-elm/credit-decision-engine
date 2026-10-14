@@ -179,6 +179,19 @@ model predicts them as the riskiest — mean PD 3.8–3.9 % against a realised
 cutoff. Age is excluded from recourse, so those applicants are told why and
 offered nothing to do about it.
 
+**The mechanism is a proxy, and it is attributable.** Age is not an input. Of
+the 22 scorecard points the 60+ cohort gives up, 24 come from the two
+income-derived characteristics. Income is derived from the tax registry, which
+records employment payments, so 92 % of applicants in their 60s and 100 % of
+those 70+ have none — making "no income record" a 94 %-accurate proxy for being
+over 60. Within that group the absence carries no risk signal whatsoever (1.78 %
+default against 1.86 %), while for working-age applicants it is mildly
+predictive (4.31 % against 3.47 %). The model learned the second relationship
+and applied it to a population where it is meaningless. The remedy is in the
+feature build — a pension and benefit income source, or restricting the proxy to
+the population it describes — not a constraint at the threshold. Not implemented;
+this is an audit.
+
 ## 7. Monitoring plan
 
 Thresholds are set from the variation actually observed over the 23 test weeks,

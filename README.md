@@ -190,6 +190,51 @@ Verified before reporting: `birth_259D` gives ages 23–73 (1st–99th percentil
 median 44) and agrees with the independent `dateofbirth_337D` on 99.96 % of
 overlapping cases.
 
+#### Why — the model has no age feature
+
+Age is not an input. The disparity is built entirely out of a proxy, and the
+mechanism is attributable to two characteristics. Of the 22 scorecard points the
+60+ cohort gives up against everyone else, **24 come from the two
+income-derived features** (others net back a little):
+
+| characteristic | points, 60+ | points, under 60 | gap |
+|---|---|---|---|
+| `afford_annuity_to_taxincome` | 37.3 | 52.8 | **−15.5** |
+| `afford_taxincome_total` | 35.8 | 44.2 | **−8.4** |
+
+Income here is **derived from the tax registry**, which records employment
+payments. Retirees do not appear in it:
+
+| age band | share with no tax-registry income |
+|---|---|
+| 20s | 15.7 % |
+| 50s | 24.2 % |
+| **60s** | **92.2 %** |
+| **70+** | **100.0 %** |
+
+So "no income record" is a 94 %-accurate proxy for being over 60, and
+`afford_annuity_to_taxincome` is undefined for almost all of them. The decisive
+check is whether that absence carries any risk signal in the group it is
+penalising. It does not:
+
+| | no tax income | has tax income |
+|---|---|---|
+| **60+** | 1.78 % default | 1.86 % default |
+| under 60 | 4.31 % default | 3.47 % default |
+
+For working-age applicants a missing employment record is mildly predictive. For
+the over-60s it is **not predictive at all** — it just means retired. The model
+learned the first relationship and applied it to a population where it is
+meaningless, and the cutoff turned that into an approval rate of 8.6 % for the
+safest group in the book.
+
+The fix is not a fairness constraint bolted on at the threshold. The income
+proxy is employment-only and should not serve as a general affordability
+denominator: either a pension and benefit source is added, or the feature is
+restricted to the population where it means what it claims. That is a change to
+the feature build, and it is **not implemented here** — this is an audit, as
+scoped, and the finding is the deliverable.
+
 ## Question 3 — sampling bias
 
 Kernel `ilyaselmaazouzi/hc-sampling-bias`: 160 fits, 17.7 min. Policy weeks
