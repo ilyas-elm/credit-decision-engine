@@ -26,27 +26,27 @@ Full data, 1,526,659 cases, evaluated out-of-time on the last 23 weeks
 
 | | scorecard | LightGBM | better |
 |---|---|---|---|
-| Gini | 0.4069 | **0.4675** | challenger |
-| mean weekly Gini | 0.3953 | **0.4595** | challenger |
-| Gini slope / week | +0.0032 | +0.0023 | — (both rising) |
-| Gini residual sd | **0.0467** | 0.0511 | champion |
-| **stability metric** | 0.3720 | **0.4339** | challenger |
-| Brier | 0.02129 | **0.02104** | challenger |
-| calibration-in-the-large, worst week | 0.0096 | **0.0088** | challenger |
-| score PSI vs train | 0.3873 | **0.3162** | challenger |
-| EMPCS | 0.000000 | 0.000024 | — (see below) |
+| Gini | 0.3763 | **0.4270** | challenger |
+| mean weekly Gini | 0.3667 | **0.4216** | challenger |
+| Gini slope / week | +0.0030 | +0.0017 | — (both rising) |
+| Gini residual sd | **0.0541** | 0.0600 | champion |
+| **stability metric** | 0.3396 | **0.3916** | challenger |
+| Brier | 0.02136 | **0.02117** | challenger |
+| calibration-in-the-large, worst week | 0.0089 | **0.0083** | challenger |
+| score PSI vs train | 0.5435 | **0.4234** | challenger |
+| EMPCS | ≈0 | ≈0 | — (see below) |
 
-**Question 1 — what the challenger adds.** About **6 Gini points** (0.407 →
-0.468), and it keeps them once stability is measured: the stability metric
-moves 0.372 → 0.434. Neither model's Gini decays over the test weeks — both
+**Question 1 — what the challenger adds.** About **5 Gini points** (0.376 →
+0.427), and it keeps them once stability is measured: the stability metric
+moves 0.340 → 0.392. Neither model's Gini decays over the test weeks — both
 slopes are positive, so the metric's 88× falling-slope penalty never engages
 and the gap is driven by level, not trend. The challenger is also *slightly*
 better calibrated and noticeably more stable in its score distribution
-(PSI 0.32 vs 0.39). The one thing the champion wins is week-to-week smoothness
+(PSI 0.42 vs 0.54). The one thing the champion wins is week-to-week smoothness
 (residual sd 0.047 vs 0.051).
 
-It is a real but unspectacular gain, bought with 713 trees against a 17-line
-scorecard, under monotone constraints taken from the champion's own binning so
+It is a real but unspectacular gain, bought with hundreds of trees against a
+16-characteristic scorecard, under monotone constraints taken from the champion's own binning so
 the challenger could not exploit relationships the scorecard was forbidden.
 
 **The profit comparison is degenerate, and that is the finding.** A loan is
@@ -61,8 +61,8 @@ degeneracy there is a result about the assumptions rather than something to
 tune away. Under this portfolio's economics, the model's value is not in
 choosing an approval cutoff.
 
-Score PSI above 0.25 for **both** models is worth flagging: in production that
-is an alert threshold, and it reflects genuine drift over 92 weeks rather than
+Score PSI above 0.25 for **both** models (0.54 and 0.42) is worth flagging: in
+production that is an alert threshold, and it reflects genuine drift over 92 weeks rather than
 a modelling defect. Test-week PSI is reported here only — it is never used for
 any selection decision.
 
@@ -175,7 +175,7 @@ code; the kernel versions used will be linked here.
 | Feature screening + report | [`docs/feature_report.csv`](docs/feature_report.csv) | **done, full data** |
 | Sampling-bias experiment (arms A0-A6) | `src/sampling_bias.py` | **done, run on full data** |
 
-258 tests, all on generated fixtures. Two kernels have been run end to end on the real
+260 tests, all on generated fixtures. Two kernels have been run end to end on the real
 competition data.
 
 ## Environment
