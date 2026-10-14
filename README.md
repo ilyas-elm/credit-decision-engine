@@ -5,8 +5,7 @@ A credit decision system — not just a classifier — built on the Kaggle
 risk team evaluates models: out-of-time, on calibration, stability and profit.
 
 > **Status: in progress.** All three questions have full-data numbers below.
-> The decision layer (cutoff, refer band, reasons, recourse) is built and tested
-> but has not yet been run on the full data.
+> `MODEL.md` is not yet written, and CI has not been run against a remote.
 
 ## The three questions
 
@@ -76,6 +75,92 @@ any selection decision.
 ![Evaluation bias](docs/figures/evaluation_bias.png)
 
 [Sampling-bias recovery](docs/figures/sampling_bias_recovery.png)
+
+## Question 2 — the cutoff and the review band
+
+Kernel `ilyaselmaazouzi/hc-decision`. The conformal band is calibrated on the
+val_b weeks, which **nothing else in this project is fitted on** — that is what
+makes the coverage number meaningful rather than decorative.
+
+### The refer band does not keep its promise, and that is the result
+
+Mondrian (class-conditional) split conformal at α = 0.10, measured per class on
+the test weeks:
+
+| | coverage | target |
+|---|---|---|
+| non-default | 0.961 | 0.90 ✓ |
+| **default** | **0.741** | 0.90 ✗ — **below target in 23 of 23 weeks** |
+
+Split conformal guarantees coverage *under exchangeability*, and these weeks are
+not exchangeable with val_b: the default rate and the score distribution both
+drift (score PSI 0.54). So the guarantee fails, in the same direction and in
+every single week. This is exactly why the brief says to measure coverage rather
+than assume it.
+
+It is still worth doing. A **marginal** threshold on the same data covers the
+default class **0.000** of the time — it is the majority class's threshold wearing
+a guarantee. Mondrian takes that from 0 % to 74 %. Short of its promise, and
+vastly better than the alternative.
+
+### Where the cutoff sits
+
+Swept across all 21 assumption points: the profit-maximising acceptance rate
+runs from **51.5 % to 100 %**, and **only 7 of 21 points bind at all**. At the
+literature's assumptions the answer remains "approve everyone". The layer is
+exercised at the tightest binding corner (roi 0.02, LGD-heavy), giving 51.5 %
+acceptance:
+
+| band | share | bad rate |
+|---|---|---|
+| approve | 50.6 % | 0.011 |
+| refer | 45.3 % | 0.029 |
+| decline | 4.1 % | 0.078 |
+
+The bands separate risk monotonically, which is the minimum one should demand.
+A 45 % referral rate is far beyond any real review desk, and that is a direct
+consequence of α = 0.10 on a 3 % default book.
+
+**The review band stops paying for itself between 0.01 and 0.02** per review:
+against 1,982 units of loss avoided (assuming a *perfect* reviewer — an upper
+bound, not an estimate), 102,054 reviews cost 1,021 at 0.01 and 2,041 at 0.02.
+
+### Reasons and recourse
+
+Principal reasons are the true drivers, led by `delq_dpd_mean`,
+`afford_annuity_to_taxincome` and `prev_share_rejected`. Recourse only ever
+touches the config's actionable list — current application and recent shopping
+behaviour — so past delinquency appears in the explanation and never in the
+advice.
+
+How far recourse is from clearing the cutoff, in scorecard points:
+
+| population | n | short by | actionable headroom | reachable |
+|---|---|---|---|---|
+| decline band | 9,270 | 58.1 | 24.4 | **0.2 %** |
+| refer band | 100,103 | 17.3 | 19.8 | **59.7 %** |
+
+Outright declines sit about three times further from the cutoff than anything an
+applicant can change: for them recourse is genuinely infeasible, and saying so is
+more honest than inventing advice. The referred population is a different
+question — **60 % of them could reach the cutoff** by borrowing less or waiting
+out recent credit searches.
+
+### Fairness audit (audit only, no mitigation)
+
+| sex | n | approval rate | observed default | mean PD | calibration gap |
+|---|---|---|---|---|---|
+| F | 145,315 | 0.476 | 0.0176 | 0.0273 | **+0.0097** |
+| M | 80,199 | 0.561 | 0.0299 | 0.0238 | **−0.0061** |
+
+Women are approved **less often** (47.6 % vs 56.1 %) while defaulting **less
+often** (1.8 % vs 3.0 %), and the model **over-predicts** their risk while
+**under-predicting** men's. The disparity is not a threshold artefact — it is
+miscalibration by group, in the direction that penalises the lower-risk group.
+Reported, not mitigated, as the brief requires.
+
+The age-band audit did **not** run: the column resolves locally but came back
+empty on the kernel, and the cause is unresolved. No age result is claimed.
 
 ## Question 3 — sampling bias
 
@@ -162,7 +247,7 @@ code; the kernel versions used will be linked here.
 | EMPCS profit + strategy curve | `src/profit.py` | done |
 | Champion scorecard (binning, selection, pdo_odds scaling) | `src/scorecard.py` | **done, run on full data** |
 | Mondrian conformal refer band | `src/conformal.py` | done |
-| Decision layer: cutoff, bands, reasons, recourse | `src/decision.py` | done |
+| Decision layer: cutoff, bands, reasons, recourse | `src/decision.py` | **done, run on full data** |
 | Isotonic calibration (shared) | `src/calibrate.py` | done |
 | Challenger: LightGBM with monotone constraints | `src/challenger.py` | **done, run on full data** |
 | Shared evaluation + the three figures | `src/evaluation.py` | **done, run on full data** |

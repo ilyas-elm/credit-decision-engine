@@ -1,0 +1,431 @@
+[
+  {
+    "pd": 0.11343,
+    "score": 546.5,
+    "band": "decline",
+    "principal_reasons": [
+      [
+        "delq_dpd_mean",
+        33.0
+      ],
+      [
+        "afford_annuity_to_taxincome",
+        22.2
+      ],
+      [
+        "delq_overdue_max",
+        16.5
+      ],
+      [
+        "prev_share_rejected",
+        10.5
+      ]
+    ],
+    "recourse_feasible": false,
+    "recourse": [],
+    "recourse_note": ""
+  },
+  {
+    "pd": 0.0715,
+    "score": 561.1,
+    "band": "refer",
+    "principal_reasons": [],
+    "recourse_feasible": false,
+    "recourse": [],
+    "recourse_note": ""
+  },
+  {
+    "pd": 0.06929,
+    "score": 562.1,
+    "band": "refer",
+    "principal_reasons": [],
+    "recourse_feasible": false,
+    "recourse": [],
+    "recourse_note": ""
+  },
+  {
+    "pd": 0.09184,
+    "score": 553.2,
+    "band": "decline",
+    "principal_reasons": [
+      [
+        "delq_dpd_mean",
+        33.0
+      ],
+      [
+        "afford_annuity_to_taxincome",
+        22.2
+      ],
+      [
+        "delq_overdue_max",
+        16.5
+      ],
+      [
+        "prev_share_rejected",
+        13.6
+      ]
+    ],
+    "recourse_feasible": false,
+    "recourse": [],
+    "recourse_note": ""
+  },
+  {
+    "pd": 0.06658,
+    "score": 563.3,
+    "band": "refer",
+    "principal_reasons": [],
+    "recourse_feasible": false,
+    "recourse": [],
+    "recourse_note": ""
+  },
+  {
+    "pd": 0.06157,
+    "score": 565.7,
+    "band": "refer",
+    "principal_reasons": [],
+    "recourse_feasible": false,
+    "recourse": [],
+    "recourse_note": ""
+  },
+  {
+    "pd": 0.10242,
+    "score": 549.8,
+    "band": "decline",
+    "principal_reasons": [
+      [
+        "delq_dpd_mean",
+        33.0
+      ],
+      [
+        "delq_n_payment_months",
+        25.0
+      ],
+      [
+        "delq_overdue_max",
+        16.5
+      ],
+      [
+        "inq_last90d",
+        10.8
+      ]
+    ],
+    "recourse_feasible": false,
+    "recourse": [],
+    "recourse_note": ""
+  },
+  {
+    "pd": 0.13052,
+    "score": 541.8,
+    "band": "decline",
+    "principal_reasons": [
+      [
+        "delq_dpd_mean",
+        33.0
+      ],
+      [
+        "afford_annuity_to_taxincome",
+        22.2
+      ],
+      [
+        "prev_share_rejected",
+        17.8
+      ],
+      [
+        "delq_overdue_max",
+        16.5
+      ]
+    ],
+    "recourse_feasible": false,
+    "recourse": [],
+    "recourse_note": ""
+  },
+  {
+    "pd": 0.09353,
+    "score": 552.7,
+    "band": "decline",
+    "principal_reasons": [
+      [
+        "afford_annuity_to_taxincome",
+        37.2
+      ],
+      [
+        "delq_dpd_mean",
+        33.0
+      ],
+      [
+        "delq_overdue_max",
+        16.5
+      ],
+      [
+        "afford_taxincome_total",
+        10.5
+      ]
+    ],
+    "recourse_feasible": false,
+    "recourse": [],
+    "recourse_note": ""
+  },
+  {
+    "pd": 0.06309,
+    "score": 565.0,
+    "band": "refer",
+    "principal_reasons": [],
+    "recourse_feasible": false,
+    "recourse": [],
+    "recourse_note": ""
+  },
+  {
+    "pd": 0.0745,
+    "score": 559.8,
+    "band": "refer",
+    "principal_reasons": [],
+    "recourse_feasible": false,
+    "recourse": [],
+    "recourse_note": ""
+  },
+  {
+    "pd": 0.204,
+    "score": 526.4,
+    "band": "decline",
+    "principal_reasons": [
+      [
+        "delq_dpd_mean",
+        33.0
+      ],
+      [
+        "afford_annuity_to_taxincome",
+        22.2
+      ],
+      [
+        "prev_share_rejected",
+        17.8
+      ],
+      [
+        "delq_overdue_max",
+        16.5
+      ]
+    ],
+    "recourse_feasible": false,
+    "recourse": [],
+    "recourse_note": ""
+  },
+  {
+    "pd": 0.09197,
+    "score": 553.2,
+    "band": "decline",
+    "principal_reasons": [
+      [
+        "afford_annuity_to_taxincome",
+        19.3
+      ],
+      [
+        "prev_share_rejected",
+        17.8
+      ],
+      [
+        "inq_last360d",
+        14.6
+      ],
+      [
+        "delq_n_payment_months",
+        13.6
+      ]
+    ],
+    "recourse_feasible": false,
+    "recourse": [],
+    "recourse_note": ""
+  },
+  {
+    "pd": 0.06315,
+    "score": 564.9,
+    "band": "refer",
+    "principal_reasons": [],
+    "recourse_feasible": false,
+    "recourse": [],
+    "recourse_note": ""
+  },
+  {
+    "pd": 0.05978,
+    "score": 566.6,
+    "band": "refer",
+    "principal_reasons": [],
+    "recourse_feasible": false,
+    "recourse": [],
+    "recourse_note": ""
+  },
+  {
+    "pd": 0.08537,
+    "score": 555.6,
+    "band": "refer",
+    "principal_reasons": [],
+    "recourse_feasible": false,
+    "recourse": [],
+    "recourse_note": ""
+  },
+  {
+    "pd": 0.11314,
+    "score": 546.5,
+    "band": "decline",
+    "principal_reasons": [
+      [
+        "delq_dpd_mean",
+        33.0
+      ],
+      [
+        "afford_annuity_to_taxincome",
+        22.2
+      ],
+      [
+        "delq_overdue_max",
+        16.5
+      ],
+      [
+        "delq_n_payment_months",
+        13.6
+      ]
+    ],
+    "recourse_feasible": false,
+    "recourse": [],
+    "recourse_note": ""
+  },
+  {
+    "pd": 0.07896,
+    "score": 558.0,
+    "band": "refer",
+    "principal_reasons": [],
+    "recourse_feasible": false,
+    "recourse": [],
+    "recourse_note": ""
+  },
+  {
+    "pd": 0.14235,
+    "score": 538.9,
+    "band": "decline",
+    "principal_reasons": [
+      [
+        "delq_dpd_mean",
+        33.0
+      ],
+      [
+        "delq_n_payment_months",
+        25.0
+      ],
+      [
+        "afford_annuity_to_taxincome",
+        22.2
+      ],
+      [
+        "prev_share_rejected",
+        17.8
+      ]
+    ],
+    "recourse_feasible": false,
+    "recourse": [],
+    "recourse_note": ""
+  },
+  {
+    "pd": 0.1357,
+    "score": 540.5,
+    "band": "decline",
+    "principal_reasons": [
+      [
+        "delq_dpd_mean",
+        33.0
+      ],
+      [
+        "afford_annuity_to_taxincome",
+        22.2
+      ],
+      [
+        "prev_share_rejected",
+        17.8
+      ],
+      [
+        "delq_overdue_max",
+        16.5
+      ]
+    ],
+    "recourse_feasible": false,
+    "recourse": [],
+    "recourse_note": ""
+  },
+  {
+    "pd": 0.06488,
+    "score": 564.1,
+    "band": "refer",
+    "principal_reasons": [],
+    "recourse_feasible": false,
+    "recourse": [],
+    "recourse_note": ""
+  },
+  {
+    "pd": 0.06245,
+    "score": 565.3,
+    "band": "refer",
+    "principal_reasons": [],
+    "recourse_feasible": false,
+    "recourse": [],
+    "recourse_note": ""
+  },
+  {
+    "pd": 0.08745,
+    "score": 554.8,
+    "band": "decline",
+    "principal_reasons": [
+      [
+        "afford_annuity_to_taxincome",
+        22.2
+      ],
+      [
+        "prev_share_rejected",
+        17.8
+      ],
+      [
+        "delq_dpd_mean",
+        16.9
+      ],
+      [
+        "delq_overdue_max",
+        12.4
+      ]
+    ],
+    "recourse_feasible": false,
+    "recourse": [],
+    "recourse_note": ""
+  },
+  {
+    "pd": 0.11155,
+    "score": 547.0,
+    "band": "decline",
+    "principal_reasons": [
+      [
+        "delq_dpd_mean",
+        33.0
+      ],
+      [
+        "afford_annuity_to_taxincome",
+        22.2
+      ],
+      [
+        "delq_overdue_max",
+        16.5
+      ],
+      [
+        "prev_share_rejected",
+        13.6
+      ]
+    ],
+    "recourse_feasible": false,
+    "recourse": [],
+    "recourse_note": ""
+  },
+  {
+    "pd": 0.06748,
+    "score": 562.9,
+    "band": "refer",
+    "principal_reasons": [],
+    "recourse_feasible": false,
+    "recourse": [],
+    "recourse_note": ""
+  }
+]
