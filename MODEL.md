@@ -154,13 +154,6 @@ more than inferring the labels.
 **EMP assumptions are assumptions**, and at the literature's values the profit
 analysis is degenerate (§4). Every profit number is reported across a grid.
 
-**The exploration budget's profit gain is not yet measured.** The stage now
-computes profit on the full test population per arm and nets it against the
-realised exploration cost, but that code has not been run: the committed
-`sampling_bias_exploration.csv` carries cost only. The qualitative conclusion
-(the budget fails on variance, not cost) rests on the Gini collapse and the seed
-spread, which are measured; the per-unit-of-cost figure is not.
-
 **Drift is real and unaddressed.** Score PSI is 0.42–0.54 train-to-test, above
 any conventional alert threshold, and it is the direct cause of the conformal
 coverage failure.

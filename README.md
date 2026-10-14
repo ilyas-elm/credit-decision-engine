@@ -211,12 +211,24 @@ Three things come out of this:
    rate nothing beats simply discarding the rejects. By 50 % the best arm
    recovers about 62 % of the lost signal — and the gap is only 0.09 Gini to
    begin with.
-2. **The exploration budget is catastrophic here, and the reason is variance,
-   not cost.** The money is trivial: 450 explored loans at r=30 % cost 8.5 units
-   of realised loss. But the inverse-propensity weight of 100/p gives a few
-   hundred cases the same total weight as 45,000, and the result swamps the
-   training set — A6 has the largest seed-to-seed spread of any arm (sd 0.11
-   against 0.05 for parcelling). Correct weighting, ruinous variance.
+2. **The exploration budget is catastrophic, and the reason is variance, not
+   cost.** Measured as profit on the full test population at a binding 51.5 %
+   acceptance, against the realised loss on the loans bought to learn from:
+
+   | reject rate | p | cost | profit gain | damage ÷ cost |
+   |---|---|---|---|---|
+   | 30 % | 1 % | 8.5 | **−337** | **40×** |
+   | 30 % | 5 % | 44.6 | −278 | 6× |
+   | 50 % | 1 % | 12.0 | **−524** | **44×** |
+   | 50 % | 5 % | 55.7 | −288 | 5× |
+
+   The money is trivial and the damage is 4–44× larger than it. The
+   inverse-propensity weight of 100/p gives a few hundred cases the same total
+   weight as tens of thousands, and that swamps the training set — which is why
+   the ratio *improves* as the budget grows (weight 100 at p=1, 20 at p=5) and
+   why A6 has the widest seed-to-seed spread of any arm (sd 0.11 against 0.05
+   for parcelling). The weighting is statistically correct; its variance is
+   ruinous. **Net is negative at every budget and every reject rate.**
 3. **The scorecard has almost no gap to recover at all.** At 10 % and 20 %
    reject rates its accepts-only model is *better* than its oracle (0.438 vs
    0.419), so the recovery ratio is undefined and is reported as such. Binned
