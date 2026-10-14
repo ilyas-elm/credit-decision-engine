@@ -54,6 +54,7 @@ class ScorecardParams:
     points_at_odds: float = 600.0
     target_odds: float = 50.0
     pdo: float = 20.0
+    excluded_characteristics: tuple[str, ...] = ()
 
     @classmethod
     def from_config(cls, section: dict) -> ScorecardParams:
@@ -65,6 +66,7 @@ class ScorecardParams:
             points_at_odds=section["points_at_odds"],
             target_odds=section["target_odds"],
             pdo=section["pdo"],
+            excluded_characteristics=tuple(section.get("excluded_characteristics", ())),
         )
 
     def scaling_params(self) -> dict[str, float]:
@@ -144,10 +146,16 @@ def select_features(
     decisions["kept"] = False
     decisions["reason"] = ""
 
-    weak = decisions.index[decisions["iv"] < params.min_iv]
+    # Barred outright, before any other rule: a characteristic whose fitted
+    # coefficient inverts its univariate relationship makes the table unreadable
+    # however strong its IV.
+    barred = [f for f in decisions.index if f in set(params.excluded_characteristics)]
+    decisions.loc[barred, "reason"] = "excluded: sign flip (see config)"
+
+    weak = decisions.index[(decisions["iv"] < params.min_iv) & (~decisions.index.isin(barred))]
     decisions.loc[weak, "reason"] = f"iv below {params.min_iv}"
 
-    candidates = [f for f in decisions.index if f not in set(weak)]
+    candidates = [f for f in decisions.index if f not in set(weak) | set(barred)]
     if not candidates:
         return [], decisions.reset_index()
 

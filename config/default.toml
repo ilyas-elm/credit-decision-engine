@@ -64,6 +64,30 @@ psi_bins = 10
 monotonic_trend = "auto_asc_desc"
 min_iv = 0.02               # keep features at or above this IV
 max_abs_corr = 0.80         # for pairs above this, keep the higher-IV feature
+
+# Characteristics barred from the scorecard because their fitted coefficient
+# INVERTS their univariate relationship: points rise as the event rate rises, so
+# the table reads "the more you previously borrowed, the safer you are". Credit
+# model review rejects that, and the champion exists to be the readable model.
+#
+# The cause is joint collinearity in the previous-applications family, not any
+# one characteristic: pairwise pruning at 0.80 still leaves a cluster correlated
+# 0.60-0.78 (condition number 15.1), and excluding one flip simply moves it to
+# the next. Four have to go to clear it.
+#
+# MEASURED COST, full data, test weeks: Gini 0.3956 -> 0.3944 and stability
+# 0.3604 -> 0.3594, for 16 characteristics down to 13. About 0.3% relative --
+# a readable scorecard is worth that.
+#
+# Applies to select_features only, so it governs the champion. The sampling-bias
+# experiment passes its features explicitly and is deliberately unaffected: its
+# ranking must come from the policy weeks alone.
+excluded_characteristics = [
+    "prev_amount_mean",
+    "prev_amount_max",
+    "prev_amount_total",
+    "prev_n_applications",
+]
 scaling_method = "pdo_odds"
 points_at_odds = 600.0
 target_odds = 50.0          # 50:1 good:bad

@@ -384,3 +384,34 @@ def test_sign_flip_detection_catches_an_inverted_characteristic() -> None:
     fitted = FittedScorecard(model=None, features=["x"], params=ScorecardParams(), table=table)
     flips = fitted.sign_flips()
     assert "x" in flips and flips["x"] == pytest.approx(1.0)
+
+
+def test_excluded_characteristics_are_barred_before_any_other_rule(frame) -> None:
+    """A sign-flipped characteristic is unusable however strong its IV.
+
+    Measured on the full data: excluding one flip simply moves it to the next
+    correlated characteristic, because the cause is joint collinearity in the
+    previous-applications family rather than any single column.
+    """
+    X, y = frame
+    params = ScorecardParams(excluded_characteristics=("rising",))
+    kept, decisions = select_features(X, y, params)
+
+    assert "rising" not in kept, "a barred characteristic survived selection"
+    reason = decisions.set_index("feature").loc["rising", "reason"]
+    assert "sign flip" in reason
+    # It is barred despite having the strongest IV in the frame.
+    ivs = iv_table(X, y, params).set_index("feature")["iv"]
+    assert ivs["rising"] > params.min_iv
+    # The others are unaffected.
+    assert "falling" in kept
+
+
+def test_the_configured_exclusions_are_the_measured_ones() -> None:
+    params = ScorecardParams.from_config(load_config()["scorecard"])
+    assert set(params.excluded_characteristics) == {
+        "prev_amount_mean",
+        "prev_amount_max",
+        "prev_amount_total",
+        "prev_n_applications",
+    }
