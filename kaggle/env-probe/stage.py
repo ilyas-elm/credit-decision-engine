@@ -19,8 +19,16 @@ import sys
 from pathlib import Path
 
 PACKAGES = [
-    "polars", "pyarrow", "numpy", "pandas", "sklearn",
-    "lightgbm", "scipy", "matplotlib", "optbinning", "empulse",
+    "polars",
+    "pyarrow",
+    "numpy",
+    "pandas",
+    "sklearn",
+    "lightgbm",
+    "scipy",
+    "matplotlib",
+    "optbinning",
+    "empulse",
 ]
 
 
@@ -62,17 +70,21 @@ def main() -> None:
 
     # Re-import in a fresh interpreter: the current one has stale modules.
     probe = subprocess.run(
-        [sys.executable, "-c",
-         "import json;"
-         "out={};"
-         f"names={PACKAGES!r};"
-         "\nfor n in names:\n"
-         "    try:\n"
-         "        m=__import__(n); out[n]=getattr(m,'__version__','unknown')\n"
-         "    except Exception as e:\n"
-         "        out[n]=f'ABSENT ({type(e).__name__})'\n"
-         "print(json.dumps(out))"],
-        capture_output=True, text=True,
+        [
+            sys.executable,
+            "-c",
+            "import json;"
+            "out={};"
+            f"names={PACKAGES!r};"
+            "\nfor n in names:\n"
+            "    try:\n"
+            "        m=__import__(n); out[n]=getattr(m,'__version__','unknown')\n"
+            "    except Exception as e:\n"
+            "        out[n]=f'ABSENT ({type(e).__name__})'\n"
+            "print(json.dumps(out))",
+        ],
+        capture_output=True,
+        text=True,
     )
     try:
         report["after"] = json.loads(probe.stdout.strip().splitlines()[-1])
@@ -82,22 +94,26 @@ def main() -> None:
 
     # Does the stack still work together once the two are installed?
     check = subprocess.run(
-        [sys.executable, "-c",
-         "import numpy as np, pandas as pd, polars as pl;"
-         "from optbinning import BinningProcess, Scorecard;"
-         "from empulse.metrics import empcs_score;"
-         "import lightgbm as lgb;"
-         "rng=np.random.default_rng(0); n=400;"
-         "y=rng.binomial(1,0.2,n);"
-         "X=pd.DataFrame({'a':rng.normal(0,1,n)+y});"
-         "bp=BinningProcess(variable_names=['a'],"
-         " binning_fit_params={'a':{'monotonic_trend':'auto_asc_desc'}});"
-         "bp.fit(X,y);"
-         "print('optbinning OK', float(bp.summary()['iv'].iloc[0]));"
-         "print('empcs OK', float(empcs_score(y, rng.uniform(0,1,n))));"
-         "print('lightgbm OK', lgb.__version__);"
-         "print('polars OK', pl.__version__)"],
-        capture_output=True, text=True,
+        [
+            sys.executable,
+            "-c",
+            "import numpy as np, pandas as pd, polars as pl;"
+            "from optbinning import BinningProcess, Scorecard;"
+            "from empulse.metrics import empcs_score;"
+            "import lightgbm as lgb;"
+            "rng=np.random.default_rng(0); n=400;"
+            "y=rng.binomial(1,0.2,n);"
+            "X=pd.DataFrame({'a':rng.normal(0,1,n)+y});"
+            "bp=BinningProcess(variable_names=['a'],"
+            " binning_fit_params={'a':{'monotonic_trend':'auto_asc_desc'}});"
+            "bp.fit(X,y);"
+            "print('optbinning OK', float(bp.summary()['iv'].iloc[0]));"
+            "print('empcs OK', float(empcs_score(y, rng.uniform(0,1,n))));"
+            "print('lightgbm OK', lgb.__version__);"
+            "print('polars OK', pl.__version__)",
+        ],
+        capture_output=True,
+        text=True,
     )
     report["smoke_returncode"] = check.returncode
     report["smoke_stdout"] = check.stdout

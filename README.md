@@ -61,10 +61,11 @@ code; the kernel versions used will be linked here.
 | `make-sample` + reconnaissance kernel | `kaggle/make-sample/` | **done, run on full data** |
 | Environment probe kernel | `kaggle/env-probe/` | **done, run** |
 | Data reconnaissance | [`docs/DATA_NOTES.md`](docs/DATA_NOTES.md) | **done, on full data** |
-| Feature build (polars) | — | next |
+| Feature build (polars, 6 families) | `src/features.py` | **done, run on the sample** |
+| Feature screening + report | [`docs/feature_report.csv`](docs/feature_report.csv) | **done** |
 | Sampling-bias experiment (arms A0-A6) | `src/sampling_bias.py` | done, not yet run |
 
-226 tests, all on generated fixtures. Two kernels have been run end to end on the real
+246 tests, all on generated fixtures. Two kernels have been run end to end on the real
 competition data.
 
 ## Environment
@@ -102,6 +103,20 @@ throughout. Taken at face value it would have meant accepting 2.8% of a low-risk
 portfolio. The cutoff is set from the strategy curve; EMPCS's implied optimum is
 reported beside it, with the gap surfaced rather than reconciled, since the two
 optimise different objectives.
+
+**The IV screen is blind to a perfect leak.** optbinning collapses a
+perfectly separating column into a single bin and reports **IV 0.0** — so the IV
+rule reads a total leak as useless noise and drops it. The univariate-Gini screen
+is what catches that case, which is why the brief specifies the two separately,
+and the review annotation now survives an IV-based drop rather than being
+overwritten by it.
+
+**Never clip a denominator to avoid dividing by zero.** It trades an error for
+something worse: a finite number of enormous magnitude that looks like data. On
+the real sample, clipping the credit-limit denominator at 1e-9 produced a
+utilisation feature topping **1.1 × 10¹³**, because 91% of cases report a zero
+limit. It would have passed every screen. `safe_ratio` returns null instead, and
+the binning process has a Missing bin for exactly that.
 
 **The IV floor is sample-size dependent.** IV is computed on the bins it
 chose, so it is biased upward and the bias shrinks with n. Over three pure-noise

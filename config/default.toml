@@ -27,6 +27,22 @@ val_a_frac = 0.08       # early stopping and probability calibration
 val_b_frac = 0.07       # conformal calibration ONLY
 test_frac  = 0.25       # out-of-time evaluation, touched by nothing else
 
+# --- 2a. Feature construction ---------------------------------------------
+# Column names are the REAL ones, verified against the data (docs/DATA_NOTES.md).
+[features]
+# Payment history (credit_bureau_a_2) is monthly, so recency is weighted with a
+# half-life in months: a payment 12 months before the decision counts half as
+# much as one in the decision month.
+recency_halflife_months = 12.0
+# "count of DPD > 30 in the last 12 and 24 months", from the brief.
+dpd_threshold = 30
+dpd_windows_months = [12, 24]
+# Inquiry counts already arrive pre-windowed in static_cb_0; these are the
+# windows that exist, in days.
+inquiry_windows_days = [30, 90, 180, 360]
+# A file with fewer than this many bureau records is "thin".
+thin_file_max_records = 3
+
 # --- 2. Feature screening (fitted on train weeks only) ---------------------
 [screening]
 max_missing_rate = 0.95     # drop above this

@@ -62,6 +62,17 @@ def _weeks_to_dates(weeks: np.ndarray, rng: np.random.Generator) -> list[dt.date
     return [EPOCH + dt.timedelta(days=int(offset)) for offset in offsets]
 
 
+def _as_iso(dates: list) -> list[str | None]:
+    """Dates as ISO strings.
+
+    The real competition data stores date_decision and every D column as
+    String, not Date (docs/DATA_NOTES.md). Fixtures that emit real date types
+    would let the pipeline's date parsing go untested and then fail on the
+    actual data, so the fixtures carry the same dtype the data does.
+    """
+    return [None if d is None else d.isoformat() for d in dates]
+
+
 def make_base(
     n_cases: int = 2_000,
     n_weeks: int = 40,
@@ -91,7 +102,7 @@ def make_base(
     return pl.DataFrame(
         {
             "case_id": case_id.astype(np.int64),
-            "date_decision": dates,
+            "date_decision": _as_iso(dates),
             "MONTH": [int(f"{d.year}{d.month:02d}") for d in dates],
             "WEEK_NUM": weeks.astype(np.int32),
             "target": target.astype(np.int32),
@@ -154,7 +165,12 @@ def make_depth1(
     """
     rng = np.random.default_rng(seed)
     case_ids = base["case_id"].to_numpy()
-    decision = {row["case_id"]: row["date_decision"] for row in base.iter_rows(named=True)}
+    # date_decision is an ISO string, as in the real data, so parse it back for
+    # the arithmetic and write the result out as a string again.
+    decision = {
+        row["case_id"]: dt.date.fromisoformat(row["date_decision"])
+        for row in base.iter_rows(named=True)
+    }
 
     rows: list[dict] = []
     for case_id in case_ids:
@@ -171,7 +187,9 @@ def make_depth1(
                     "classificationofcontr_13M": str(
                         rng.choice(["a55475b1", "P33_146_175", "P17_36_170"])
                     ),
-                    PLANTED["post_decision_date"]: decision[int(case_id)] - dt.timedelta(days=back),
+                    PLANTED["post_decision_date"]: (
+                        decision[int(case_id)] - dt.timedelta(days=back)
+                    ).isoformat(),
                 }
             )
 
@@ -188,7 +206,7 @@ def make_depth1(
         flag[idx] = True
         decision_dates = [decision[case_id] for case_id in frame["case_id"].to_list()]
         after = [
-            date + dt.timedelta(days=int(offset))
+            (date + dt.timedelta(days=int(offset))).isoformat()
             for date, offset in zip(
                 decision_dates, rng.integers(1, 400, size=frame.height), strict=True
             )
