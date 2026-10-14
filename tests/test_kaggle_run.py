@@ -229,15 +229,38 @@ def test_the_access_token_is_never_captured(monkeypatch) -> None:
     assert "capture_output" not in seen
 
 
-def test_username_falls_back_to_config(monkeypatch, tmp_path) -> None:
+def test_username_comes_from_config_when_the_environment_is_unset() -> None:
     """CLI 2.x stores no username, so it comes from config or the environment."""
-    monkeypatch.delenv("KAGGLE_USERNAME", raising=False)
-    with pytest.raises(StageError, match="No Kaggle username available"):
-        kaggle_run.kaggle_username()
+    import os
+
+    from config import load_config
+
+    configured = load_config().raw.get("kaggle", {}).get("username", "")
+    assert configured, "[kaggle] username is unset in config/default.toml"
+
+    saved = os.environ.pop("KAGGLE_USERNAME", None)
+    try:
+        assert kaggle_run.kaggle_username() == configured
+    finally:
+        if saved is not None:
+            os.environ["KAGGLE_USERNAME"] = saved
+
+
+def test_the_environment_overrides_config(monkeypatch) -> None:
+    monkeypatch.setenv("KAGGLE_USERNAME", "someone-else")
+    assert kaggle_run.kaggle_username() == "someone-else"
 
 
 def test_username_error_names_both_ways_to_set_it(monkeypatch) -> None:
+    """With neither source set, the error has to say how to fix it."""
+    import config as config_module
+
     monkeypatch.delenv("KAGGLE_USERNAME", raising=False)
+
+    class _Empty:
+        raw: dict = {"kaggle": {"username": ""}}
+
+    monkeypatch.setattr(config_module, "load_config", lambda *a, **k: _Empty())
     with pytest.raises(StageError) as excinfo:
         kaggle_run.kaggle_username()
     message = str(excinfo.value)
@@ -289,3 +312,85 @@ def test_future_imports_are_hoisted_above_the_bootstrap() -> None:
     bundled = build_bundled_script(load_stage("make-sample"), commit="c")
     assert bundled.startswith("from __future__ import annotations")
     assert bundled.count("from __future__ import annotations") == 1
+
+
+# --- make-sample table discovery, against the real file list ----------------
+
+# The actual parquet filenames in the competition, read from the Kaggle API.
+# Names only, no data: the table inventory is something docs/DATA_NOTES.md is
+# meant to publish anyway.
+REAL_PARQUET_NAMES = [
+    "parquet_files/train/train_base.parquet",
+    "parquet_files/train/train_static_0_0.parquet",
+    "parquet_files/train/train_static_0_1.parquet",
+    "parquet_files/train/train_static_cb_0.parquet",
+    "parquet_files/train/train_applprev_1_0.parquet",
+    "parquet_files/train/train_applprev_1_1.parquet",
+    "parquet_files/train/train_applprev_2.parquet",
+    "parquet_files/train/train_credit_bureau_a_1_0.parquet",
+    "parquet_files/train/train_credit_bureau_a_1_3.parquet",
+    "parquet_files/train/train_credit_bureau_a_2_0.parquet",
+    "parquet_files/train/train_credit_bureau_a_2_10.parquet",
+    "parquet_files/train/train_credit_bureau_b_2.parquet",
+    "parquet_files/train/train_tax_registry_a_1.parquet",
+    "parquet_files/train/train_person_2.parquet",
+    # The leaderboard submission set, which must be ignored entirely.
+    "parquet_files/test/test_base.parquet",
+    "parquet_files/test/test_applprev_1_0.parquet",
+    "parquet_files/test/test_credit_bureau_a_2_11.parquet",
+]
+
+
+def _group(names: list[str], prefix: str = "train") -> dict[str, list[str]]:
+    """The grouping rule from kaggle/make-sample/stage.py, applied to names."""
+    from pathlib import PurePosixPath
+
+    tables: dict[str, list[str]] = {}
+    for path in sorted(names):
+        stem = PurePosixPath(path).stem
+        if not stem.startswith(f"{prefix}_"):
+            continue
+        parts = stem.split("_")
+        while len(parts) > 1 and parts[-1].isdigit():
+            candidate = "_".join(parts[:-1])
+            if parts[-1] in {"0", "1", "2"} and not candidate.endswith(("_0", "_1", "_2")):
+                break
+            parts = parts[:-1]
+        tables.setdefault("_".join(parts), []).append(path)
+    return tables
+
+
+def test_part_numbers_are_distinguished_from_depth_suffixes() -> None:
+    """credit_bureau_a_2 has parts numbered past 10, so a trailing digit is
+    ambiguous: _2 is the depth, _10 is the part.
+    """
+    tables = _group(REAL_PARQUET_NAMES)
+    assert "train_credit_bureau_a_2" in tables
+    assert len(tables["train_credit_bureau_a_2"]) == 2  # parts 0 and 10
+    assert "train_applprev_1" in tables
+    assert len(tables["train_applprev_1"]) == 2
+    # A depth-2 table with no part suffix at all.
+    assert "train_applprev_2" in tables
+    # static_cb_0 must not collapse into static_0.
+    assert "train_static_cb_0" in tables
+    assert len(tables["train_static_0"]) == 2
+
+
+def test_the_leaderboard_test_tables_are_ignored() -> None:
+    """They are unlabeled and out of scope; reading them wastes a session."""
+    tables = _group(REAL_PARQUET_NAMES)
+    assert not any(name.startswith("test_") for name in tables)
+    assert all("/test/" not in p for paths in tables.values() for p in paths)
+
+
+def test_the_base_table_is_selected_by_exact_name_not_by_suffix() -> None:
+    """Regression: `endswith("_base")` picked test_base, since "test" sorts
+    before "train". That is the unlabeled submission set, a few hundred rows
+    with no target column.
+    """
+    tables = _group(REAL_PARQUET_NAMES)
+    assert "train_base" in tables
+    # The old rule, over the unfiltered inventory, chose the wrong one.
+    unfiltered = sorted({n.split("/")[-1].replace(".parquet", "") for n in REAL_PARQUET_NAMES})
+    first_base_like = next(k for k in unfiltered if k.endswith("_base"))
+    assert first_base_like == "test_base", "the hazard this guards against is gone"

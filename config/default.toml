@@ -7,7 +7,7 @@
 # username has to be stated. Not a secret (it is the public profile URL) but
 # personal, so it ships empty; $KAGGLE_USERNAME overrides it.
 [kaggle]
-username = ""
+username = "ilyaselmaazouzi"
 
 [data]
 competition = "home-credit-credit-risk-model-stability"

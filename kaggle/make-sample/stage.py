@@ -46,11 +46,30 @@ COLUMNS_OF_INTEREST = {
 }
 
 
-def discover_tables() -> dict[str, list[Path]]:
-    """Group the parquet files by logical table, collapsing `_0`, `_1`, ... parts."""
+# The competition ships parquet_files/train/ and parquet_files/test/. The test
+# tables are the unlabeled leaderboard submission set -- no `target` column, and
+# train_base is ~1.5M rows against test_base's few hundred. Leaderboard
+# submissions are out of scope, so only the train side is ever read.
+#
+# This is not cosmetic: the base table used to be picked with
+# `endswith("_base")`, and "test" sorts before "train", so it selected
+# test_base and the kernel would have sampled a few hundred unlabeled rows and
+# then failed on the missing target.
+TABLE_PREFIX = "train"
+
+
+def discover_tables(prefix: str = TABLE_PREFIX) -> dict[str, list[Path]]:
+    """Group the parquet files by logical table, collapsing `_0`, `_1`, ... parts.
+
+    Verified against the real file list: 68 parquet files collapse to 17 train
+    tables, including credit_bureau_a_2 with 11 parts (part numbers run past 10,
+    so the depth suffix has to be distinguished from the part number).
+    """
     tables: dict[str, list[Path]] = {}
     for path in sorted(INPUT.rglob("*.parquet")):
         stem = path.stem
+        if not stem.startswith(f"{prefix}_"):
+            continue
         # train_credit_bureau_a_2_10 -> train_credit_bureau_a_2
         parts = stem.split("_")
         while len(parts) > 1 and parts[-1].isdigit():
@@ -129,9 +148,12 @@ def main() -> None:
     tables = discover_tables()
     print(f"[make-sample] {len(tables)} logical tables", flush=True)
 
-    base_key = next((k for k in tables if k.endswith("_base")), None)
-    if base_key is None:
-        raise SystemExit(f"No base table among: {sorted(tables)}")
+    base_key = f"{TABLE_PREFIX}_base"
+    if base_key not in tables:
+        raise SystemExit(
+            f"No {base_key!r} among the discovered tables: {sorted(tables)}. "
+            f"Expected {INPUT}/parquet_files/{TABLE_PREFIX}/{base_key}.parquet."
+        )
 
     report: dict = {
         "tables": {},
