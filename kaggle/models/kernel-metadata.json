@@ -1,0 +1,15 @@
+{
+  "id": "KAGGLE_USERNAME/hc-models",
+  "title": "hc-models",
+  "code_file": "_bundled.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": true,
+  "enable_gpu": false,
+  "enable_tpu": false,
+  "enable_internet": true,
+  "competition_sources": [],
+  "dataset_sources": [],
+  "kernel_sources": ["ilyaselmaazouzi/hc-features"],
+  "model_sources": []
+}

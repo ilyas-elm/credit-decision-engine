@@ -106,10 +106,23 @@ optuna_trials = 0           # <= 30 if ever enabled; 0 means fixed params only
 success_rate = 0.55
 default_rate = 0.10
 roi = 0.2644
+# WIDENED after measuring the break-even bad rate on the full data. A loan is
+# profitable in expectation while p(default) < roi / (roi + E[loss]). At the
+# centre point that break-even is 49.0%, against a book that defaults at 3.1%:
+# approving everyone is optimal, EMPCS is 0, and no cutoff binds. The original
+# grid (success 0.45-0.65, default 0.05-0.20, roi 0.20-0.32) had a lowest
+# break-even of 34.8%, still 15x the real bad rate, so the whole sensitivity
+# analysis was degenerate and could not answer "where should the cutoff sit".
+#
+# The grid now spans thin-margin, high-loss-given-default credit as well, down
+# to a 2.2% break-even, so it brackets the rate at which a cutoff starts to pay.
+# The centre point is UNCHANGED and still the literature's, so the headline
+# number stays comparable -- the degeneracy there is a result, not something to
+# tune away.
 [profit.sensitivity]
-success_rate = [0.45, 0.55, 0.65]
-default_rate = [0.05, 0.10, 0.20]
-roi = [0.20, 0.2644, 0.32]
+success_rate = [0.05, 0.25, 0.55]
+default_rate = [0.10, 0.45, 0.80]
+roi = [0.02, 0.10, 0.2644]
 
 # --- 6. Decision layer ----------------------------------------------------
 [decision]
