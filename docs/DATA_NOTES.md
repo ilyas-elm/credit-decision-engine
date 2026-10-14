@@ -123,17 +123,39 @@ competition data is never committed.
 
 ## Kaggle environment, as measured
 
-Recorded because two of these differ from what this repo assumed.
+Measured by `kaggle/env-probe/`, which prints the image's versions, pip-installs
+the two packages the image lacks, and re-checks the stack afterwards. Re-run it
+before changing any pin.
 
-| | Kaggle kernel | this repo (local) |
+| package | Kaggle image | this repo |
 |---|---|---|
-| Python | **3.13.15** | 3.11.5 |
-| polars | **1.35.2** | 2.0.0 |
+| Python | 3.13.15 | 3.13.15 |
+| polars | 1.35.2 | 1.35.2 |
+| pyarrow | 23.0.1 | 23.0.1 |
+| numpy | 2.1.3 | 2.1.3 |
+| pandas | 2.3.3 | 2.3.3 |
+| scikit-learn | 1.6.1 | 1.6.1 |
+| lightgbm | 4.6.0 | 4.6.0 |
+| matplotlib | 3.10.0 | 3.10.0 |
+| optbinning | absent → 1.0.0 | 1.0.0 |
+| empulse | absent → 0.13.0 | 0.13.0 |
 
-Both gaps are open items, tracked in the README. The `make-sample` kernel ran
-correctly regardless because it uses only preinstalled polars and APIs common to
-both versions, but any stage that pip-installs `optbinning` or `empulse` must
-resolve against Python 3.13.
+This repo is pinned **to the image**, not to the newest releases. Full-data
+results come from Kaggle kernels, so the environment that matters is theirs, and
+local tests are only evidence about those runs if the stack is the same one.
+
+The probe confirms `pip install optbinning empulse` on the image is clean:
+return code 0, and numpy, pandas and scikit-learn are byte-identical before and
+after, so kernels run the image's versions whatever this repo pins. (pip reports
+pre-existing conflicts in the image around protobuf, gym and bigframes; they are
+unrelated to this project and present before the install.) A smoke test after
+the install exercises optbinning, empulse, LightGBM and polars together.
+
+Matching the image immediately paid for itself: the challenger was calling
+LightGBM's `eval_X`/`eval_y`, which exist only in 4.7. On the image's 4.6.0 that
+raises `TypeError`, so every model kernel would have failed. It was written that
+way to silence a 4.7 deprecation warning — a change that was correct against the
+newest release and wrong against the environment the results come from.
 
 **Competition data does not mount where the documentation implies.** It appears
 at `/kaggle/input/competitions/home-credit-credit-risk-model-stability/`, not

@@ -164,9 +164,13 @@ def fit_challenger(
         X_train[features],
         np.asarray(y_train),
         sample_weight=sample_weight,
-        # eval_X / eval_y, not eval_set: LightGBM 4.7 deprecates the latter.
-        eval_X=X_val[features],
-        eval_y=np.asarray(y_val),
+        # eval_set, NOT eval_X/eval_y. LightGBM 4.7 deprecates eval_set in
+        # favour of eval_X/eval_y, but the Kaggle image carries 4.6.0, where
+        # eval_X does not exist and this call raises TypeError. This project is
+        # pinned to the image, so eval_set is the correct API and emits no
+        # deprecation warning here. Revisit only when kaggle/env-probe shows the
+        # image has moved to >= 4.7.
+        eval_set=[(X_val[features], np.asarray(y_val))],
         eval_metric="auc",
         callbacks=[
             lgb.early_stopping(params.early_stopping_rounds, verbose=False),

@@ -12,10 +12,11 @@ jobs:
       - uses: actions/checkout@v4
 
       # A bootstrap interpreter only. uv reads requires-python from pyproject
-      # and fetches the project's own 3.11 if this one does not match.
+      # and fetches the project's own 3.13 if this one does not match. 3.13 is
+      # the Kaggle image's Python, measured by kaggle/env-probe.
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.13"
 
       # Installed from PyPI rather than through a third-party action, so the
       # version that runs here is the one pinned in the lock file's resolver.

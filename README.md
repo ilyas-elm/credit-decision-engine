@@ -57,21 +57,24 @@ code; the kernel versions used will be linked here.
 | Challenger: LightGBM with monotone constraints | `src/challenger.py` | done |
 | Shared evaluation + the three figures | `src/evaluation.py` | done |
 | Synthetic fixtures matching the schema | `tests/fixtures.py` | done |
-| Kaggle push/poll/pull orchestration | `scripts/kaggle_run.py` | done, unexercised |
-| `make-sample` + reconnaissance kernel | `kaggle/make-sample/` | done, unexercised |
+| Kaggle push/poll/pull orchestration | `scripts/kaggle_run.py` | **done, exercised against the live API** |
+| `make-sample` + reconnaissance kernel | `kaggle/make-sample/` | **done, run on full data** |
+| Environment probe kernel | `kaggle/env-probe/` | **done, run** |
 | Data reconnaissance | [`docs/DATA_NOTES.md`](docs/DATA_NOTES.md) | **done, on full data** |
 | Feature build (polars) | — | next |
 | Sampling-bias experiment (arms A0-A6) | `src/sampling_bias.py` | done, not yet run |
 
-226 tests, all on generated fixtures. The Kaggle plumbing is marked *unexercised*
-because it has never been run against Kaggle — only against its own tests.
+226 tests, all on generated fixtures. Two kernels have been run end to end on the real
+competition data.
 
-## Open items
+## Environment
 
-- **Python version mismatch.** The Kaggle image runs 3.13.15; this repo pins
-  3.11. `make-sample` was unaffected (preinstalled polars only), but any stage
-  that pip-installs `optbinning` or `empulse` must resolve against 3.13.
-- **polars major-version mismatch.** Kaggle ships 1.35.2, this repo pins 2.0.0.
+Pinned **to the Kaggle image**, not to the newest releases: Python 3.13.15,
+polars 1.35.2, pandas 2.3.3, numpy 2.1.3, scikit-learn 1.6.1, LightGBM 4.6.0.
+Full-data results come from Kaggle kernels, so local tests are only evidence
+about those runs if the stack matches. The versions were measured by
+`kaggle/env-probe/`, not assumed — see
+[docs/DATA_NOTES.md](docs/DATA_NOTES.md#kaggle-environment-as-measured).
 
 ## Notes on four things worth knowing
 

@@ -3,25 +3,37 @@ name = "credit-decision-engine"
 version = "0.1.0"
 description = "Credit decision system on Home Credit data: scorecard champion, GBM challenger, conformal referral band, reject-inference experiment."
 readme = "README.md"
-# Pinned to the Kaggle image's minor version. 3.11 is also the floor for empulse.
-# ASSUMPTION, unverified: the Kaggle CPU image is on 3.11. Confirmed on the first
-# kernel push by printing python --version; if it differs, change this line and relock.
-requires-python = "==3.11.*"
+# Pinned to the Kaggle image's Python, MEASURED on a live kernel rather than
+# assumed: the image reports 3.13.15 (see docs/DATA_NOTES.md). An earlier guess
+# of 3.11 would have produced a lock file that could not install there.
+requires-python = "==3.13.*"
 
 dependencies = [
-    # Data layer. polars does the lazy/streaming aggregation; pandas only at the
-    # model boundary, where optbinning and empulse insist on it.
-    "polars>=1.17",
-    "pyarrow>=18.0",
-    "numpy>=1.26,<2.2",
-    "pandas>=2.2",
-    # Models.
-    "scikit-learn>=1.5",
-    "lightgbm>=4.5",
-    "optbinning>=0.19",
-    "empulse>=0.5",
-    # Figures.
-    "matplotlib>=3.9",
+    # PINNED TO THE KAGGLE IMAGE, measured by kaggle/env-probe rather than
+    # chosen. Full-data results come from Kaggle kernels, so the environment
+    # that matters is theirs; developing against newer versions and deploying
+    # onto the image is how an API difference surfaces at the end of a 12 h run.
+    #
+    # The probe also showed that `pip install optbinning empulse` on the image
+    # leaves numpy/pandas/scikit-learn untouched, so kernels will run these
+    # versions whatever this file says. Matching them makes local tests
+    # evidence about the kernels instead of about a different stack.
+    #
+    # pandas is the sharp one: the image has 2.3.3 while a free resolution picks
+    # 3.0.x, a major version apart at exactly the boundary where optbinning and
+    # empulse take DataFrames.
+    #
+    # Re-run kaggle/env-probe to check these before raising any of them.
+    "polars==1.35.2",
+    "pyarrow==23.0.1",
+    "numpy==2.1.3",
+    "pandas==2.3.3",
+    "scikit-learn==1.6.1",
+    "lightgbm==4.6.0",
+    "matplotlib==3.10.0",
+    # Not on the image; these are the versions pip resolves there.
+    "optbinning==1.0.0",
+    "empulse==0.13.0",
 ]
 
 [dependency-groups]
@@ -42,10 +54,24 @@ pythonpath = ["src", "scripts"]
 testpaths = ["tests"]
 filterwarnings = [
     "error::RuntimeWarning",
-    # ortools, pulled in by optbinning, emits these on import. Third-party and
-    # unactionable; silenced so a real warning is not lost in the noise.
+    # Third-party noise from the pinned Kaggle-image stack. Each is silenced by
+    # its exact message rather than by category, so a NEW warning of the same
+    # kind still surfaces. Nothing here is actionable from this repo.
+    #
+    # ortools (via optbinning), on import:
     "ignore:builtin type SwigPy.*has no __module__ attribute:DeprecationWarning",
     "ignore:builtin type swigvarlink has no __module__ attribute:DeprecationWarning",
+    # matplotlib 3.10 against a newer pyparsing:
+    "ignore:'oneOf' deprecated:DeprecationWarning",
+    "ignore:'parseString' deprecated:DeprecationWarning",
+    "ignore:'enablePackrat' deprecated:DeprecationWarning",
+    "ignore:'resetCache' deprecated:DeprecationWarning",
+    # optbinning's L-BFGS-B call, against a newer scipy. The message is
+    # truncated before its first colon: pytest splits these filters on colons,
+    # so a colon inside the pattern is read as the category field.
+    "ignore:scipy.optimize",
+    # Raised inside importlib while importing a third-party module, not here:
+    "ignore:Bitwise inversion '~' on bool is deprecated:DeprecationWarning",
 ]
 
 [tool.ruff]
