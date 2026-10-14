@@ -50,14 +50,16 @@ def _valid_metadata(**overrides) -> dict:
 
 
 def test_bundle_contains_every_src_module() -> None:
+    """Paths keep the repo layout, so src/ and config/ land side by side."""
     expected = {
-        str(p.relative_to(REPO_ROOT / "src"))
+        str(p.relative_to(REPO_ROOT))
         for p in (REPO_ROOT / "src").rglob("*.py")
         if "__pycache__" not in p.parts
     }
     with zipfile.ZipFile(io.BytesIO(bundle_src())) as archive:
-        assert set(archive.namelist()) == expected
-    assert "conformal.py" in expected and "metrics.py" in expected
+        names = set(archive.namelist())
+    assert expected <= names
+    assert "src/conformal.py" in names and "src/metrics.py" in names
 
 
 def test_bundle_is_byte_identical_across_builds() -> None:
@@ -72,14 +74,14 @@ def test_bundled_modules_import_cleanly_once_unpacked(tmp_path: Path) -> None:
     Run in a subprocess with -I so the repo's own src/ is not on the path and
     only the unpacked bundle can satisfy the imports.
     """
-    destination = tmp_path / "_src"
+    destination = tmp_path / "_bundle"
     destination.mkdir()
     with zipfile.ZipFile(io.BytesIO(bundle_src())) as archive:
         archive.extractall(destination)
 
     program = (
-        f"import sys; sys.path.insert(0, r'{destination}');"
-        "import config, splits, metrics, profit, conformal;"
+        f"import sys; sys.path.insert(0, r'{destination / 'src'}');"
+        "import config, splits, metrics, profit, conformal, features, scorecard;"
         "print('ok')"
     )
     result = subprocess.run(
@@ -482,3 +484,42 @@ def test_an_unrecognised_status_error_still_raises(monkeypatch) -> None:
     monkeypatch.setattr(subprocess, "run", lambda *a, **k: _Result())
     with pytest.raises(StageError, match="Could not read status"):
         kaggle_run.kernel_status("u/k")
+
+
+def test_bundle_ships_config_alongside_src() -> None:
+    """A bundle without config/ fails the moment a stage reads a threshold.
+
+    Observed on the live features kernel: FileNotFoundError on
+    /kaggle/working/config/default.toml, after the queue wait and after
+    pip-installing optbinning. config.load_config resolves its path relative to
+    the package, so the archive has to preserve the repo's layout.
+    """
+    with zipfile.ZipFile(io.BytesIO(bundle_src())) as archive:
+        names = set(archive.namelist())
+    assert "src/config.py" in names
+    assert "src/features.py" in names
+    assert "config/default.toml" in names
+
+
+def test_the_unpacked_bundle_can_load_config(tmp_path: Path) -> None:
+    """The end-to-end check: unpack as the kernel does, then read a threshold.
+
+    Run with -I in a subprocess so neither the repo's src/ nor its config/ is
+    reachable except through the extracted bundle.
+    """
+    destination = tmp_path / "_bundle"
+    destination.mkdir()
+    with zipfile.ZipFile(io.BytesIO(bundle_src())) as archive:
+        archive.extractall(destination)
+
+    program = (
+        f"import sys; sys.path.insert(0, r'{destination / 'src'}');"
+        "from config import load_config;"
+        "cfg = load_config();"
+        "print('ok', cfg['scorecard']['min_iv'], cfg.splits.train_frac)"
+    )
+    result = subprocess.run(
+        [sys.executable, "-I", "-c", program], capture_output=True, text=True, cwd=tmp_path
+    )
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.startswith("ok ")

@@ -71,13 +71,16 @@ import base64 as _b64, io as _io, pathlib as _pl, sys as _sys, zipfile as _zf
 
 _SRC_B64 = "{payload}"
 
-_dest = _pl.Path("/kaggle/working/_src")
+# The archive preserves the repo layout (src/ and config/ side by side), so
+# config.load_config resolves exactly as it does locally.
+_dest = _pl.Path("/kaggle/working/_bundle")
 if not _dest.exists():
     _dest.mkdir(parents=True, exist_ok=True)
     with _zf.ZipFile(_io.BytesIO(_b64.b64decode(_SRC_B64))) as _archive:
         _archive.extractall(_dest)
-_sys.path.insert(0, str(_dest))
-print("[kaggle_run] src/ unpacked to", _dest, flush=True)
+_sys.path.insert(0, str(_dest / "src"))
+print("[kaggle_run] project unpacked to", _dest, flush=True)
+print("[kaggle_run] config:", sorted(p.name for p in (_dest / "config").glob("*.toml")), flush=True)
 print("[kaggle_run] python", _sys.version, flush=True)
 
 # ---------------------------- stage script ------------------------------------
@@ -119,20 +122,40 @@ def _git_commit() -> str:
         return "unknown"
 
 
-def bundle_src(src_dir: Path = SRC_DIR) -> bytes:
-    """Zip every module under `src/`, deterministically.
+def bundle_src(repo_root: Path = REPO_ROOT) -> bytes:
+    """Zip the project's runtime files, deterministically.
+
+    Ships `src/**/*.py` AND `config/*.toml`, preserving the repo's relative
+    layout inside the archive. The config is not optional: `config.load_config`
+    resolves its path relative to the package directory, so a bundle carrying
+    only the modules produces
+
+        FileNotFoundError: /kaggle/working/config/default.toml
+
+    the moment any stage reads a threshold -- after the queue wait and after
+    pip-installing its dependencies. Keeping the two in one archive, at the same
+    relative offsets as the repo, means the kernel resolves config exactly as a
+    local run does.
 
     Fixed timestamps and sorted names keep the bundle byte-identical for
-    identical source, so an unchanged stage does not look changed.
+    identical input, so an unchanged stage does not look changed.
     """
-    modules = sorted(p for p in src_dir.rglob("*.py") if "__pycache__" not in p.parts)
+    modules = sorted(
+        p for p in (repo_root / "src").rglob("*.py") if "__pycache__" not in p.parts
+    )
     if not modules:
-        raise StageError(f"No Python modules found under {src_dir}.")
+        raise StageError(f"No Python modules found under {repo_root / 'src'}.")
+    configs = sorted((repo_root / "config").glob("*.toml"))
+    if not configs:
+        raise StageError(
+            f"No config files under {repo_root / 'config'}; stages read their "
+            "thresholds from there."
+        )
 
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
-        for path in modules:
-            info = zipfile.ZipInfo(str(path.relative_to(src_dir)))
+        for path in modules + configs:
+            info = zipfile.ZipInfo(str(path.relative_to(repo_root)))
             info.date_time = (1980, 1, 1, 0, 0, 0)
             info.external_attr = 0o644 << 16
             archive.writestr(info, path.read_bytes())
