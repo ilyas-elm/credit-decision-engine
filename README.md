@@ -4,10 +4,9 @@ A credit decision system — not just a classifier — built on the Kaggle
 *Home Credit: Credit Risk Model Stability* data, and evaluated the way a credit
 risk team evaluates models: out-of-time, on calibration, stability and profit.
 
-> **Status: in progress.** Nothing below is filled in with numbers yet. Sections
-> marked _pending_ have no results, and this notice stays until they do. No
-> figure or table in this README is a placeholder for a number that was measured
-> and then rounded off — they are simply not measured yet.
+> **Status: in progress.** Questions 1 and 2 have full-data numbers below.
+> Question 3, the sampling-bias experiment, is built and tested but not yet run,
+> and is marked _pending_ until it is.
 
 ## The three questions
 
@@ -21,12 +20,60 @@ risk team evaluates models: out-of-time, on calibration, stability and profit.
 
 ## Headline numbers
 
-_Pending._
+Full data, 1,526,659 cases, evaluated out-of-time on the last 23 weeks
+(`WEEK_NUM` 69–91), which nothing was fitted on. Kernel:
+`ilyaselmaazouzi/hc-models`.
+
+| | scorecard | LightGBM | better |
+|---|---|---|---|
+| Gini | 0.4069 | **0.4675** | challenger |
+| mean weekly Gini | 0.3953 | **0.4595** | challenger |
+| Gini slope / week | +0.0032 | +0.0023 | — (both rising) |
+| Gini residual sd | **0.0467** | 0.0511 | champion |
+| **stability metric** | 0.3720 | **0.4339** | challenger |
+| Brier | 0.02129 | **0.02104** | challenger |
+| calibration-in-the-large, worst week | 0.0096 | **0.0088** | challenger |
+| score PSI vs train | 0.3873 | **0.3162** | challenger |
+| EMPCS | 0.000000 | 0.000024 | — (see below) |
+
+**Question 1 — what the challenger adds.** About **6 Gini points** (0.407 →
+0.468), and it keeps them once stability is measured: the stability metric
+moves 0.372 → 0.434. Neither model's Gini decays over the test weeks — both
+slopes are positive, so the metric's 88× falling-slope penalty never engages
+and the gap is driven by level, not trend. The challenger is also *slightly*
+better calibrated and noticeably more stable in its score distribution
+(PSI 0.32 vs 0.39). The one thing the champion wins is week-to-week smoothness
+(residual sd 0.047 vs 0.051).
+
+It is a real but unspectacular gain, bought with 713 trees against a 17-line
+scorecard, under monotone constraints taken from the champion's own binning so
+the challenger could not exploit relationships the scorecard was forbidden.
+
+**The profit comparison is degenerate, and that is the finding.** A loan is
+profitable in expectation while `p(default) < roi / (roi + E[loss])`. At the
+literature's assumptions that break-even is **49.0%**, against a book that
+defaults at **3.1%** — so approving everyone is optimal, no cutoff binds, and
+EMPCS is correctly ≈0 for both models. The original sensitivity grid never
+crossed break-even either (lowest 34.8%). The grid now spans thin-margin,
+high-loss-given-default credit (break-even 2.2%–49.0%) so it brackets the point
+at which a cutoff starts to pay; the centre point is unchanged, because the
+degeneracy there is a result about the assumptions rather than something to
+tune away. Under this portfolio's economics, the model's value is not in
+choosing an approval cutoff.
+
+Score PSI above 0.25 for **both** models is worth flagging: in production that
+is an alert threshold, and it reflects genuine drift over 92 weeks rather than
+a modelling defect. Test-week PSI is reported here only — it is never used for
+any selection decision.
 
 ## Figures
 
-_Pending:_ weekly Gini (champion vs challenger), strategy curve,
-sampling-bias recovery, evaluation bias.
+![Weekly Gini](docs/figures/weekly_gini.png)
+
+[Calibration by bucket](docs/figures/calibration.png) ·
+[Strategy curve](docs/figures/strategy_curve.png)
+
+_Pending:_ sampling-bias recovery, evaluation bias.
 
 ## How to reproduce
 
@@ -50,12 +97,12 @@ code; the kernel versions used will be linked here.
 | Out-of-time splits by `WEEK_NUM` | `src/splits.py` | done |
 | Gini, weekly Gini, stability metric, PSI, calibration | `src/metrics.py` | done |
 | EMPCS profit + strategy curve | `src/profit.py` | done |
-| Champion scorecard (binning, selection, pdo_odds scaling) | `src/scorecard.py` | done |
+| Champion scorecard (binning, selection, pdo_odds scaling) | `src/scorecard.py` | **done, run on full data** |
 | Mondrian conformal refer band | `src/conformal.py` | done |
 | Decision layer: cutoff, bands, reasons, recourse | `src/decision.py` | done |
 | Isotonic calibration (shared) | `src/calibrate.py` | done |
-| Challenger: LightGBM with monotone constraints | `src/challenger.py` | done |
-| Shared evaluation + the three figures | `src/evaluation.py` | done |
+| Challenger: LightGBM with monotone constraints | `src/challenger.py` | **done, run on full data** |
+| Shared evaluation + the three figures | `src/evaluation.py` | **done, run on full data** |
 | Synthetic fixtures matching the schema | `tests/fixtures.py` | done |
 | Kaggle push/poll/pull orchestration | `scripts/kaggle_run.py` | **done, exercised against the live API** |
 | `make-sample` + reconnaissance kernel | `kaggle/make-sample/` | **done, run on full data** |
