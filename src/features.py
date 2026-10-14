@@ -467,10 +467,21 @@ def affordability_features(
     )
     if income is not None:
         inc_cols = [c for c in income.collect_schema().names() if c.startswith("_inc_")]
+        # A case absent from EVERY tax registry has unknown income, not income
+        # of zero. fill_null(0) inside the sum is right -- one missing registry
+        # should not void the total -- but applying it when all are missing
+        # recorded 522,900 cases (34%) as earning exactly nothing, and the
+        # binning then filed them in the lowest income bin beside genuinely low
+        # earners rather than in its Missing bin. Those two groups are not the
+        # same, and conflating them is what let "no employment record" stand in
+        # for "no income" -- which, for the 92% of over-60s who are simply
+        # retired, is false.
+        present = pl.any_horizontal([pl.col(c).is_not_null() for c in inc_cols])
         out = out.join(income, on="case_id", how="left").with_columns(
-            pl.sum_horizontal([pl.col(c).fill_null(0.0) for c in inc_cols]).alias(
-                "afford_taxincome_total"
-            )
+            pl.when(present)
+            .then(pl.sum_horizontal([pl.col(c).fill_null(0.0) for c in inc_cols]))
+            .otherwise(None)
+            .alias("afford_taxincome_total")
         )
         denominator = pl.col("afford_taxincome_total")
         ratios = []

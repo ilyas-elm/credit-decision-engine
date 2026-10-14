@@ -536,3 +536,39 @@ def test_that_test_would_fail_if_the_filter_were_removed(tmp_path) -> None:
     )
     assert future.height == 9, "the fixture plants no post-decision rows"
     assert future["pmts_dpd_1073P"].max() == 999.0
+
+
+def test_absent_tax_registry_means_unknown_income_not_zero(tmp_path) -> None:
+    """"No record" and "earned nothing" are different facts.
+
+    Recording the first as the second put 522,900 cases (34 % of the book) into
+    the lowest income bin beside genuinely low earners, instead of the binning's
+    Missing bin. That is what let "no employment record" stand in for "no
+    income" -- false for the 92 % of over-60s who are simply retired, and the
+    mechanism behind a threefold over-prediction of their risk.
+    """
+    tables, _ = make_dataset(n_cases=300, n_weeks=10, seed=8)
+    base = tables["train_base"]
+    base.write_parquet(tmp_path / "train_base.parquet")
+    tables["train_static_0_0"].write_parquet(tmp_path / "train_static_0.parquet")
+
+    # Only the first 100 cases appear in a tax registry at all.
+    ids = base["case_id"].to_list()
+    pl.DataFrame(
+        {
+            "case_id": ids[:100],
+            "num_group1": [0] * 100,
+            "pmtamount_36A": [50_000.0] * 100,
+        }
+    ).write_parquet(tmp_path / "train_tax_registry_c_1.parquet")
+
+    feats, _ = build_features(tmp_path, FeatureParams())
+    income = feats.select("case_id", "afford_taxincome_total").sort("case_id")
+    present = income.filter(pl.col("case_id").is_in(ids[:100]))
+    absent = income.filter(~pl.col("case_id").is_in(ids[:100]))
+
+    assert present["afford_taxincome_total"].null_count() == 0
+    assert present["afford_taxincome_total"].min() > 0
+    # The 200 with no registry row at all are UNKNOWN, not zero.
+    assert absent["afford_taxincome_total"].null_count() == absent.height
+    assert absent.height == 200
