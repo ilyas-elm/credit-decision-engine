@@ -163,3 +163,51 @@ at `/kaggle/input/competitions/home-credit-credit-risk-model-stability/`, not
 it. `make-sample` now locates the data by searching for `parquet_files/train`
 and prints a listing of `/kaggle/input` when it cannot, so a wrong assumption
 costs one run and reports the answer rather than needing a guess.
+
+## Features, built on the full data
+
+Run: `ilyaselmaazouzi/hc-features`, 2026-10-14. 1.4 min wall clock over 243M
+source rows; 60.3 MB of float32 output for 1,526,659 cases.
+
+**36 features built, 25 kept.** Top of the table by IV:
+
+| feature | family | IV | PSI train→val | missing |
+|---|---|---|---|---|
+| `delq_dpd_mean` | delinquency | 0.326 | 0.008 | 18.4 % |
+| `delq_dpd_recency_weighted` | delinquency | 0.326 | 0.008 | 18.4 % |
+| `delq_dpd_max` | delinquency | 0.302 | 0.011 | 18.4 % |
+| `delq_overdue_max` | delinquency | 0.260 | 0.013 | 18.4 % |
+| `prev_share_rejected` | previous applications | 0.154 | 0.029 | 25.4 % |
+| `inq_last90d` | inquiry | 0.100 | 0.002 | 11.2 % |
+
+Delinquency dominates, and it only exists because `credit_bureau_a_2` turned out
+to be a monthly payment history rather than a flat table.
+
+Dropped, with the reason the screen gave:
+
+- `util_max`, `util_mean` — **99.96 % missing**. Credit limits are 92–94 % null,
+  so per-contract utilisation is rarely computable at all.
+- `bureau_a_records`, `bureau_total_records` — **PSI 0.61 and 0.57**. Genuine
+  drift, not a binning artefact: the modal value collapses from 31.9 % of the
+  train weeks to 4.5 % of validation, and the PSI is stable across bin counts.
+- Seven more on IV below 0.02, including the raw credit amount and annuity. The
+  raw amounts carry almost no univariate signal; the engineered ratios do.
+
+**Nothing was flagged for leakage review** — no surviving feature has a
+univariate Gini above 0.5, which is what the post-decision drop is there to
+ensure.
+
+### What the 3 % sample got wrong
+
+Worth recording, because it is the argument for screening on full data:
+
+| | sample (3 %) | full data |
+|---|---|---|
+| `delq_dpd_gt30_last12m` IV | 0.1995 | 0.1668 (**+19.6 %** overstated) |
+| `delq_dpd_max_mean_over_contracts` IV | 0.3482 | 0.3009 (**+15.7 %**) |
+| `prev_n_rejected` IV | 0.0978 | 0.1394 (**−29.9 %** understated) |
+
+The sample moved individual IVs by up to 30 % in both directions and flipped one
+keep/drop decision (`delq_n_payment_months`, 0.0198 on the sample against 0.0225
+on the full data, either side of the 0.02 floor). The committed
+`docs/feature_report.csv` is the full-data one.

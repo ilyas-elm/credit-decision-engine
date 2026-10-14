@@ -1,37 +1,37 @@
 source,feature,family,missing_pct,iv,psi_train_vs_val,univariate_gini,kept,leakage_review,reason
-local_sample_3pct,delq_dpd_recency_weighted,delinquency,18.101,0.370120798178247,0.007331022115892042,0.3324871002985308,True,False,kept
-local_sample_3pct,delq_dpd_mean,delinquency,18.101,0.3607662108105582,0.006545328964413707,0.33033650160727035,True,False,kept
-local_sample_3pct,delq_dpd_max_mean_over_contracts,delinquency,18.101,0.348245365136254,0.005214076667329147,0.32796844554785465,True,False,kept
-local_sample_3pct,delq_dpd_max,delinquency,18.101,0.32532951938279053,0.00908588916827032,0.3210952785042127,True,False,kept
-local_sample_3pct,delq_overdue_max,delinquency,18.101,0.2849406453777949,0.014920396969735641,0.2978090434084022,True,False,kept
-local_sample_3pct,delq_dpd_gt30_last24m,delinquency,18.101,0.20440709600088355,0.0,0.17652974633829355,True,False,kept
-local_sample_3pct,delq_dpd_gt30_last12m,delinquency,18.101,0.19954762170166046,0.0,0.16124396550545672,True,False,kept
-local_sample_3pct,prev_share_rejected,previous_applications,23.862,0.136213237661747,0.028063531581770825,0.1985564928121657,True,False,kept
-local_sample_3pct,inq_last90d,inquiry,10.773,0.1026495775702389,0.005844167585444168,0.16985754161967748,True,False,kept
-local_sample_3pct,inq_last180d,inquiry,10.773,0.09873968921594087,0.005923852265949293,0.15044648389336457,True,False,kept
-local_sample_3pct,prev_n_rejected,previous_applications,23.862,0.09775504705168173,0.05850154503202136,0.1721746089354208,True,False,kept
-local_sample_3pct,inq_last360d,inquiry,10.773,0.08763534661859881,0.011246189754070926,0.14227773272983546,True,False,kept
-local_sample_3pct,afford_annuity_to_taxincome,affordability,34.838,0.08600310794469918,0.0038911467795831843,0.1865464260277201,True,False,kept
-local_sample_3pct,inq_last30d,inquiry,10.773,0.08578243245433292,0.001435160143363851,0.1430920968870899,True,False,kept
-local_sample_3pct,afford_credit_to_taxincome,affordability,34.838,0.0720165247234221,0.0069688912021892814,0.17126591702091254,True,False,kept
-local_sample_3pct,afford_taxincome_total,affordability,0.0,0.06957386113408599,0.013219208475852144,-0.06913318695817239,True,False,kept
-local_sample_3pct,inq_share_last30d,inquiry,23.496,0.04868159963391233,3.939400324844414e-05,0.10674734850552148,True,False,kept
-local_sample_3pct,inq_share_last90d,inquiry,23.496,0.038366544094523045,0.008505963296022885,0.09094653350070026,True,False,kept
-local_sample_3pct,inq_share_last180d,inquiry,23.496,0.030357522651375927,0.004933215413841646,0.07883252378613403,True,False,kept
-local_sample_3pct,prev_amount_mean,previous_applications,23.988,0.025023101718908806,0.023829187232743805,0.005390553242587526,True,False,kept
-local_sample_3pct,prev_n_distinct_status,previous_applications,23.862,0.024794620848499066,0.03699730225070799,0.026646397113618603,True,False,kept
-local_sample_3pct,prev_amount_max,previous_applications,23.988,0.02461379515586668,0.0572778826022706,0.008909291634034311,True,False,kept
-local_sample_3pct,prev_amount_total,previous_applications,23.862,0.02208587542183041,0.07076834803086764,0.015758044936599047,True,False,kept
-local_sample_3pct,prev_n_applications,previous_applications,23.862,0.020236362697435388,0.056258968388808575,0.014472368651614609,True,False,kept
-local_sample_3pct,delq_n_payment_months,delinquency,18.101,0.019796408489705434,0.03571982907398927,-0.07509871281642,False,False,IV 0.0198 < 0.02
-local_sample_3pct,afford_credit_amount,affordability,0.0,0.014147235328099706,0.026404025317943627,-0.029462507920767544,False,False,IV 0.0141 < 0.02
-local_sample_3pct,util_limit_total,utilization,10.744,0.011967901830646412,0.0,-0.022189360658739554,False,False,IV 0.0120 < 0.02
-local_sample_3pct,util_overall,utilization,93.765,0.007982094479969146,0.0,-0.0019323671497584183,False,False,IV 0.0080 < 0.02
-local_sample_3pct,afford_annuity,affordability,0.0,0.005711169385865036,0.03433126244658318,-0.01284484293360999,False,False,IV 0.0057 < 0.02
-local_sample_3pct,util_balance_total,utilization,10.744,0.000699647202482116,0.0,0.000287101128008338,False,False,IV 0.0007 < 0.02
-local_sample_3pct,bureau_b_records,bureau_depth,10.499,0.00027794747542010103,0.0,0.029529970336298783,False,False,IV 0.0003 < 0.02
-local_sample_3pct,bureau_thin_file,bureau_depth,10.499,0.00027794747542010103,0.0,0.0027018494530239856,False,False,IV 0.0003 < 0.02
-local_sample_3pct,util_max,utilization,99.953,,0.0,-0.07692307692307687,False,False,missing 100.0% > 95%
-local_sample_3pct,util_mean,utilization,99.953,,0.0,-0.07692307692307687,False,False,missing 100.0% > 95%
-local_sample_3pct,bureau_a_records,bureau_depth,10.499,,0.6545923369227764,-0.1136703612037131,False,False,PSI 0.655 > 0.25
-local_sample_3pct,bureau_total_records,bureau_depth,10.499,,0.6123430515854364,-0.0998689719592013,False,False,PSI 0.612 > 0.25
+full_data,delq_dpd_mean,delinquency,18.372,0.3263871515381723,0.008149145369267622,0.32161079064297393,True,False,kept
+full_data,delq_dpd_recency_weighted,delinquency,18.372,0.32623100879142586,0.008215482045826353,0.3237590849318768,True,False,kept
+full_data,delq_dpd_max,delinquency,18.372,0.30171071536043814,0.010822618880635628,0.31226695441693564,True,False,kept
+full_data,delq_dpd_max_mean_over_contracts,delinquency,18.372,0.30086188264909564,0.006122159846669965,0.31751232340808055,True,False,kept
+full_data,delq_overdue_max,delinquency,18.372,0.2595554588245497,0.012745063088368244,0.29214149718970983,True,False,kept
+full_data,delq_dpd_gt30_last24m,delinquency,18.372,0.1903329886199905,0.0,0.17046423975658365,True,False,kept
+full_data,delq_dpd_gt30_last12m,delinquency,18.372,0.16682617271915523,0.0,0.1453538499843503,True,False,kept
+full_data,prev_share_rejected,previous_applications,25.422,0.15437105355190392,0.02896924270132594,0.22287072674237263,True,False,kept
+full_data,prev_n_rejected,previous_applications,25.422,0.13935481512120707,0.05671445559175855,0.21196154117816257,True,False,kept
+full_data,inq_last90d,inquiry,11.186,0.09984139403973988,0.0018057602368295295,0.1722232943782045,True,False,kept
+full_data,inq_last180d,inquiry,11.186,0.09615658125057547,0.004267247941744839,0.1690861725541093,True,False,kept
+full_data,afford_annuity_to_taxincome,affordability,34.578,0.08868324565327099,0.0012556475799528957,0.20419223420073918,True,False,kept
+full_data,afford_credit_to_taxincome,affordability,34.578,0.08107791309029752,0.0041013511936960284,0.19802332785096732,True,False,kept
+full_data,inq_last30d,inquiry,11.186,0.07654232443079344,0.0013942471502042847,0.14465834067352912,True,False,kept
+full_data,inq_last360d,inquiry,11.186,0.0709205365381844,0.008511777130702143,0.14033664677854607,True,False,kept
+full_data,afford_taxincome_total,affordability,0.0,0.056043303094878386,0.012577031300191867,-0.06952028351764872,True,False,kept
+full_data,inq_share_last30d,inquiry,23.702,0.054448832739459725,0.0003973955991956096,0.12223786691258232,True,False,kept
+full_data,inq_share_last90d,inquiry,23.702,0.047079599070148255,0.003955634720945239,0.11701031834496334,True,False,kept
+full_data,inq_share_last180d,inquiry,23.702,0.034646683131874516,0.004696966460959273,0.10022264353217958,True,False,kept
+full_data,prev_amount_total,previous_applications,25.422,0.03396813315616518,0.06132905024335884,0.06613778584492325,True,False,kept
+full_data,prev_amount_max,previous_applications,25.563,0.031172392499964154,0.05102445024989979,0.05312828283678184,True,False,kept
+full_data,prev_n_distinct_status,previous_applications,25.422,0.030676259190182714,0.029534689425078253,0.03843444743016411,True,False,kept
+full_data,prev_n_applications,previous_applications,25.422,0.030320367037397204,0.04961460973981379,0.06131188651810371,True,False,kept
+full_data,prev_amount_mean,previous_applications,25.563,0.026107042301831265,0.02032644960878889,0.040740138141037274,True,False,kept
+full_data,delq_n_payment_months,delinquency,18.372,0.02247624111920449,0.03346823905651193,-0.09009427715029283,True,False,kept
+full_data,afford_credit_amount,affordability,0.0,0.016650224525584734,0.01909327147615717,0.020101312258711923,False,False,IV 0.0167 < 0.02
+full_data,util_limit_total,utilization,11.136,0.012666795419035337,0.0,-0.02753863207327678,False,False,IV 0.0127 < 0.02
+full_data,util_overall,utilization,93.685,0.012567026562851831,0.0,0.00019414454734634212,False,False,IV 0.0126 < 0.02
+full_data,afford_annuity,affordability,0.0,0.005917219471556122,0.026250677216836098,0.02907086773155676,False,False,IV 0.0059 < 0.02
+full_data,util_balance_total,utilization,11.136,0.0001502277393550258,0.0,0.0004895449072210845,False,False,IV 0.0002 < 0.02
+full_data,bureau_b_records,bureau_depth,10.905,6.513512089417395e-05,0.0,0.023202451777272204,False,False,IV 0.0001 < 0.02
+full_data,bureau_thin_file,bureau_depth,10.905,6.513512089417395e-05,0.0,0.002534374661749661,False,False,IV 0.0001 < 0.02
+full_data,util_max,utilization,99.956,,0.00157890233922834,-0.025964912280701746,False,False,missing 100.0% > 95%
+full_data,util_mean,utilization,99.956,,0.00157890233922834,-0.025964912280701746,False,False,missing 100.0% > 95%
+full_data,bureau_a_records,bureau_depth,10.905,,0.6137007244952329,-0.10295711744838387,False,False,PSI 0.614 > 0.25
+full_data,bureau_total_records,bureau_depth,10.905,,0.5654725517756655,-0.09023244024070531,False,False,PSI 0.565 > 0.25

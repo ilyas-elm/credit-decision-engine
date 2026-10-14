@@ -61,11 +61,11 @@ code; the kernel versions used will be linked here.
 | `make-sample` + reconnaissance kernel | `kaggle/make-sample/` | **done, run on full data** |
 | Environment probe kernel | `kaggle/env-probe/` | **done, run** |
 | Data reconnaissance | [`docs/DATA_NOTES.md`](docs/DATA_NOTES.md) | **done, on full data** |
-| Feature build (polars, 6 families) | `src/features.py` | **done, run on the sample** |
-| Feature screening + report | [`docs/feature_report.csv`](docs/feature_report.csv) | **done** |
+| Feature build (polars, 6 families) | `src/features.py` | **done, run on full data** |
+| Feature screening + report | [`docs/feature_report.csv`](docs/feature_report.csv) | **done, full data** |
 | Sampling-bias experiment (arms A0-A6) | `src/sampling_bias.py` | done, not yet run |
 
-246 tests, all on generated fixtures. Two kernels have been run end to end on the real
+252 tests, all on generated fixtures. Two kernels have been run end to end on the real
 competition data.
 
 ## Environment
