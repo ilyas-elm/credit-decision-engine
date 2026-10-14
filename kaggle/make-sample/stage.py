@@ -85,6 +85,16 @@ def find_input_dir() -> Path:
     if (INPUT / "parquet_files" / TABLE_PREFIX).is_dir():
         return INPUT
     if INPUT_ROOT.is_dir():
+        # Observed on the live kernel: the data mounts at
+        # /kaggle/input/competitions/<slug>/, one level deeper than documented.
+        nested = INPUT_ROOT / "competitions" / COMPETITION
+        if (nested / "parquet_files" / TABLE_PREFIX).is_dir():
+            print(f"[make-sample] data found at {nested}", flush=True)
+            return nested
+        for child in sorted(INPUT_ROOT.rglob("parquet_files")):
+            if (child / TABLE_PREFIX).is_dir():
+                print(f"[make-sample] data found at {child.parent}", flush=True)
+                return child.parent
         for child in sorted(INPUT_ROOT.iterdir()):
             if child.is_dir() and (child / "parquet_files" / TABLE_PREFIX).is_dir():
                 print(f"[make-sample] data found at {child}, not {INPUT}", flush=True)

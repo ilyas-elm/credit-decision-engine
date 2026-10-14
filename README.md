@@ -59,12 +59,19 @@ code; the kernel versions used will be linked here.
 | Synthetic fixtures matching the schema | `tests/fixtures.py` | done |
 | Kaggle push/poll/pull orchestration | `scripts/kaggle_run.py` | done, unexercised |
 | `make-sample` + reconnaissance kernel | `kaggle/make-sample/` | done, unexercised |
-| Data reconnaissance | `docs/DATA_NOTES.md` | blocked on data access |
-| Feature build (polars) | — | blocked on data access |
-| Sampling-bias experiment | `src/sampling_bias.py` | not started |
+| Data reconnaissance | [`docs/DATA_NOTES.md`](docs/DATA_NOTES.md) | **done, on full data** |
+| Feature build (polars) | — | next |
+| Sampling-bias experiment (arms A0-A6) | `src/sampling_bias.py` | done, not yet run |
 
-176 tests, all on generated fixtures. The Kaggle plumbing is marked *unexercised*
+226 tests, all on generated fixtures. The Kaggle plumbing is marked *unexercised*
 because it has never been run against Kaggle — only against its own tests.
+
+## Open items
+
+- **Python version mismatch.** The Kaggle image runs 3.13.15; this repo pins
+  3.11. `make-sample` was unaffected (preinstalled polars only), but any stage
+  that pip-installs `optbinning` or `empulse` must resolve against 3.13.
+- **polars major-version mismatch.** Kaggle ships 1.35.2, this repo pins 2.0.0.
 
 ## Notes on four things worth knowing
 
