@@ -87,16 +87,16 @@ Test weeks 69–91, 225,514 cases, fitted on by nothing.
 
 | | scorecard | LightGBM |
 |---|---|---|
-| Gini | 0.3763 | **0.4270** |
-| mean weekly Gini | 0.3667 | **0.4216** |
-| Gini slope / week | +0.0030 | +0.0017 |
-| Gini residual sd | **0.0541** | 0.0600 |
-| **stability metric** | 0.3396 | **0.3916** |
-| Brier | 0.02136 | **0.02117** |
-| worst-week calibration gap | 0.0089 | **0.0083** |
-| score PSI vs train | 0.5435 | **0.4234** |
+| Gini | 0.3956 | **0.4264** |
+| mean weekly Gini | 0.3864 | **0.4205** |
+| Gini slope / week | +0.0026 | +0.0019 |
+| Gini residual sd | **0.0521** | 0.0592 |
+| **stability metric** | 0.3604 | **0.3909** |
+| Brier | 0.02131 | **0.02117** |
+| worst-week calibration gap | 0.0095 | **0.0084** |
+| score PSI vs train | 0.4929 | **0.4202** |
 
-The challenger adds about **5 Gini points** and keeps them once stability is
+The challenger adds about **3 Gini points** and keeps them once stability is
 measured. Note *why*: neither model decays — both slopes are positive — so the
 stability metric's 88× falling-slope penalty never engages and the gap is level,
 not trend. The champion wins only on week-to-week smoothness.
@@ -119,8 +119,8 @@ conformal at α = 0.10, calibrated on val_b:
 
 | | coverage | target |
 |---|---|---|
-| non-default | 0.961 | 0.90 ✓ |
-| **default** | **0.741** | 0.90 ✗ — below target in **23 of 23 weeks** |
+| non-default | 0.960 | 0.90 ✓ |
+| **default** | **0.744** | 0.90 ✗ — below target in **23 of 23 weeks** |
 
 Conformal guarantees coverage *under exchangeability*; these weeks are not
 exchangeable with val_b. It is still worth having — a **marginal** threshold
@@ -154,7 +154,7 @@ more than inferring the labels.
 **EMP assumptions are assumptions**, and at the literature's values the profit
 analysis is degenerate (§4). Every profit number is reported across a grid.
 
-**Drift is real and unaddressed.** Score PSI is 0.42–0.54 train-to-test, above
+**Drift is real and unaddressed.** Score PSI is 0.42–0.49 train-to-test, above
 any conventional alert threshold, and it is the direct cause of the conformal
 coverage failure.
 
@@ -172,9 +172,9 @@ threshold artefact, and it runs against the lower-risk group. **Audit only, no
 mitigation**, as scoped.
 
 **By age the disparity is larger.** Applicants in their 60s are approved at
-21.8 % and those 70+ at 8.6 %, against 61–68 % for everyone younger, while being
+25.9 % and those 70+ at 12.3 %, against 61–68 % for everyone younger, while being
 the safest groups in the book (1.2–1.3 % default against 4.5 % for the 20s). The
-model predicts them as the riskiest — mean PD 3.8–3.9 % against a realised
+model predicts them as the riskiest — mean PD 3.7–3.8 % against a realised
 1.2 % — so a roughly threefold over-prediction becomes an approval gap at the
 cutoff. Age is excluded from recourse, so those applicants are told why and
 offered nothing to do about it.
@@ -189,8 +189,16 @@ default against 1.86 %), while for working-age applicants it is mildly
 predictive (4.31 % against 3.47 %). The model learned the second relationship
 and applied it to a population where it is meaningless. The remedy is in the
 feature build — a pension and benefit income source, or restricting the proxy to
-the population it describes — not a constraint at the threshold. Not implemented;
-this is an audit.
+the population it describes — not a constraint at the threshold. One cause WAS a bug and was fixed as one: afford_taxincome_total recorded a case
+absent from every tax registry as earning nothing rather than unknown, putting
+34 % of the book in the lowest income bin beside genuinely low earners. Fixing
+it lifted the champion (Gini 0.376 to 0.396, stability 0.340 to 0.360) while
+leaving the challenger unmoved, and raised approval for the 70+ group from 8.6 %
+to 12.3 %. The disparity survives: the Missing bin still pools retirees with
+working-age applicants who have no employment record, for whom that absence
+genuinely is risky. The remaining fix needs a pension and benefit income source,
+which this dataset does not contain. Attributed and partly reduced, not
+removed.
 
 ## 7. Monitoring plan
 
@@ -199,10 +207,10 @@ not from convention.
 
 | signal | observed | investigate | escalate |
 |---|---|---|---|
-| **weekly Gini** (challenger) | mean 0.422, sd 0.061, min 0.310 | any week < 0.30 (mean − 2 sd) | 2 consecutive weeks < 0.30, or 4-week mean < 0.35 |
+| **weekly Gini** (challenger) | mean 0.421, sd 0.059, min ~0.31 | any week < 0.30 (mean − 2 sd) | 2 consecutive weeks < 0.30, or 4-week mean < 0.35 |
 | **Gini trend** | slope +0.0017 /wk | 8-week slope < 0 | 8-week slope < −0.003 (the metric penalises this 88×) |
 | **calibration in the large** | worst week 0.008, range −0.003 to +0.009 | any week \|gap\| > 0.010 | 2 consecutive weeks \|gap\| > 0.015 |
-| **score PSI vs train** | median 0.427, range 0.302–0.712 | weekly PSI > 0.60 | weekly PSI > 0.75, or 4-week median > 0.60 |
+| **score PSI vs train** | median 0.42, range 0.30–0.71 | weekly PSI > 0.60 | weekly PSI > 0.75, or 4-week median > 0.60 |
 | **conformal coverage, default class** | 0.741, target 0.90 | any week < 0.70 | 4-week mean < 0.65 |
 | **referral rate** | 45.3 % | outside 35–55 % | outside 30–60 % |
 | **approved bad rate** | 1.1 % | > 1.5 % over 4 weeks | > 2.0 % over 4 weeks |
@@ -220,7 +228,7 @@ the drift evidence shows.
 
 ## 8. Reproducing
 
-`uv sync && uv run pytest` — 260 tests on synthetic fixtures; no competition data
+`uv sync && uv run pytest` — 265 tests on synthetic fixtures; no competition data
 is committed and none is needed. Full-data results come from re-running the
 kernels in `kaggle/` from committed code: `make-sample`, `env-probe`, `features`,
 `models`, `sampling-bias`, `decision`.

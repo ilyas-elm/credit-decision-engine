@@ -27,23 +27,24 @@ Full data, 1,526,659 cases, evaluated out-of-time on the last 23 weeks
 
 | | scorecard | LightGBM | better |
 |---|---|---|---|
-| Gini | 0.3763 | **0.4270** | challenger |
-| mean weekly Gini | 0.3667 | **0.4216** | challenger |
-| Gini slope / week | +0.0030 | +0.0017 | — (both rising) |
-| Gini residual sd | **0.0541** | 0.0600 | champion |
-| **stability metric** | 0.3396 | **0.3916** | challenger |
-| Brier | 0.02136 | **0.02117** | challenger |
-| calibration-in-the-large, worst week | 0.0089 | **0.0083** | challenger |
-| score PSI vs train | 0.5435 | **0.4234** | challenger |
+| Gini | 0.3956 | **0.4264** | challenger |
+| mean weekly Gini | 0.3864 | **0.4205** | challenger |
+| Gini slope / week | +0.0026 | +0.0019 | — (both rising) |
+| Gini residual sd | **0.0521** | 0.0592 | champion |
+| **stability metric** | 0.3604 | **0.3909** | challenger |
+| Brier | 0.02131 | **0.02117** | challenger |
+| calibration-in-the-large, worst week | 0.0095 | **0.0084** | challenger |
+| score PSI vs train | 0.4929 | **0.4202** | challenger |
 | EMPCS | ≈0 | ≈0 | — (see below) |
 
-**Question 1 — what the challenger adds.** About **5 Gini points** (0.376 →
-0.427), and it keeps them once stability is measured: the stability metric
-moves 0.340 → 0.392. Neither model's Gini decays over the test weeks — both
+**Question 1 — what the challenger adds.** About **3 Gini points** (0.396 →
+0.426), and it keeps them once stability is measured: the stability metric moves
+0.360 → 0.391. The margin narrowed from 5 points after an income-encoding fix
+that helped the scorecard and left the challenger unmoved (below). Neither model's Gini decays over the test weeks — both
 slopes are positive, so the metric's 88× falling-slope penalty never engages
 and the gap is driven by level, not trend. The challenger is also *slightly*
 better calibrated and noticeably more stable in its score distribution
-(PSI 0.42 vs 0.54). The one thing the champion wins is week-to-week smoothness
+(PSI 0.42 vs 0.49). The one thing the champion wins is week-to-week smoothness
 (residual sd 0.047 vs 0.051).
 
 It is a real but unspectacular gain, bought with hundreds of trees against a
@@ -62,7 +63,7 @@ degeneracy there is a result about the assumptions rather than something to
 tune away. Under this portfolio's economics, the model's value is not in
 choosing an approval cutoff.
 
-Score PSI above 0.25 for **both** models (0.54 and 0.42) is worth flagging: in
+Score PSI above 0.25 for **both** models (0.49 and 0.42) is worth flagging: in
 production that is an alert threshold, and it reflects genuine drift over 92 weeks rather than
 a modelling defect. Test-week PSI is reported here only — it is never used for
 any selection decision.
@@ -124,7 +125,7 @@ The bands separate risk monotonically, which is the minimum one should demand.
 A 45 % referral rate is far beyond any real review desk, and that is a direct
 consequence of α = 0.10 on a 3 % default book.
 
-**The review band stops paying for itself at 0.019 per review**
+**The review band stops paying for itself at about 0.02 per review**
 ([figure](docs/figures/referral_economics.png)):
 against 1,982 units of loss avoided (assuming a *perfect* reviewer — an upper
 bound, not an estimate), 102,054 reviews cost 1,021 at 0.01 and 2,041 at 0.02.
@@ -152,10 +153,10 @@ out recent credit searches.
 
 ### Fairness audit (audit only, no mitigation)
 
-| sex | n | approval rate | observed default | mean PD | calibration gap |
-|---|---|---|---|---|---|
-| F | 145,315 | 0.476 | 0.0176 | 0.0273 | **+0.0097** |
-| M | 80,199 | 0.561 | 0.0299 | 0.0238 | **−0.0061** |
+| sex | n | approval rate | observed default | mean PD |
+|---|---|---|---|---|
+| F | 145,315 | 0.489 | 0.0176 | 0.0278 |
+| M | 80,199 | 0.566 | 0.0299 | 0.0247 |
 
 Women are approved **less often** (47.6 % vs 56.1 %) while defaulting **less
 often** (1.8 % vs 3.0 %), and the model **over-predicts** their risk while
@@ -165,14 +166,14 @@ Reported, not mitigated, as the brief requires.
 
 | age band | n | approval rate | observed default | mean PD |
 |---|---|---|---|---|
-| 20s | 27,384 | 0.613 | 0.0449 | 0.0228 |
-| 30s | 48,676 | 0.644 | 0.0273 | 0.0214 |
-| 40s | 45,188 | 0.678 | 0.0216 | 0.0187 |
-| 50s | 35,221 | 0.633 | 0.0158 | 0.0207 |
-| **60s** | 54,407 | **0.218** | **0.0123** | **0.0380** |
-| **70+** | 14,638 | **0.086** | **0.0131** | **0.0389** |
+| 20s | 27,384 | 0.607 | 0.0449 | 0.0246 |
+| 30s | 48,676 | 0.639 | 0.0273 | 0.0230 |
+| 40s | 45,188 | 0.675 | 0.0216 | 0.0200 |
+| 50s | 35,221 | 0.635 | 0.0158 | 0.0217 |
+| **60s** | 54,407 | **0.259** | **0.0123** | **0.0369** |
+| **70+** | 14,638 | **0.123** | **0.0131** | **0.0378** |
 
-Applicants in their 60s are approved at **21.8 %** and those 70+ at **8.6 %**,
+Applicants in their 60s are approved at **25.9 %** and those 70+ at **12.3 %**,
 against 61–68 % for everyone younger — while being the **safest** groups in the
 book, defaulting at 1.2–1.3 % against 4.5 % for applicants in their 20s. The
 model predicts them as the **riskiest**: a mean PD of 3.8–3.9 % for a group that
