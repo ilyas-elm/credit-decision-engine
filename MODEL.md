@@ -1,9 +1,13 @@
 # MODEL.md — credit decision engine on Home Credit data
 
-Every number here was measured on the full data by a committed Kaggle kernel.
-Nothing is illustrative. Where a result is unflattering or unresolved it is
-stated as such, because a model document that only records successes is not
-usable for review.
+Every number here was measured on the full 1.5M-case dataset, not sampled or
+illustrated. Most come from a committed Kaggle kernel; the collinearity and
+sign-flip figures in *Limitations* were computed locally from those kernels'
+outputs, which is noted where they appear. The test count in *Reproducing* is
+the only figure from synthetic fixtures, and says so.
+
+Where a result is unflattering or unresolved it is stated as such, because a
+model document that only records successes is not usable for review.
 
 ---
 
@@ -151,9 +155,15 @@ which recovers 97 % at a 30 % reject rate and is not beaten by any of the more
 elaborate methods. A random-exploration budget was actively harmful everywhere,
 and on variance rather than price: priced as profit at a fixed binding
 acceptance against the realised loss on loans bought to learn from, net is
-negative at every budget and the damage runs 2–53× the cost. This agrees with
-Kozodoi et al. (2024): fixing the evaluation matters more than inferring the
-labels.
+negative at every budget and the damage runs 2–53× the cost. Kozodoi et al. (2024, arXiv:2407.13009; EJOR 324(2), 2025)
+conclude that reject inference has "modest potential to improve scorecard
+performance" while addressing bias during evaluation is "a much more promising
+route". The evaluation finding here agrees. The recovery finding only partly
+does: at 30-50 % reject rates the best arm recovers 0.88-0.97 of the gap, which
+is more than modest, and the likeliest reason is that this experiment simulates
+a second selection on an already-booked population rather than working with true
+rejects against a randomised holdout. The recoveries here should be read as an
+upper bound.
 
 **EMP assumptions are assumptions**, and at the literature's values the profit
 analysis is degenerate (§4). Every profit number is reported across a grid.
@@ -168,8 +178,8 @@ negative — the table read "the more you previously borrowed, the safer you are
 The cause was joint collinearity in the previous-applications family rather than
 any one column: pairwise pruning at 0.80 still left a cluster correlated
 0.60–0.78 (condition number 15.1), so excluding one flip merely moved it to the
-next. They are now barred in config, at a **measured cost of 0.0012 Gini and
-0.0010 stability** — about 0.3 % relative, 16 characteristics down to 13. The
+next. They are now barred in config, at a cost measured locally on the
+full-data features (not by a kernel) of **0.0012 Gini and 0.0010 stability** — about 0.3 % relative, 16 characteristics down to 13. The
 scorecard now reads correctly end to end, which is the champion's whole purpose.
 `FittedScorecard.sign_flips()` guards against regression.
 
@@ -236,7 +246,7 @@ the drift evidence shows.
 
 ## 8. Reproducing
 
-`uv sync && uv run pytest` — 267 tests on synthetic fixtures; no competition data
+`uv sync && uv run pytest` — 277 tests on synthetic fixtures; no competition data
 is committed and none is needed. Full-data results come from re-running the
 kernels in `kaggle/` from committed code: `make-sample`, `env-probe`, `features`,
 `models`, `sampling-bias`, `decision`.

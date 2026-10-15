@@ -303,11 +303,30 @@ Four things come out of this:
    so recovery is undefined and reported as such. Binned logistic regression is
    markedly more robust to this selection than the GBM.
 
-**Against Kozodoi et al. (2024):** this agrees. Reject inference gave modest and
-inconsistent gains, and fixing the *evaluation* mattered more — the evaluation bias is
-present and consistent at every reject rate (5–16 Gini points), while the
-inference arms only earn their keep once selection is severe — and when they do,
-it is the crudest of them that wins.
+**Against the literature.** Kozodoi, Lessmann, Alamgir, Moreira-Matias and
+Papakonstantinou, *Fighting Sampling Bias: A Framework for Training and
+Evaluating Credit Scoring Models* ([arXiv:2407.13009](https://arxiv.org/abs/2407.13009),
+2024; *European Journal of Operational Research* 324(2), 2025) conclude that
+"reject inference is a difficult problem with modest potential to improve
+scorecard performance", and that addressing sampling bias during **evaluation**
+is "a much more promising route to improve scoring practices".
+
+Partly agreed, and worth being precise about where not:
+
+- **Agreed on evaluation.** The bias here is large (0.05–0.16 Gini), present at
+  every reject rate, and in the same direction throughout. It is the more
+  consistent effect by a distance.
+- **Agreed that nothing helps when selection is mild.** At a 10 % reject rate
+  the gap is 0.011 Gini and no arm meaningfully closes it.
+- **Not agreed on "modest".** At 30–50 % reject rates the best arm recovers
+  0.88–0.97 of the gap, which is not a modest gain. That is a real difference,
+  and the likeliest reason is that **these are not the same experiment**: they
+  work with true rejects and a randomised-controlled holdout, while this
+  simulates a second policy on an already-booked population, where the hidden
+  labels remain drawn from applicants the original lender had already approved.
+  A synthetic selection on a pre-selected book is an easier problem than the
+  real one, and recoveries here should be read as an upper bound rather than as
+  a contradiction of their result.
 
 ## How to reproduce
 
@@ -427,6 +446,23 @@ assumed.
 [MODEL.md](MODEL.md) — purpose, data, design choices, out-of-time performance,
 calibration and stability, limitations, and a monitoring plan with thresholds
 set from the variation actually observed rather than from convention.
+
+## References
+
+- Kozodoi, N., Lessmann, S., Alamgir, M., Moreira-Matias, L., & Papakonstantinou, K.
+  (2024). *Fighting Sampling Bias: A Framework for Training and Evaluating Credit
+  Scoring Models.* [arXiv:2407.13009](https://arxiv.org/abs/2407.13009);
+  *European Journal of Operational Research* 324(2), 616–628 (2025).
+  Source of the reject-inference comparison, and of the BASL method that arm A5
+  is loosely inspired by — **A5 is not a reimplementation of BASL** and should
+  not be read as one.
+- Verbraken, T., Bravo, C., Weber, R., & Baesens, B. (2014). *Development and
+  application of consumer credit scoring models using profit-based
+  classification measures.* *European Journal of Operational Research* 238(2),
+  505–513. [doi:10.1016/j.ejor.2014.04.001](https://doi.org/10.1016/j.ejor.2014.04.001).
+  Defines the EMP measure for credit scoring that `empulse.metrics.empcs_score`
+  implements, including the two-point-mass loss distribution and constant ROI
+  that `[profit]` in config parameterises.
 
 ## Stack
 
