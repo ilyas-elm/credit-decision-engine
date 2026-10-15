@@ -43,7 +43,9 @@ The champion is a **13-characteristic** scorecard with **no sign flips**: every
 characteristic scores fewer points as its risk rises, so the table reads
 correctly end to end.
 
-**Question 1 — what the challenger adds.** About **3 Gini points** (0.394 →
+## Question 1 — what the challenger adds
+
+About **3 Gini points** (0.394 →
 0.426), and it keeps them once stability is measured: the stability metric moves
 0.359 → 0.391. The margin narrowed from 5 points after an income-encoding fix
 that helped the scorecard and left the challenger unmoved (below). Neither model's Gini decays over the test weeks — both
@@ -74,17 +76,11 @@ production that is an alert threshold, and it reflects genuine drift over 92 wee
 a modelling defect. Test-week PSI is reported here only — it is never used for
 any selection decision.
 
-## Figures
+![Weekly Gini, champion vs challenger](docs/figures/weekly_gini.png)
 
-![Weekly Gini](docs/figures/weekly_gini.png)
-
-[Calibration by bucket](docs/figures/calibration.png) ·
-[Strategy curve](docs/figures/strategy_curve.png)
-
-![Evaluation bias](docs/figures/evaluation_bias.png)
-
-[Sampling-bias recovery](docs/figures/sampling_bias_recovery.png) ·
-[Referral economics](docs/figures/referral_economics.png)
+Both curves rise over the test weeks, which is why the stability metric's 88×
+falling-slope penalty never engages for either model. Also:
+[calibration by bucket](docs/figures/calibration.png).
 
 ## Question 2 — the cutoff and the review band
 
@@ -135,6 +131,11 @@ consequence of α = 0.10 on a 3 % default book.
 ([figure](docs/figures/referral_economics.png)):
 against 1,982 units of loss avoided (assuming a *perfect* reviewer — an upper
 bound, not an estimate), 102,054 reviews cost 1,021 at 0.01 and 2,041 at 0.02.
+
+![Referral economics](docs/figures/referral_economics.png)
+
+Also: [the strategy curve](docs/figures/strategy_curve.png), approval rate
+against bad rate and profit.
 
 ### Reasons and recourse
 
@@ -344,6 +345,10 @@ The evaluation finding, by contrast, agrees without qualification: bias of
 0.05–0.16 Gini, present at every reject rate, in the same direction throughout —
 larger and far more consistent than anything the inference arms deliver.
 
+![Evaluation bias](docs/figures/evaluation_bias.png)
+
+![Reject-inference recovery](docs/figures/sampling_bias_recovery.png)
+
 ## How to reproduce
 
 ```bash
@@ -393,7 +398,7 @@ about those runs if the stack matches. The versions were measured by
 `kaggle/env-probe/`, not assumed — see
 [docs/DATA_NOTES.md](docs/DATA_NOTES.md#kaggle-environment-as-measured).
 
-## Notes on four things worth knowing
+## Things worth knowing, found the hard way
 
 **EMPCS label encoding.** The underlying formula (Verbraken et al., 2014) is
 written with the default class as 0, but the pinned `empulse` (0.13.0) performs
