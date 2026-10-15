@@ -1,5 +1,7 @@
 # Credit decision engine on Home Credit data
 
+[![CI](https://github.com/ilyas-elm/credit-decision-engine/actions/workflows/ci.yml/badge.svg)](https://github.com/ilyas-elm/credit-decision-engine/actions/workflows/ci.yml)
+
 A credit decision system — not just a classifier — built on the Kaggle
 *Home Credit: Credit Risk Model Stability* data, and evaluated the way a credit
 risk team evaluates models: out-of-time, on calibration, stability and profit.
