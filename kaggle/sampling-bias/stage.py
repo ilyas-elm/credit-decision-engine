@@ -110,7 +110,8 @@ def main() -> None:
     assumptions = ProfitAssumptions.from_config(cfg["profit"])
     print(f"[sb] params: {params}", flush=True)
 
-    features = pl.read_parquet(find_features())
+    features_path = find_features()
+    features = pl.read_parquet(features_path)
     feature_cols = [c for c in features.columns if c not in ("case_id", "WEEK_NUM", "target")]
     blocks = window_weeks(features["WEEK_NUM"].unique().to_list(), cfg.sampling_bias_windows)
     win = features["WEEK_NUM"].replace_strict(
@@ -427,6 +428,15 @@ def main() -> None:
         "total_seconds": round(time.time() - started, 1),
     }
     (OUTPUT / "sampling_bias_summary.json").write_text(json.dumps(summary, indent=2, default=str))
+
+    from provenance import write_provenance
+
+    write_provenance(
+        OUTPUT, "sampling-bias",
+        inputs={"features": features_path},
+        outputs={"arms": OUTPUT / "arms.csv"},
+        extra={"n_fits": len(arms)},
+    )
     print(f"\n[sb] {len(arms)} fits in {summary['total_seconds'] / 60:.1f} min", flush=True)
 
 

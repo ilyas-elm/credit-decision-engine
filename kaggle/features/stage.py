@@ -139,6 +139,15 @@ def main() -> None:
         "python": ".".join(str(v) for v in sys.version_info[:3]),
     }
     (OUTPUT / "screening_summary.json").write_text(json.dumps(summary, indent=2))
+
+    from provenance import write_provenance
+
+    write_provenance(
+        OUTPUT, "features",
+        outputs={"features": OUTPUT / "features.parquet",
+                 "feature_report": OUTPUT / "feature_report.csv"},
+        extra={"n_rows": int(features.height), "n_features_kept": len(kept)},
+    )
     print(f"\n[features] features.parquet {size_mb:.1f} MB", flush=True)
     print(f"[features] total {summary['total_seconds'] / 60:.1f} min", flush=True)
 

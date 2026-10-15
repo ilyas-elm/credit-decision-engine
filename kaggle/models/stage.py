@@ -100,14 +100,16 @@ def main() -> None:
     from splits import SPLIT_ORDER, split_weeks
 
     cfg = load_config()
-    features = pl.read_parquet(find_features())
+    features_path = find_features()
+    features = pl.read_parquet(features_path)
     print(f"[models] {features.height:,} rows x {features.width} cols", flush=True)
 
     # Honour the screening decisions. features.parquet carries every feature
     # that was built, not just the survivors, so without this the scorecard's
     # own IV rule happily re-selects something the PSI screen dropped.
     built = [c for c in features.columns if c not in ("case_id", "WEEK_NUM", "target")]
-    feature_cols = [c for c in kept_features(find_feature_report()) if c in built]
+    report_path = find_feature_report()
+    feature_cols = [c for c in kept_features(report_path) if c in built]
     print(f"[models] screening kept {len(feature_cols)} of {len(built)} built; "
           f"excluded {sorted(set(built) - set(feature_cols))}", flush=True)
     blocks = split_weeks(features["WEEK_NUM"].unique().to_list(), cfg.splits)
@@ -250,6 +252,15 @@ def main() -> None:
         "total_seconds": round(time.time() - started, 1),
     }
     (OUTPUT / "models_summary.json").write_text(json.dumps(summary, indent=2, default=str))
+
+    from provenance import write_provenance
+
+    write_provenance(
+        OUTPUT, "models",
+        inputs={"features": features_path, "feature_report": report_path},
+        outputs={"predictions": OUTPUT / "predictions.parquet"},
+        extra={"features_in_scorecard": kept},
+    )
     print(f"\n[models] total {summary['total_seconds'] / 60:.1f} min", flush=True)
 
 

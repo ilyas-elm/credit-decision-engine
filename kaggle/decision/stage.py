@@ -87,8 +87,10 @@ def main() -> None:
     dec_cfg = cfg["decision"]
     alpha = dec_cfg["conformal_alpha"]
 
-    features = pl.read_parquet(_find("features.parquet"))
-    preds = pl.read_parquet(_find("predictions.parquet"))
+    features_path = _find("features.parquet")
+    predictions_path = _find("predictions.parquet")
+    features = pl.read_parquet(features_path)
+    preds = pl.read_parquet(predictions_path)
     # Honour the screening decisions, exactly as the models stage does. Without
     # this the refit champion re-selects features the PSI screen dropped, and
     # then explains decisions with a different model than the one that made
@@ -463,6 +465,14 @@ def main() -> None:
         "total_seconds": round(time.time() - started, 1),
     }
     (OUTPUT / "decision_summary.json").write_text(json.dumps(summary, indent=2, default=str))
+
+    from provenance import write_provenance
+
+    write_provenance(
+        OUTPUT, "decision",
+        inputs={"features": features_path, "predictions": predictions_path},
+        outputs={"decision_summary": OUTPUT / "decision_summary.json"},
+    )
     print(f"\n[dec] total {summary['total_seconds'] / 60:.1f} min", flush=True)
 
 
