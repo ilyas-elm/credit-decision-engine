@@ -3,6 +3,8 @@ name = "credit-decision-engine"
 version = "0.1.0"
 description = "Credit decision system on Home Credit data: scorecard champion, GBM challenger, conformal referral band, reject-inference experiment."
 readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 # Pinned to the Kaggle image's Python, MEASURED on a live kernel rather than
 # assumed: the image reports 3.13.15 (see docs/DATA_NOTES.md). An earlier guess
 # of 3.11 would have produced a lock file that could not install there.
