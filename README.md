@@ -7,9 +7,10 @@ Credit: Credit Risk Model Stability* data, and evaluated the way a credit risk
 team evaluates models: out-of-time, on calibration, stability and profit.
 
 > **Status:** all three questions have full-data numbers below, and
-> [MODEL.md](MODEL.md) documents the model for review. CI has not been run
-> against a remote; the closest local equivalent (fresh clone, `uv sync
-> --frozen`, lint, 260 tests) passes.
+> [MODEL.md](MODEL.md) documents the model for review. Every pipeline stage
+> has been run on the full competition data on Kaggle. The badge above is CI
+> on a fresh clone: `uv sync --frozen`, lint, and 277 tests on synthetic
+> fixtures.
 
 ## The three questions
 
@@ -390,8 +391,8 @@ code; the kernel versions used will be linked here.
 | Feature screening + report | [`docs/feature_report.csv`](docs/feature_report.csv) | **done, full data** |
 | Sampling-bias experiment (arms A0-A6) | `src/sampling_bias.py` | **done, run on full data** |
 
-260 tests, all on generated fixtures. Two kernels have been run end to end on the real
-competition data.
+277 tests, all on generated fixtures. All six kernels have been run end to
+end on the real competition data.
 
 ## Environment
 
