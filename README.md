@@ -306,27 +306,43 @@ Four things come out of this:
 **Against the literature.** Kozodoi, Lessmann, Alamgir, Moreira-Matias and
 Papakonstantinou, *Fighting Sampling Bias: A Framework for Training and
 Evaluating Credit Scoring Models* ([arXiv:2407.13009](https://arxiv.org/abs/2407.13009),
-2024; *European Journal of Operational Research* 324(2), 2025) conclude that
-"reject inference is a difficult problem with modest potential to improve
+2024; *European Journal of Operational Research* 324(2), 2025). They conclude
+that "reject inference is a difficult problem with modest potential to improve
 scorecard performance", and that addressing sampling bias during **evaluation**
 is "a much more promising route to improve scoring practices".
 
-Partly agreed, and worth being precise about where not:
+Their §7.1.2 gives a sharper, testable claim: BASL improves scorecards **at
+acceptance rates below 20 %**, with gains rising as acceptance falls (§8), and
+largest at a bad rate of **2–5 % among accepts**. The right arm to test that
+against is **A5**, which is loosely BASL-inspired — not A2, which is one of
+*their* benchmarks.
 
-- **Agreed on evaluation.** The bias here is large (0.05–0.16 Gini), present at
-  every reject rate, and in the same direction throughout. It is the more
-  consistent effect by a distance.
-- **Agreed that nothing helps when selection is mild.** At a 10 % reject rate
-  the gap is 0.011 Gini and no arm meaningfully closes it.
-- **Not agreed on "modest".** At 30–50 % reject rates the best arm recovers
-  0.88–0.97 of the gap, which is not a modest gain. That is a real difference,
-  and the likeliest reason is that **these are not the same experiment**: they
-  work with true rejects and a randomised-controlled holdout, while this
-  simulates a second policy on an already-booked population, where the hidden
-  labels remain drawn from applicants the original lender had already approved.
-  A synthetic selection on a pre-selected book is an easier problem than the
-  real one, and recoveries here should be read as an upper bound rather than as
-  a contradiction of their result.
+**The direction reproduces cleanly.** A5's recovery is strictly monotone in
+acceptance rate:
+
+| acceptance | 90 % | 80 % | 70 % | 50 % |
+|---|---|---|---|---|
+| A5 recovery | −1.08 | −0.23 | **+0.60** | **+0.89** |
+
+That is their relationship, found independently on different data: the less a
+policy accepts, the more reject inference is worth.
+
+**The threshold does not.** They report BASL needing acceptance below 20 %;
+A5 turns positive here between 80 % and 70 %, and this experiment never goes
+below 50 % acceptance at all. Two things plausibly explain the gap, and they
+pull in opposite directions:
+
+- This book defaults at **3.14 %**, inside the 2–5 % band they identify as
+  producing the largest gains — so the imbalance condition here is *favourable*.
+- But the selection is simulated on an **already-booked** population. The hidden
+  labels still belong to applicants the original lender approved, so the
+  "rejects" are far less extreme than true rejects would be. That makes this the
+  easier problem, and the recoveries here an **upper bound** rather than a
+  contradiction of their result.
+
+The evaluation finding, by contrast, agrees without qualification: bias of
+0.05–0.16 Gini, present at every reject rate, in the same direction throughout —
+larger and far more consistent than anything the inference arms deliver.
 
 ## How to reproduce
 
@@ -453,9 +469,10 @@ set from the variation actually observed rather than from convention.
   (2024). *Fighting Sampling Bias: A Framework for Training and Evaluating Credit
   Scoring Models.* [arXiv:2407.13009](https://arxiv.org/abs/2407.13009);
   *European Journal of Operational Research* 324(2), 616–628 (2025).
-  Source of the reject-inference comparison, and of the BASL method that arm A5
-  is loosely inspired by — **A5 is not a reimplementation of BASL** and should
-  not be read as one.
+  Source of the reject-inference comparison. §7.1.2 supplies the acceptance-rate
+  boundary condition tested above; §8 the direction of the effect. Arm A5 is
+  loosely inspired by their BASL method — **A5 is not a reimplementation of
+  BASL** and should not be read as one.
 - Verbraken, T., Bravo, C., Weber, R., & Baesens, B. (2014). *Development and
   application of consumer credit scoring models using profit-based
   classification measures.* *European Journal of Operational Research* 238(2),

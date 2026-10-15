@@ -158,12 +158,18 @@ acceptance against the realised loss on loans bought to learn from, net is
 negative at every budget and the damage runs 2–53× the cost. Kozodoi et al. (2024, arXiv:2407.13009; EJOR 324(2), 2025)
 conclude that reject inference has "modest potential to improve scorecard
 performance" while addressing bias during evaluation is "a much more promising
-route". The evaluation finding here agrees. The recovery finding only partly
-does: at 30-50 % reject rates the best arm recovers 0.88-0.97 of the gap, which
-is more than modest, and the likeliest reason is that this experiment simulates
-a second selection on an already-booked population rather than working with true
-rejects against a randomised holdout. The recoveries here should be read as an
-upper bound.
+route". Their §7.1.2 gives a testable boundary condition: BASL improves
+scorecards at acceptance rates below 20 %, with gains rising as acceptance
+falls, and largest at a 2-5 % bad rate among accepts.
+
+Tested against A5, the BASL-inspired arm here, the DIRECTION reproduces exactly
+-- recovery is strictly monotone in acceptance rate (-1.08, -0.23, +0.60, +0.89
+at 90 %, 80 %, 70 % and 50 % acceptance). The THRESHOLD does not: A5 turns
+positive between 80 % and 70 %, far above their 20 %. This book's 3.14 % default
+rate sits inside their favourable 2-5 % band, but the decisive difference is
+that the selection here is simulated on an already-booked population, so the
+hidden labels belong to applicants the original lender had already approved.
+That is the easier problem, and the recoveries here are an upper bound.
 
 **EMP assumptions are assumptions**, and at the literature's values the profit
 analysis is degenerate (§4). Every profit number is reported across a grid.
