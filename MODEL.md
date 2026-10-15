@@ -141,15 +141,19 @@ real rejects are absent and nothing here recovers them. The sampling-bias
 experiment simulates a *second* selection on an already-selected population, so
 its recoveries are bounded by that.
 
-**Sampling bias is large and reject inference barely helps.** A lender measuring
-on its own approved book **understates its Gini by 0.07–0.15**. Reject inference
-only helps under severe selection — at a 20 % reject rate nothing beats simply
-discarding the rejects; at 50 % the best arm recovers 62 % of a 0.09 gap. A
-random-exploration budget was actively harmful (−2.3 to −4.4), and the reason is
-variance, not cost: 450 explored loans cost 8.5 units of realised loss, but the
-100/p inverse-propensity weight gives a few hundred cases the same total weight
-as 45,000. This agrees with Kozodoi et al. (2024): fixing the evaluation matters
-more than inferring the labels.
+**Sampling bias is large; reject inference helps only under severe selection.**
+A lender measuring on its own approved book **understates its Gini by 0.05–0.16**,
+consistently at every reject rate. Reject inference is a different story: at a
+10 % reject rate almost nothing helps and the gap is only 0.011 Gini, while at
+50 % the gap is 0.135 and three arms recover most of it. The best performer is
+**A2, the crudest arm** — label every reject bad, no model and no weighting —
+which recovers 97 % at a 30 % reject rate and is not beaten by any of the more
+elaborate methods. A random-exploration budget was actively harmful everywhere,
+and on variance rather than price: priced as profit at a fixed binding
+acceptance against the realised loss on loans bought to learn from, net is
+negative at every budget and the damage runs 2–53× the cost. This agrees with
+Kozodoi et al. (2024): fixing the evaluation matters more than inferring the
+labels.
 
 **EMP assumptions are assumptions**, and at the literature's values the profit
 analysis is degenerate (§4). Every profit number is reported across a grid.

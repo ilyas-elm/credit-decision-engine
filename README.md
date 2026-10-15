@@ -258,60 +258,54 @@ over everyone:
 
 | reject rate | 10 % | 20 % | 30 % | 50 % |
 |---|---|---|---|---|
-| LightGBM | −0.068 | −0.075 | −0.075 | −0.069 |
-| scorecard | −0.100 | −0.129 | −0.141 | −0.150 |
+| LightGBM | −0.076 | −0.082 | −0.070 | −0.051 |
+| scorecard | −0.094 | −0.127 | −0.136 | −0.157 |
 
-A lender measuring on its own approved book **understates its Gini by 7 to 15
+A lender measuring on its own approved book **understates its Gini by 5 to 16
 points** — range restriction, not a modelling fault. The scorecard is hurt
 roughly twice as badly as the challenger, and its bias grows steadily with the
-reject rate while the challenger's is flat.
+reject rate while the challenger's does not.
 
 ### Which fix recovers the most?
 
-Share of the A0 − A1 gap recovered, LightGBM. Blank where the gap is below
-0.01 Gini and a ratio against it would be noise:
+Share of the A0 − A1 gap recovered, LightGBM, where that gap is at least 0.01
+Gini (it is, at every reject rate):
 
-| arm | r=20 % | r=30 % | r=50 % |
-|---|---|---|---|
-| A2 hard cutoff | −0.30 | 0.37 | 0.42 |
-| A3 fuzzy | 0.11 | 0.15 | 0.45 |
-| A4 parcelling | −0.01 | −0.04 | −0.41 |
-| A5 self-learning | −0.38 | 0.30 | **0.62** |
-| A6 exploration | −4.42 | −3.51 | −2.30 |
+| arm | r=10 % | r=20 % | r=30 % | r=50 % |
+|---|---|---|---|---|
+| A2 hard cutoff | 0.06 | 0.67 | **0.97** | **0.88** |
+| A3 fuzzy | 0.28 | 0.29 | 0.18 | 0.65 |
+| A4 parcelling | 1.05 | −0.20 | −0.18 | 0.16 |
+| A5 self-learning | −1.08 | −0.23 | 0.60 | 0.89 |
+| A6 exploration | −2.61 | −5.63 | −3.90 | −1.06 |
 
-Three things come out of this:
+Four things come out of this:
 
-1. **Reject inference only helps when the selection is severe.** At a 20 % reject
-   rate nothing beats simply discarding the rejects. By 50 % the best arm
-   recovers about 62 % of the lost signal — and the gap is only 0.09 Gini to
-   begin with.
-2. **The exploration budget is catastrophic, and the reason is variance, not
-   cost.** Measured as profit on the full test population at a binding 51.5 %
-   acceptance, against the realised loss on the loans bought to learn from:
-
-   | reject rate | p | cost | profit gain | damage ÷ cost |
-   |---|---|---|---|---|
-   | 30 % | 1 % | 8.5 | **−337** | **40×** |
-   | 30 % | 5 % | 44.6 | −278 | 6× |
-   | 50 % | 1 % | 12.0 | **−524** | **44×** |
-   | 50 % | 5 % | 55.7 | −288 | 5× |
-
-   The money is trivial and the damage is 4–44× larger than it. The
-   inverse-propensity weight of 100/p gives a few hundred cases the same total
-   weight as tens of thousands, and that swamps the training set — which is why
-   the ratio *improves* as the budget grows (weight 100 at p=1, 20 at p=5) and
-   why A6 has the widest seed-to-seed spread of any arm (sd 0.11 against 0.05
-   for parcelling). The weighting is statistically correct; its variance is
-   ruinous. **Net is negative at every budget and every reject rate.**
-3. **The scorecard has almost no gap to recover at all.** At 10 % and 20 %
-   reject rates its accepts-only model is *better* than its oracle (0.438 vs
-   0.419), so the recovery ratio is undefined and is reported as such. Binned
-   logistic regression is markedly more robust to this selection than the GBM.
+1. **The crudest method wins.** A2 simply labels every reject bad — no model, no
+   weighting, no uncertainty — and it recovers 97 % of the lost signal at a 30 %
+   reject rate. The more elaborate arms do not beat it. When a policy rejects
+   the worst 30 % by score, "these were bad" turns out to be close enough to
+   true to be worth asserting.
+2. **Severity matters more than method.** At a 10 % reject rate almost nothing
+   helps and the gap is only 0.011 Gini to begin with. By 50 % the gap is 0.135
+   and three arms recover most of it.
+3. **The exploration budget fails everywhere, on variance rather than price.**
+   Priced as profit at a fixed binding acceptance against realised loss on the
+   loans bought to learn from, net is negative at every budget and reject rate,
+   with the damage running **2–53× the cost** (at r=30 %, p=1 %: cost 7.2,
+   profit −382). The 100/p inverse-propensity weight gives a few hundred cases
+   the same total weight as tens of thousands. The ratio improves as the budget
+   grows, which is the variance signature.
+4. **The scorecard mostly has no gap to recover.** At 10 % and 20 % reject rates
+   its accepts-only model is *better* than its own oracle (0.438 against 0.411),
+   so recovery is undefined and reported as such. Binned logistic regression is
+   markedly more robust to this selection than the GBM.
 
 **Against Kozodoi et al. (2024):** this agrees. Reject inference gave modest and
-inconsistent gains, and fixing the *evaluation* mattered more — here the
-evaluation bias (7–15 Gini points, present at every reject rate) is larger and
-far more consistent than anything any inference arm recovered.
+inconsistent gains, and fixing the *evaluation* mattered more — the evaluation bias is
+present and consistent at every reject rate (5–16 Gini points), while the
+inference arms only earn their keep once selection is severe — and when they do,
+it is the crudest of them that wins.
 
 ## How to reproduce
 
