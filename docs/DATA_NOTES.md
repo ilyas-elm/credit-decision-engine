@@ -14,8 +14,8 @@ Run: `ilyaselmaazouzi/hc-make-sample`, 2026-10-14.
 | rows | **1,526,659** |
 | distinct `case_id` | 1,526,659 (one row per case) |
 | columns | `case_id`, `date_decision`, `MONTH`, `WEEK_NUM`, `target` |
-| `WEEK_NUM` range | **0 – 91** (92 weeks) |
-| `date_decision` range | 2019-01-01 – 2020-10-05 |
+| `WEEK_NUM` range | **0-91** (92 weeks) |
+| `date_decision` range | 2019-01-01-2020-10-05 |
 | overall default rate | **3.144 %** |
 
 This matches the brief's expectation of ~1.5M rows and ~3% defaults.
@@ -37,7 +37,7 @@ digit is ambiguous with the depth suffix and has to be disambiguated.
 | `tax_registry_a_1` | 1 | 3,275,770 | 98,375 | 5 | 1 |
 | `person_1` | 1 | 2,973,991 | 87,775 | 37 | 1 |
 | `person_2` | 2 | 1,643,410 | 49,313 | 11 | 1 |
-| `base` | — | 1,526,659 | 45,896 | 5 | 1 |
+| `base` | | 1,526,659 | 45,896 | 5 | 1 |
 | `static_0` | 0 | 1,526,659 | 45,896 | **168** | 2 |
 | `static_cb_0` | 0 | 1,500,476 | 45,081 | 53 | 1 |
 | `credit_bureau_b_2` | 2 | 1,286,755 | 39,344 | 6 | 1 |
@@ -78,11 +78,11 @@ the table above are the real ones.
 
 ## Two things that change how the pipeline must be written
 
-**1. Dates are stored as strings.** `date_decision` is `String`, and so is every
-`D` column (`birthdate_574D`, `recorddate_4527225D`, …). They are ISO-formatted,
-so lexicographic comparison happens to order them correctly, but the feature
-build must parse them before computing "days relative to `date_decision`".
-Nothing can rely on them already being a date type.
+**1. Dates are stored as strings.** `date_decision` is `String`, and so is
+every `D` column (`birthdate_574D`, `recorddate_4527225D`, …). They are
+ISO-formatted, so lexicographic comparison happens to order them correctly, but
+the feature build must parse them before computing "days relative to
+`date_decision`". Nothing can rely on them already being a date type.
 
 **2. There is no income amount column.** The only direct match is
 `incometype_1044T` in `person_1`, which is a *category*, not an amount. Income
@@ -95,7 +95,7 @@ derived from the tax registry tables, which hold payment amounts per case:
 
 `tax_registry_c_1` carries an employer name alongside the payment, so it is the
 closest thing to a salary feed. These are depth-1 tables, so income is an
-*aggregate over records*, not a field — the affordability features in the brief
+*aggregate over records*, not a field, the affordability features in the brief
 are still buildable but are a derived quantity with its own assumptions, and
 should be labelled as such rather than presented as declared income.
 
@@ -112,20 +112,20 @@ Built by the same kernel: ~3 % of `case_id`s, stratified by (`WEEK_NUM`,
 | sample default rate | 3.242 % (vs 3.144 % full) |
 | seed | `20251013` (config) |
 
-Comfortably under the 1 GB budget — the 3 % fraction could be raised if a
-larger local sample ever helps. It lives in `data/sample/` and is gitignored;
+Comfortably under the 1 GB budget, the 3 % fraction could be raised if a larger
+local sample ever helps. It lives in `data/sample/` and is gitignored;
 competition data is never committed.
 
 > **Caution on the sample.** Feature *screening* decisions do not belong here.
-> IV is biased upward at small n — measured at 0.089 for pure noise at n=2,000
-> against a 0.02 selection floor — so selection is a full-data decision and the
+> IV is biased upward at small n, measured at 0.089 for pure noise at n=2,000
+> against a 0.02 selection floor, so selection is a full-data decision and the
 > sample exists to make the code run.
 
 ## Kaggle environment, as measured
 
-Measured by `kaggle/env-probe/`, which prints the image's versions, pip-installs
-the two packages the image lacks, and re-checks the stack afterwards. Re-run it
-before changing any pin.
+Measured by `kaggle/env-probe/`, which prints the image's versions,
+pip-installs the two packages the image lacks, and re-checks the stack
+afterwards. Re-run it before changing any pin.
 
 | package | Kaggle image | this repo |
 |---|---|---|
@@ -141,21 +141,24 @@ before changing any pin.
 | empulse | absent → 0.13.0 | 0.13.0 |
 
 This repo is pinned **to the image**, not to the newest releases. Full-data
-results come from Kaggle kernels, so the environment that matters is theirs, and
-local tests are only evidence about those runs if the stack is the same one.
+results come from Kaggle kernels, so the environment that matters is theirs,
+and local tests are only evidence about those runs if the stack is the same
+one.
 
 The probe confirms `pip install optbinning empulse` on the image is clean:
 return code 0, and numpy, pandas and scikit-learn are byte-identical before and
-after, so kernels run the image's versions whatever this repo pins. (pip reports
-pre-existing conflicts in the image around protobuf, gym and bigframes; they are
-unrelated to this project and present before the install.) A smoke test after
-the install exercises optbinning, empulse, LightGBM and polars together.
+after, so kernels run the image's versions whatever this repo pins. (pip
+reports pre-existing conflicts in the image around protobuf, gym and bigframes;
+they are unrelated to this project and present before the install.) A smoke
+test after the install exercises optbinning, empulse, LightGBM and polars
+together.
 
 Matching the image immediately paid for itself: the challenger was calling
-LightGBM's `eval_X`/`eval_y`, which exist only in 4.7. On the image's 4.6.0 that
-raises `TypeError`, so every model kernel would have failed. It was written that
-way to silence a 4.7 deprecation warning — a change that was correct against the
-newest release and wrong against the environment the results come from.
+LightGBM's `eval_X`/`eval_y`, which exist only in 4.7. On the image's 4.6.0
+that raises `TypeError`, so every model kernel would have failed. It was
+written that way to silence a 4.7 deprecation warning, a change that was
+correct against the newest release and wrong against the environment the
+results come from.
 
 **Competition data does not mount where the documentation implies.** It appears
 at `/kaggle/input/competitions/home-credit-credit-risk-model-stability/`, not
@@ -180,20 +183,20 @@ source rows; 60.3 MB of float32 output for 1,526,659 cases.
 | `prev_share_rejected` | previous applications | 0.154 | 0.029 | 25.4 % |
 | `inq_last90d` | inquiry | 0.100 | 0.002 | 11.2 % |
 
-Delinquency dominates, and it only exists because `credit_bureau_a_2` turned out
-to be a monthly payment history rather than a flat table.
+Delinquency dominates, and it only exists because `credit_bureau_a_2` turned
+out to be a monthly payment history rather than a flat table.
 
 Dropped, with the reason the screen gave:
 
-- `util_max`, `util_mean` — **99.96 % missing**. Credit limits are 92–94 % null,
+- `util_max`, `util_mean`, **99.96 % missing**. Credit limits are 92-94 % null,
   so per-contract utilisation is rarely computable at all.
-- `bureau_a_records`, `bureau_total_records` — **PSI 0.61 and 0.57**. Genuine
+- `bureau_a_records`, `bureau_total_records`, **PSI 0.61 and 0.57**. Genuine
   drift, not a binning artefact: the modal value collapses from 31.9 % of the
   train weeks to 4.5 % of validation, and the PSI is stable across bin counts.
 - Seven more on IV below 0.02, including the raw credit amount and annuity. The
   raw amounts carry almost no univariate signal; the engineered ratios do.
 
-**Nothing was flagged for leakage review** — no surviving feature has a
+**Nothing was flagged for leakage review**, no surviving feature has a
 univariate Gini above 0.5, which is what the post-decision drop is there to
 ensure.
 
@@ -207,18 +210,18 @@ Worth recording, because it is the argument for screening on full data:
 | `delq_dpd_max_mean_over_contracts` IV | 0.3482 | 0.3009 (**+15.7 %**) |
 | `prev_n_rejected` IV | 0.0978 | 0.1394 (**−29.9 %** understated) |
 
-The sample moved individual IVs by up to 30 % in both directions and flipped one
-keep/drop decision (`delq_n_payment_months`, 0.0198 on the sample against 0.0225
-on the full data, either side of the 0.02 floor). The committed
+The sample moved individual IVs by up to 30 % in both directions and flipped
+one keep/drop decision (`delq_n_payment_months`, 0.0198 on the sample against
+0.0225 on the full data, either side of the 0.02 floor). The committed
 `docs/feature_report.csv` is the full-data one.
 
 ## A column can stop being collected
 
 `static_cb_0.birthdate_574D` is 39.8 % populated overall, which looks usable.
-Collection of it **stops at about week 40**: coverage runs 82–99 % over weeks
-0–29, falls to 47 % at weeks 30–39, and is exactly **0.000 from week 40 onward**
-— so it is empty across every test week, and a fairness audit built on it came
-back empty while appearing to work locally on earlier weeks.
+Collection of it **stops at about week 40**: coverage runs 82-99 % over weeks
+0-29, falls to 47 % at weeks 30-39, and is exactly **0.000 from week 40
+onward**. It is empty across every test week, so a fairness audit built on it
+came back empty while appearing to work locally on earlier weeks.
 
 Two columns carry the same information and survive:
 
@@ -228,7 +231,7 @@ Two columns carry the same information and survive:
 | `static_cb_0.dateofbirth_337D` | 0.912 | 0.9657 |
 | `person_1.birth_259D` | 1.000 | **1.0000** |
 
-They agree: `birth_259D` and `dateofbirth_337D` give an identical age on 99.96 %
-of overlapping cases. **A column's overall fill rate says nothing about the
+They agree: `birth_259D` and `dateofbirth_337D` give an identical age on 99.96
+% of overlapping cases. **A column's overall fill rate says nothing about the
 period being measured**, and this is the same structural drift that makes
 `bureau_a_records` fail the PSI screen at 0.61.

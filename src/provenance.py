@@ -4,7 +4,7 @@ The stages chain: features -> models -> decision, and features -> sampling-bias.
 Re-running an upstream stage without re-running everything below it leaves the
 downstream outputs describing a world that no longer exists. That happened here:
 the sampling-bias results were computed on a feature set that a later features
-run replaced, and nothing in the repo said so -- it was caught by comparing
+run replaced, and nothing in the repo said so; it was caught by comparing
 directory timestamps by hand, which is not a control.
 
 The fix is to make each stage record a fingerprint of the files it read. A

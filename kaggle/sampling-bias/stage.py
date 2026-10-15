@@ -2,7 +2,7 @@
 
 Answers question 3: if the lender only observed outcomes for loans it approved,
 how wrong would its validation be, and which fix recovers the most per unit of
-cost -- reject inference, or a small random-approval budget?
+cost, reject inference, or a small random-approval budget?
 
 LIMITATION, restated because it bounds every number here: the Home Credit data
 already contains booked loans only. The real rejects are gone. This simulates a

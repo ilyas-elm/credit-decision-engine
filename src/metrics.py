@@ -169,7 +169,7 @@ def psi(
 ) -> float:
     """Population Stability Index between a reference and a comparison sample.
 
-    Bin edges are quantiles of ``expected`` -- the reference period, which in
+    Bin edges are quantiles of ``expected``, the reference period, which in
     this project is always the train weeks. Empty bins are floored at
     ``epsilon`` so the logarithm stays finite; without that a single unpopulated
     bin returns infinity and the feature looks maximally unstable on an artefact.

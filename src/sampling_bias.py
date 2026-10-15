@@ -1,13 +1,13 @@
 """Sampling bias and reject inference: the signature experiment.
 
-A lender only learns the outcome of loans it approved. Models trained and -- more
-importantly -- *validated* on that survivor population are measuring something
+A lender only learns the outcome of loans it approved. Models trained and, more
+importantly, *validated* on that survivor population are measuring something
 other than what they claim to.
 
 LIMITATION, stated plainly: the Home Credit data already contains booked loans
 only. The real rejects are gone and nothing here recovers them. This experiment
 simulates a SECOND selection policy on top of an already-selected population, so
-it measures how much each fix recovers under a known, synthetic selection -- not
+it measures how much each fix recovers under a known, synthetic selection, not
 how much it would recover on the lender's original one. Every number here should
 be read with that in mind.
 
@@ -21,7 +21,7 @@ silently alter the other:
     test weeks   (~30%)  full population with all labels: the ground truth
 
 Every arm receives the same :class:`Scenario` and returns a
-:class:`TrainingSet`, so arms differ only in how they treat the rejects --
+:class:`TrainingSet`, so arms differ only in how they treat the rejects,
 identical features, identical hyperparameters, identical subsample.
 
 Why the hidden labels are hidden structurally
@@ -140,7 +140,7 @@ class Scenario:
         return int(self.rejected.sum())
 
     def oracle_labels(self) -> np.ndarray:
-        """Every true label. A0 only -- this is the ground truth being hidden."""
+        """Every true label. A0 only; this is the ground truth being hidden."""
         return self._y_true.copy()
 
     def explore(self, mask: np.ndarray) -> np.ndarray:
@@ -306,7 +306,7 @@ def arm_a4_parcelling(
     Rejects are placed in score bands built from the ACCEPTED population, and
     assigned a bad label with probability ``band bad rate x uplift``. The uplift
     encodes the analyst's belief that a reject is worse than an accepted
-    applicant with the same score -- which is an assumption, so k is swept.
+    applicant with the same score, which is an assumption, so k is swept.
     """
     accepted_idx = np.flatnonzero(scenario.accepted)
     rejected_idx = np.flatnonzero(scenario.rejected)
@@ -370,7 +370,7 @@ def arm_a5_self_learning(
     # Confidence is a QUANTILE of the reject score distribution, not an absolute
     # probability. An absolute rule is unusable at a 3% base rate: no predicted
     # PD approaches 0.5, so "confidently bad" never fires and "pd >= 0.5" labels
-    # every admitted reject GOOD -- the exact opposite of A2, and measured here
+    # every admitted reject GOOD, the exact opposite of A2, and measured here
     # at Gini 0.02 (LightGBM) and -0.19 (scorecard) before the fix. Quantiles
     # make the rule scale-free, so the same configuration behaves sensibly
     # whatever the base rate.
@@ -411,7 +411,7 @@ def arm_a6_exploration(
 
     The only arm that buys new information rather than inventing it. The
     explored loans carry weight 100/p because each one stands for the 100/p
-    rejects it was sampled from -- without that the model would treat the
+    rejects it was sampled from, without that the model would treat the
     explored slice as the whole reject population.
     """
     if not 0 < explore_pct <= 100:
@@ -512,7 +512,7 @@ def recovery_share(
     * **A NEGATIVE gap**, where hiding the rejects' labels made the model
       BETTER. Measured here for the scorecard arms: A0 0.407 against A1 0.434.
       The ratio then has a negative denominator, so an arm that is far worse
-      than both scores a large POSITIVE "recovery" -- the catastrophic A5 arm
+      than both scores a large POSITIVE "recovery", the catastrophic A5 arm
       came out at +2320% before this guard. There is no gap to recover, and the
       honest answer is to say so rather than to print a number.
 

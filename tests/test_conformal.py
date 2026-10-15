@@ -47,7 +47,7 @@ def _exchangeable_draw(rng: np.random.Generator, n: int, *, base_rate: float = 0
 
 
 def test_conformal_quantile_is_the_ceil_n_plus_1_order_statistic() -> None:
-    # n = 9, alpha = 0.1: k = ceil(10 * 0.9) = 9, so the 9th smallest of 9 --
+    # n = 9, alpha = 0.1: k = ceil(10 * 0.9) = 9, so the 9th smallest of 9;
     # the maximum. A plain np.quantile(scores, 0.9) would return 8.2 here and
     # quietly under-cover.
     scores = np.arange(1.0, 10.0)  # 1..9
@@ -122,7 +122,7 @@ def test_marginal_thresholds_undercover_the_minority_class() -> None:
     """Why this project uses Mondrian and not a marginal threshold.
 
     With ~3% defaults a shared threshold hits its 90% target on average while
-    leaving the default class -- the one the lender actually cares about --
+    leaving the default class, the one the lender actually cares about,
     materially under-covered.
     """
     rng = np.random.default_rng(7)
@@ -172,8 +172,8 @@ def test_a_class_too_thin_to_certify_falls_back_to_the_trivial_set() -> None:
     with pytest.warns(InsufficientCalibrationWarning, match="cannot certify"):
         model = MondrianConformal.fit(pd, y, 0.05)
     assert model.thresholds[DEFAULT] == math.inf
-    # The trivial threshold covers the default class completely -- valid, if
-    # uninformative -- so every row now includes the default label.
+    # The trivial threshold covers the default class completely, valid, if
+    # uninformative, so every row now includes the default label.
     assert model.prediction_sets(pd)[:, DEFAULT].all()
     assert model.n_calibration == {NON_DEFAULT: 200, DEFAULT: 10}
 

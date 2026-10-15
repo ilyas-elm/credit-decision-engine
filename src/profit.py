@@ -1,12 +1,12 @@
 """Profit metrics: EMPCS and the strategy curve.
 
-LABEL ENCODING -- the one thing to get right here.
+LABEL ENCODING, the one thing to get right here.
 
 Verbraken et al.'s EMPCS formula is written with the default class as 0, and the
 project brief warns accordingly that `target` must be inverted. For the pinned
 empulse (0.13.0) that warning is out of date: `empcs_score` performs that
 inversion internally and documents that it "assumes the standard notation
-('default': 1, 'no default': 0)" -- exactly how the Home Credit base table
+('default': 1, 'no default': 0)", exactly how the Home Credit base table
 encodes `target`.
 
 Verified empirically in tests/test_profit.py, on a model that is informative by
@@ -17,8 +17,9 @@ construction:
     empcs_score(1 - target, pd)  ->  0.255726   informative
     empcs_score(1 - target, rand) -> 0.255730   noise, scored THE SAME
 
-Inverting makes the metric blind -- noise and signal land on the same value --
-and returns a number ~50x larger, so the mistake looks like a triumph. Hence:
+Inverting makes the metric blind: noise and signal land on the same value.
+It also returns a number ~50x larger, so the mistake looks like a triumph.
+Hence:
 pass `target` through untouched, and let the test fail loudly if a future
 empulse flips the convention back.
 """
@@ -94,7 +95,7 @@ class EmpcsResult:
     """EMPCS and the rate that achieves it.
 
     ``optimal_acceptance_rate`` holds exactly what ``empcs_score.optimal_rate``
-    returns, which is the predicted-POSITIVE rate -- the fraction REJECTED under
+    returns, which is the predicted-POSITIVE rate, the fraction REJECTED under
     this project's default=1 encoding, despite the field name inherited from
     empulse's docstring. Use ``decision.Cutoff.empcs_implied_acceptance_rate``
     for an acceptance fraction; the evidence is documented there.
@@ -172,7 +173,7 @@ def expected_loss_fraction(assumptions: ProfitAssumptions) -> float:
     """Expected fraction of principal lost on a defaulted loan.
 
     Point mass ``default_rate`` at a total loss, point mass ``success_rate`` at
-    no loss, and the rest uniform on (0, 1) with mean 1/2 -- the same mixture
+    no loss, and the rest uniform on (0, 1) with mean 1/2, the same mixture
     EMPCS integrates over.
     """
     partial = 1.0 - assumptions.default_rate - assumptions.success_rate

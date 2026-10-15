@@ -5,7 +5,7 @@ discovering a conflict at the end of a 12 h feature build. It answers:
 
   1. which Python and which versions of the libraries this project uses are
      already present,
-  2. whether optbinning and empulse -- not preinstalled -- pip-install cleanly
+  2. whether optbinning and empulse, not preinstalled, pip-install cleanly
      on that Python, and what they drag in,
   3. whether installing them disturbs the preinstalled numpy/pandas/sklearn,
      which is the real risk of pinning versions that differ from the image.

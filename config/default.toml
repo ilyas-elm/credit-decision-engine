@@ -1,6 +1,6 @@
 # Every threshold, split proportion and experiment parameter lives here.
 # Changing a number is a config change with a one-line reason in the commit
-# message -- never a silent edit to chase a better result.
+# message, never a silent edit to chase a better result.
 
 # Kaggle CLI 2.x authenticates with a single OAuth/API token and stores no
 # username, so the kernel id cannot be derived from the credentials and the
@@ -76,7 +76,7 @@ max_abs_corr = 0.80         # for pairs above this, keep the higher-IV feature
 # the next. Four have to go to clear it.
 #
 # MEASURED COST, full data, test weeks: Gini 0.3956 -> 0.3944 and stability
-# 0.3604 -> 0.3594, for 16 characteristics down to 13. About 0.3% relative --
+# 0.3604 -> 0.3594, for 16 characteristics down to 13. About 0.3% relative;
 # a readable scorecard is worth that.
 #
 # Applies to select_features only, so it governs the champion. The sampling-bias
@@ -110,7 +110,7 @@ optuna_trials = 0           # <= 30 if ever enabled; 0 means fixed params only
 
 # --- 5. Profit / EMP assumptions ------------------------------------------
 # Parameter meanings are empulse's, verified against empcs_score's docstring and
-# behaviour -- not guessed:
+# behaviour, not guessed:
 #   success_rate : probability the loan is paid back IN FULL
 #   default_rate : probability the ENTIRE loan is lost
 #   1 - success_rate - default_rate : uniform distribution of PARTIAL losses
@@ -122,7 +122,7 @@ optuna_trials = 0           # <= 30 if ever enabled; 0 means fixed params only
 # rather than a single headline number.
 #
 # ENCODING, verified empirically (tests/test_profit.py): empcs_score expects the
-# DEFAULT class as 1 -- the same encoding as the Home Credit `target` column --
+# DEFAULT class as 1, the same encoding as the Home Credit `target` column,
 # and y_score as the predicted PD. Pass `target` through untouched. Inverting it
 # makes the metric blind (an informative model and pure noise both score ~0.2557)
 # while returning a LARGER number, so the mistake flatters itself.
@@ -141,7 +141,7 @@ roi = 0.2644
 # The grid now spans thin-margin, high-loss-given-default credit as well, down
 # to a 2.2% break-even, so it brackets the rate at which a cutoff starts to pay.
 # The centre point is UNCHANGED and still the literature's, so the headline
-# number stays comparable -- the degeneracy there is a result, not something to
+# number stays comparable, the degeneracy there is a result, not something to
 # tune away.
 [profit.sensitivity]
 success_rate = [0.05, 0.25, 0.55]

@@ -8,13 +8,13 @@ How the two mechanisms combine
 There are two independent instruments here and they answer different questions:
 
 * The **conformal prediction set** answers "is the model confident enough to
-  decide this alone?" -- a statistical question about this applicant.
-* The **profit cutoff** answers "how much risk is worth taking?" -- an economic
+  decide this alone?", a statistical question about this applicant.
+* The **profit cutoff** answers "how much risk is worth taking?", an economic
   question about the lender's appetite.
 
 So conformal decides refer-or-not, and among the non-referred the profit cutoff
-decides approve-or-decline. The alternative -- letting the conformal singleton
-pick approve/decline directly -- was rejected because it would hand the risk
+decides approve-or-decline. The alternative, letting the conformal singleton
+pick approve/decline directly, was rejected because it would hand the risk
 appetite to a 1 - alpha coverage parameter, which has no economic meaning. The
 two can disagree (a confident {non-default} set whose PD still sits above the
 cutoff); when they do, the economics win and the case is declined.
@@ -22,7 +22,7 @@ cutoff); when they do, the economics win and the case is declined.
 Reasons and recourse are deliberately separate
 ----------------------------------------------
 Principal reasons are the TRUE drivers of the decline, including ones the
-applicant cannot change -- that is what an explanation owes them. Recourse only
+applicant cannot change. That is what an explanation owes them. Recourse only
 ever touches the characteristics listed as actionable in config. Merging the two
 would either hide real drivers or promise changes nobody can make.
 """
@@ -74,7 +74,7 @@ class Cutoff:
         """EMPCS's optimum, converted to an acceptance fraction.
 
         ``empcs_score.optimal_rate`` returns the predicted-POSITIVE rate, and
-        under this project's encoding the positive class is default -- so the
+        under this project's encoding the positive class is default, so the
         number it returns is the fraction REJECTED, not accepted. empulse's own
         docstring calls it "the fraction of loan applications that should be
         accepted", which contradicts its own encoding convention.
@@ -91,10 +91,11 @@ class Cutoff:
     def empcs_acceptance_gap(self) -> float:
         """Curve optimum minus EMPCS's implied optimum.
 
-        Reported rather than reconciled. The two optimise different objectives
-        -- EMPCS integrates over a distribution of loss fractions with its own
+        Reported rather than reconciled. The two optimise different
+        objectives; EMPCS integrates over a distribution of loss fractions
+        with its own
         weighting, while the strategy curve uses this project's stated linear
-        profit model -- so they are not expected to agree exactly. They do move
+        profit model, so they are not expected to agree exactly. They do move
         together; a gap that grows unusually large is a signal to re-examine the
         assumptions, which is why it is surfaced.
         """
@@ -410,8 +411,8 @@ def referral_economics(
         auto-declined and it repays   -> benefit = the ROI recovered
         auto-declined and it defaults -> benefit = 0, already right
 
-    Pricing every referred case as if it would have been approved -- the obvious
-    shortcut -- overstates the band's value on the decline side and understates
+    Pricing every referred case as if it would have been approved, the obvious
+    shortcut, overstates the band's value on the decline side and understates
     it on the approve side.
 
     ``review_accuracy`` is the share of referred cases a human resolves

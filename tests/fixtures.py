@@ -8,7 +8,7 @@ WEEK_NUM.
 
 The generator deliberately plants the defects the pipeline is supposed to catch
 -- a leaky column, an all-but-missing column, a drifting column and rows dated
-after date_decision -- so that a screening test failing to flag them fails the
+after date_decision, so that a screening test failing to flag them fails the
 test rather than passing on clean data.
 
 Shapes are asserted against the real tables once docs/DATA_NOTES.md exists; until
@@ -196,8 +196,8 @@ def make_depth1(
     frame = pl.DataFrame(rows)
 
     # Plant the violations: move some rows to AFTER their own decision date.
-    # Offsetting the existing date by a fixed amount does not work -- a row
-    # originally 1,500 days back stays in the past -- so the planted dates are
+    # Offsetting the existing date by a fixed amount does not work, a row
+    # originally 1,500 days back stays in the past, so the planted dates are
     # computed from date_decision itself, which makes the count exact.
     n_planted = min(post_decision_rows, frame.height)
     if n_planted:

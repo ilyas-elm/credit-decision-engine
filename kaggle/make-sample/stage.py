@@ -49,7 +49,7 @@ COLUMNS_OF_INTEREST = {
 
 
 # The competition ships parquet_files/train/ and parquet_files/test/. The test
-# tables are the unlabeled leaderboard submission set -- no `target` column, and
+# tables are the unlabeled leaderboard submission set; no `target` column, and
 # train_base is ~1.5M rows against test_base's few hundred. Leaderboard
 # submissions are out of scope, so only the train side is ever read.
 #
@@ -80,7 +80,7 @@ def find_input_dir() -> Path:
     because the data was not at /kaggle/input/<competition-slug>. Rather than
     guess again, this looks for the slug, then for any mounted directory that
     actually contains parquet_files/train, and otherwise fails with a listing of
-    what IS mounted -- which answers the question in one run instead of two.
+    what IS mounted, which answers the question in one run instead of two.
     """
     if (INPUT / "parquet_files" / TABLE_PREFIX).is_dir():
         return INPUT

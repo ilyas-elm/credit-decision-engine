@@ -94,7 +94,7 @@ def main() -> None:
     # Honour the screening decisions, exactly as the models stage does. Without
     # this the refit champion re-selects features the PSI screen dropped, and
     # then explains decisions with a different model than the one that made
-    # them -- bureau_a_records turned up in the principal reasons that way.
+    # them, bureau_a_records turned up in the principal reasons that way.
     built = [c for c in features.columns if c not in ("case_id", "WEEK_NUM", "target")]
     feature_cols = [c for c in kept_features(_find("feature_report.csv")) if c in built]
     print(f"[dec] screening kept {len(feature_cols)} of {len(built)} built features", flush=True)
@@ -140,7 +140,7 @@ def main() -> None:
     # the cutoff, the reasons and the recourse then all describe one model.
     # Calibrating the band on the challenger while explaining the decision with
     # the scorecard would mean the reasons justify a decision a different model
-    # made -- which is both incoherent and, for a lender, a governance problem.
+    # made, which is both incoherent and, for a lender, a governance problem.
     # The challenger's coverage is reported below for comparison only.
     y_vb, pd_vb = vb["target"].to_numpy(), vb["pd_scorecard"].to_numpy().astype(float)
     y_te, pd_te = te["target"].to_numpy(), te["pd_scorecard"].to_numpy().astype(float)
@@ -366,7 +366,7 @@ def main() -> None:
             )
         # Birth date: chosen by COVERAGE ON THE ROWS BEING AUDITED, not by
         # name. The first attempt used static_cb_0.birthdate_574D, which is 40 %
-        # populated overall and looks perfectly serviceable -- but collection of
+        # populated overall and looks perfectly serviceable, but collection of
         # it stops dead at about week 40, so it is 0 % across the test weeks and
         # the audit came back empty. person_1.birth_259D is 100 % populated
         # there. A column's overall fill rate says nothing about the period you

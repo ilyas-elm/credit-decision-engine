@@ -15,7 +15,7 @@ Three details verified against the pinned optbinning (1.0.0) rather than assumed
    `OptimalBinning` parameter, passed per variable through `binning_fit_params`.
 2. `Scorecard` CLONES the `BinningProcess` it is given, so the instance handed in
    is never fitted. IV and univariate Gini come from `Scorecard.binning_process_`.
-3. After fitting, `monotonic_trend` still reads `"auto_asc_desc"` -- optbinning
+3. After fitting, `monotonic_trend` still reads `"auto_asc_desc"`, optbinning
    does not write back which direction it resolved to. So the trend direction
    used for the challenger's monotone constraints is derived from the event-rate
    sequence across bins, not read off the estimator.
@@ -93,7 +93,7 @@ def iv_table(
     """Per-feature IV and univariate Gini, fitted on train weeks only.
 
     Returns the columns the feature report needs: feature, iv, gini, n_bins,
-    dtype. Univariate Gini is the leakage screen -- anything above
+    dtype. Univariate Gini is the leakage screen, anything above
     [screening].leakage_gini is printed for manual review rather than dropped,
     because a legitimately strong feature and a leak look identical here.
     """
@@ -239,8 +239,8 @@ class FittedScorecard:
 
         A feature whose IV falls below ``params.min_iv`` also gets 0, however
         monotone it looks. Binned into a handful of bins, pure noise is
-        frequently monotone by chance -- on the test fixtures a noise column
-        drew a confident -1 -- and constraining the challenger on that is
+        frequently monotone by chance, on the test fixtures a noise column
+        drew a confident -1, and constraining the challenger on that is
         constraining it on nothing. The same configured threshold that decides
         whether a feature is worth selecting decides whether its trend is worth
         believing.
@@ -268,8 +268,8 @@ class FittedScorecard:
 
         Within a characteristic, a bin with a higher event rate must score FEWER
         points. When the logistic regression gives a characteristic a negative
-        coefficient -- usually because it shares its signal with correlated
-        characteristics -- the multivariate scorecard inverts the univariate
+        coefficient, usually because it shares its signal with correlated
+        characteristics, the multivariate scorecard inverts the univariate
         relationship, and the table starts saying things like "the more you
         previously borrowed, the safer you are".
 
@@ -351,7 +351,7 @@ class FittedScorecard:
 
         This is the principal-reasons calculation: the drivers of a decline are
         the characteristics where the applicant gave away the most points. It
-        reports the TRUE drivers, including ones the applicant cannot act on --
+        reports the TRUE drivers, including ones the applicant cannot act on,
         keeping honest explanation separate from actionable advice is the job of
         the recourse step, not this one.
 

@@ -2,7 +2,7 @@
 
 The point of the challenger is not to win on AUC. It is to answer whether a
 gradient-boosted model earns its added opacity once stability, calibration and
-profit are measured -- so it is built to be a fair comparison, not a maximal one:
+profit are measured, so it is built to be a fair comparison, not a maximal one:
 
 * Monotone constraints taken from the champion's binning trends, so the
   challenger cannot buy Gini with relationships the scorecard was forbidden to
@@ -14,7 +14,7 @@ profit are measured -- so it is built to be a fair comparison, not a maximal one
   untuned champion would answer a different question than the one being asked.
 * No class rebalancing anywhere. `is_unbalance` and `scale_pos_weight` are left
   at their neutral defaults, explicitly. Rebalancing distorts predicted
-  probabilities, and this project needs calibrated PDs for the profit cutoff --
+  probabilities, and this project needs calibrated PDs for the profit cutoff;
   it would trade the thing being measured for a metric nobody reports.
 * Isotonic calibration on val_a, since raw LightGBM probabilities under a ~3%
   event rate are generally not calibrated in the large.

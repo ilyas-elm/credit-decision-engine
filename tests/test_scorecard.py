@@ -185,7 +185,7 @@ def test_points_fall_as_predicted_risk_rises(frame, params) -> None:
 
     Tested on RANKS. Points are linear in the log-odds, and PD is a logistic
     function of the log-odds, so points-against-PD is perfectly monotone but
-    distinctly nonlinear -- Pearson correlation on it sits around -0.78 and
+    distinctly nonlinear, Pearson correlation on it sits around -0.78 and
     would make this assertion look like a real defect.
     """
     X, y = frame

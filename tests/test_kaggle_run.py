@@ -1,9 +1,9 @@
 """The Kaggle plumbing, exercised without a network or credentials.
 
 None of this can be tested against Kaggle from CI, so the parts that would
-silently waste a 12 h session -- a bundle missing a module, a kernel pushed
+silently waste a 12 h session, a bundle missing a module, a kernel pushed
 public, a kernel with no data attached, internet disabled so the pip install
-dies at import -- are tested here instead.
+dies at import, are tested here instead.
 """
 
 from __future__ import annotations
@@ -180,7 +180,7 @@ def test_username_placeholder_is_substituted_from_the_environment(monkeypatch) -
 
 def test_missing_credentials_name_both_manual_steps(monkeypatch) -> None:
     """The check delegates to the CLI, so an unauthenticated CLI must surface
-    the real instructions -- OAuth login, not the kaggle.json that CLI 2.x
+    the real instructions, OAuth login, not the kaggle.json that CLI 2.x
     no longer uses.
     """
 

@@ -13,7 +13,7 @@ a stage script. This tool:
 
 Why bundle rather than ship a directory: `kaggle kernels push` uploads only the
 single file named by `code_file`. Anything else in the folder is silently left
-behind -- which would mean a kernel running whatever `src/` happened to be
+behind, which would mean a kernel running whatever `src/` happened to be
 baked into an older utility script, with no error to notice. So `src/` is zipped,
 base64-encoded into the generated script, and unpacked to sys.path at startup.
 One file, and it always carries the current source.
@@ -62,7 +62,7 @@ TERMINAL_STATUSES = {"complete", "error", "cancelled", "cancelAcknowledged"}
 
 BOOTSTRAP_TEMPLATE = """\
 # ------------------------------------------------------------------------------
-# GENERATED FILE -- do not edit.
+# GENERATED FILE, do not edit.
 # Built by scripts/kaggle_run.py from kaggle/{stage}/{script_name} and src/.
 # Source commit: {commit}
 # Built at:      {built_at}
@@ -132,7 +132,7 @@ def bundle_src(repo_root: Path = REPO_ROOT) -> bytes:
 
         FileNotFoundError: /kaggle/working/config/default.toml
 
-    the moment any stage reads a threshold -- after the queue wait and after
+    the moment any stage reads a threshold, after the queue wait and after
     pip-installing its dependencies. Keeping the two in one archive, at the same
     relative offsets as the repo, means the kernel resolves config exactly as a
     local run does.
@@ -167,7 +167,7 @@ def _hoist_future_imports(body: str) -> tuple[str, str]:
 
     A future statement must be the first statement in a file. Prepending the
     bootstrap to a stage script that opens with `from __future__ import
-    annotations` produces a SyntaxError -- which on Kaggle means the kernel dies
+    annotations` produces a SyntaxError, which on Kaggle means the kernel dies
     the instant it starts, after waiting out the queue. So the future imports are
     lifted to the very top of the generated file and removed from the body.
     """
@@ -269,7 +269,7 @@ def kaggle_username() -> str:
     from the credentials and has to be supplied.
 
     $KAGGLE_USERNAME wins when set; otherwise [kaggle] username in config. A
-    Kaggle username is not a secret -- it is the public profile URL -- but it is
+    Kaggle username is not a secret; it is the public profile URL, but it is
     personal, so the committed default is empty and the placeholder stays in the
     kernel metadata.
     """
@@ -316,7 +316,7 @@ def kaggle_executable() -> str:
 
     Looks beside the running interpreter first. `kaggle` is a dev dependency of
     this project, so when the script runs under .venv/bin/python the CLI is at
-    .venv/bin/kaggle whether or not that directory is on PATH -- which it is not
+    .venv/bin/kaggle whether or not that directory is on PATH, which it is not
     when the script is invoked by its interpreter directly.
     """
     beside = Path(sys.executable).parent / "kaggle"
@@ -348,7 +348,7 @@ def check_credentials() -> None:
 
     Delegated to the CLI rather than probing for a file. Kaggle CLI 2.x accepts
     OAuth credentials cached by `kaggle auth login`, $KAGGLE_API_TOKEN, or a
-    token in ~/.kaggle/access_token -- and the old kaggle.json with a username
+    token in ~/.kaggle/access_token, and the old kaggle.json with a username
     and key is gone entirely. Asking the CLI covers all of them and cannot drift
     from whatever it supports next.
 
@@ -357,7 +357,7 @@ def check_credentials() -> None:
     """
     exe = kaggle_executable()
     # Retried once. The OAuth access token is short-lived and the CLI refreshes
-    # it lazily, so a probe can fail and the very next call succeed -- observed
+    # it lazily, so a probe can fail and the very next call succeed, observed
     # mid-session, where it aborted a push against perfectly good credentials.
     # Only a genuine lack of credentials fails both attempts.
     for attempt in range(2):

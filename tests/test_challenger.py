@@ -111,7 +111,7 @@ def test_misaligned_constraints_are_refused(blocks, params) -> None:
 def test_constraints_come_from_the_champion_and_are_enforced(blocks, params) -> None:
     """The load-bearing check: constraints are obeyed, not merely passed.
 
-    Verified behaviourally -- sweep one feature across its range with the others
+    Verified behaviourally, sweep one feature across its range with the others
     held fixed and confirm the predicted PD never moves against the constraint.
     An unconstrained model on the same data does violate it, which is what makes
     this test meaningful rather than vacuously true.

@@ -158,8 +158,8 @@ def test_a_confident_default_set_can_still_be_approved_on_economics(world) -> No
     At these assumptions (roi 0.2644 against E[loss] 0.275 on a ~12% bad book)
     approving almost everyone is profitable, so the cutoff lands near 96% and is
     looser than the conformal band is confident. The result is applicants whose
-    prediction set is the singleton {default} -- the model is confident they
-    will default -- being approved anyway because the economics say the portfolio
+    prediction set is the singleton {default}, the model is confident they
+    will default, being approved anyway because the economics say the portfolio
     still pays.
 
     That is the intended division of labour, not a bug: conformal measures

@@ -36,7 +36,7 @@ def scenario():
 
 @pytest.fixture
 def arm_kwargs(scenario):
-    """Inputs an arm may legitimately receive -- all derived from A1, not truth."""
+    """Inputs an arm may legitimately receive, all derived from A1, not truth."""
     rng = np.random.default_rng(1)
     n_rej = scenario.n_rejected
     return {
@@ -119,7 +119,7 @@ def test_arms_that_must_not_see_hidden_labels_do_not(scenario, arm_kwargs) -> No
 
     This is the experiment's integrity check. If a reject-inference arm could
     see the outcomes it is supposed to be inferring, every recovery number would
-    be meaningless -- and it would look like a success, not a failure.
+    be meaningless, and it would look like a success, not a failure.
     """
     y_scrambled = scenario.oracle_labels().copy()
     rejected = scenario.rejected
@@ -316,7 +316,7 @@ def test_recovery_share_refuses_a_negative_gap() -> None:
 
     Measured on the full data for the scorecard arms: A0 oracle 0.407 against
     A1 accepts-only 0.434. The denominator is then negative, so an arm far worse
-    than both scores a large POSITIVE recovery -- the catastrophic A5 arm came
+    than both scores a large POSITIVE recovery, the catastrophic A5 arm came
     out at +2320%. There is no gap to recover and the honest answer is NaN.
     """
     oracle, accepts_only = 0.4071, 0.4338
@@ -329,7 +329,7 @@ def test_a5_pseudo_labels_are_scale_free(scenario) -> None:
     """Confidence is a quantile, not an absolute probability.
 
     At a 3% base rate no predicted PD approaches 0.5, so an absolute rule admits
-    rejects and labels every one of them GOOD -- the opposite of A2. Measured
+    rejects and labels every one of them GOOD, the opposite of A2. Measured
     before the fix at Gini 0.02 (LightGBM) and -0.19 (scorecard).
     """
     # PDs that never cross 0.5, as a real low-default-rate model produces.

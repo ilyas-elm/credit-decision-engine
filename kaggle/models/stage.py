@@ -4,7 +4,7 @@ Reads `features.parquet` from the hc-features kernel through `kernel_sources`,
 so the expensive feature build runs once and every model stage shares exactly
 the same inputs.
 
-What it answers: question 1 of the brief -- what a gradient-boosted challenger
+What it answers: question 1 of the brief, what a gradient-boosted challenger
 adds over a classic scorecard once stability, calibration and profit are
 measured rather than only AUC.
 

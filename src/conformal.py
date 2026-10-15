@@ -8,7 +8,7 @@ Two things carried over deliberately:
 
 1. The finite-sample correction ``ceil((n + 1)(1 - alpha))`` rather than a plain
    empirical quantile. ``np.quantile(scores, 1 - alpha)`` is the most common
-   conformal bug in the wild and it silently loses the guarantee at small n --
+   conformal bug in the wild and it silently loses the guarantee at small n,
    which is exactly the regime of the default class here, at roughly 3% of a
    portfolio.
 2. Returning ``+inf`` (the trivial all-labels set) with a warning when a class
@@ -22,7 +22,7 @@ headline coverage number looks fine. Mondrian gives one threshold per class, so
 the promise is about defaulters specifically.
 
 Calibration data: the val_b weeks, and nothing else. val_b is fitted on by
-nothing -- not the model, not the probability calibrator -- because split
+nothing, not the model, not the probability calibrator, because split
 conformal's guarantee requires calibration scores to be exchangeable with test
 scores and independent of the fitted model.
 
@@ -197,7 +197,7 @@ def _bands_from_sets(sets: np.ndarray) -> np.ndarray:
 
     A two-label set {non-default, default} means the model cannot separate the
     two at this confidence level. An EMPTY set means the applicant looks strange
-    under *both* labels -- rarer, but equally not a decision a model should make
+    under *both* labels, rarer, but equally not a decision a model should make
     alone. Both go to manual review, which is what "not a singleton" means in
     the brief.
     """

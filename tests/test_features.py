@@ -45,7 +45,7 @@ def test_safe_ratio_returns_null_rather_than_a_huge_number() -> None:
 def test_safe_ratio_guards_zero_but_not_denormal_denominators() -> None:
     """The exact scope of the guard, stated rather than assumed.
 
-    safe_ratio rules out zero, negative and null denominators -- the cases that
+    safe_ratio rules out zero, negative and null denominators, the cases that
     occur in this data, where denominators are counts and currency amounts. It
     does NOT rule out an overflow from a denormal denominator; nothing here
     produces one, and build_features maps any non-finite value to null as a
@@ -421,8 +421,8 @@ def test_kept_features_reads_the_screening_decision(tmp_path) -> None:
     """Downstream stages must honour the screen, not re-select around it.
 
     features.parquet deliberately carries every feature that was built. The
-    champion scorecard picked up bureau_a_records anyway -- dropped for
-    PSI 0.614 -- because its IV was healthy and nothing enforced the earlier
+    champion scorecard picked up bureau_a_records anyway, dropped for
+    PSI 0.614, because its IV was healthy and nothing enforced the earlier
     decision. In a project about stability that is the one feature the screen
     existed to exclude.
     """
@@ -544,7 +544,7 @@ def test_absent_tax_registry_means_unknown_income_not_zero(tmp_path) -> None:
     Recording the first as the second put 522,900 cases (34 % of the book) into
     the lowest income bin beside genuinely low earners, instead of the binning's
     Missing bin. That is what let "no employment record" stand in for "no
-    income" -- false for the 92 % of over-60s who are simply retired, and the
+    income", false for the 92 % of over-60s who are simply retired, and the
     mechanism behind a threefold over-prediction of their risk.
     """
     tables, _ = make_dataset(n_cases=300, n_weeks=10, seed=8)

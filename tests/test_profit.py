@@ -50,7 +50,7 @@ def test_empcs_discriminates_with_target_passed_through_untouched(portfolio) -> 
 def test_inverting_the_target_makes_empcs_blind(portfolio) -> None:
     """Why the brief's 'invert the target' instruction must not be followed here.
 
-    Inverted, EMPCS gives an informative model and pure noise the same value --
+    Inverted, EMPCS gives an informative model and pure noise the same value,
     and a value ~50x larger than the correct one, so the mistake flatters itself.
     """
     y_inverted = 1 - portfolio["y"]

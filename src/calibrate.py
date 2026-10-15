@@ -14,7 +14,7 @@ do early stopping AND probability calibration. The tree count is therefore
 chosen on the same rows the calibrator is then fitted to, so the calibrated
 probabilities are mildly optimistic on val_a itself. It does not touch the test
 weeks, which nothing is fitted on, and that is where every reported number comes
-from. The alternative -- a fifth block -- would cost more out-of-time data than
+from. The alternative, a fifth block, would cost more out-of-time data than
 the bias is worth.
 """
 
@@ -44,7 +44,7 @@ class IsotonicCalibrator:
 
     Not quite "Gini is unchanged", though. Isotonic output is a step function,
     so it maps distinct raw scores onto equal calibrated ones, and those new
-    ties shift AUC slightly -- a tied pair counts 0.5 where it previously
+    ties shift AUC slightly, a tied pair counts 0.5 where it previously
     counted 0 or 1. Measured on the test fixtures the shift is around 3e-4 of
     Gini, and it can go either way. So the champion/challenger comparison
     reports which PD it used rather than claiming the two are interchangeable.
@@ -124,7 +124,7 @@ def needs_calibration(
 
     Deliberately a level check, not a Brier comparison. Brier mixes
     discrimination and calibration, so a model can improve its Brier while its
-    level drifts further out -- and the level is what the cutoff and the
+    level drifts further out, and the level is what the cutoff and the
     expected-loss numbers depend on.
     """
     return assess_calibration(y_true, y_prob).abs_gap > max_abs_gap

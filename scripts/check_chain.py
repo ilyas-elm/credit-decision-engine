@@ -4,7 +4,7 @@
     uv run python scripts/check_chain.py
 
 Exits non-zero when a downstream stage's recorded upstream fingerprint no longer
-matches the current upstream output -- which means re-running the kernels from
+matches the current upstream output, which means re-running the kernels from
 committed code would not reproduce that stage's committed numbers.
 
 This is the control for a failure that happened: the sampling-bias results were
@@ -32,8 +32,8 @@ def main() -> int:
     unverifiable = [p for p in problems if p["issue"] == "no provenance recorded"]
 
     for p in unverifiable:
-        print(f"[check_chain] note: {p['stage']} run {p['run']} predates provenance "
-              "-- it will be recorded the next time that stage runs")
+        print(f"[check_chain] note: {p['stage']} run {p['run']} predates "
+              "provenance; it will be recorded the next time that stage runs")
     if not stale:
         print("[check_chain] no stale stage found")
         return 0
@@ -43,7 +43,7 @@ def main() -> int:
         print(
             f"  {p['stage']:14} {p['run']} consumed {p['file']} "
             f"{p['consumed_sha256']} but {p['upstream']} now produces "
-            f"{p['current_sha256']} -- re-run {p['stage']}",
+            f"{p['current_sha256']}, re-run {p['stage']}",
             file=sys.stderr,
         )
     return 1

@@ -1,7 +1,7 @@
 """The shared evaluation, computed on the test weeks.
 
-Every model in this project -- champion, challenger, and each arm of the
-sampling-bias experiment -- goes through this one function, so that no reported
+Every model in this project, champion, challenger, and each arm of the
+sampling-bias experiment, goes through this one function, so that no reported
 comparison is ever between two differently-computed numbers.
 
 What it answers, in the order the brief asks:

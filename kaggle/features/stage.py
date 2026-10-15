@@ -12,7 +12,7 @@ What it emits to /kaggle/working:
     screening_summary.json  counts and timings, for the run log
 
 Screening is fitted on the TRAIN weeks only, exactly as locally. The test weeks
-are never read for any selection decision -- that is what keeps the out-of-time
+are never read for any selection decision. That is what keeps the out-of-time
 evaluation out-of-time.
 
 Why this needs internet: optbinning computes the IV used by the screen and is

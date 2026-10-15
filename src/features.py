@@ -26,9 +26,9 @@ The brief says to convert every date (D) column to days relative to
 `date_decision` and drop the raw dates. Here dates are parsed and used to
 EXCLUDE post-decision records, but they are not turned into features in their
 own right: the six families below are built from named columns rather than by
-aggregating everything the schema offers. That is a deliberate narrowing -- a
+aggregating everything the schema offers. That is a deliberate narrowing, a
 blanket days-relative expansion would add roughly fifty largely redundant
-columns to a set where the top seven already carry most of the signal -- and it
+columns to a set where the top seven already carry most of the signal, and it
 is recorded here rather than left to be inferred from the absence.
 
 Memory
@@ -128,7 +128,7 @@ def safe_ratio(numerator: pl.Expr, denominator: pl.Expr) -> pl.Expr:
     does avoid the error and replaces it with something worse: a finite number
     of enormous magnitude that looks like data. Measured on the sample, clipping
     the credit-limit denominator at 1e-9 produced a utilisation feature topping
-    1.1e13, because 91 % of cases report a zero limit -- a column that passes
+    1.1e13, because 91 % of cases report a zero limit, a column that passes
     every screen and that the binning would happily split on.
 
     "Undefined" is the honest value, and the binning process has a Missing bin
@@ -430,7 +430,7 @@ def affordability_features(
 
     There is no income column in this data (docs/DATA_NOTES.md): the only direct
     match is a category. Income is therefore DERIVED as the total of tax-registry
-    payment amounts per case, which is a proxy with its own assumptions -- the
+    payment amounts per case, which is a proxy with its own assumptions, the
     feature names say `taxincome` rather than `income` so that nothing downstream
     mistakes it for declared income.
     """
@@ -468,13 +468,13 @@ def affordability_features(
     if income is not None:
         inc_cols = [c for c in income.collect_schema().names() if c.startswith("_inc_")]
         # A case absent from EVERY tax registry has unknown income, not income
-        # of zero. fill_null(0) inside the sum is right -- one missing registry
-        # should not void the total -- but applying it when all are missing
+        # of zero. fill_null(0) inside the sum is right; one missing registry
+        # should not void the total, but applying it when all are missing
         # recorded 522,900 cases (34%) as earning exactly nothing, and the
         # binning then filed them in the lowest income bin beside genuinely low
         # earners rather than in its Missing bin. Those two groups are not the
         # same, and conflating them is what let "no employment record" stand in
-        # for "no income" -- which, for the 92% of over-60s who are simply
+        # for "no income", which, for the 92% of over-60s who are simply
         # retired, is false.
         present = pl.any_horizontal([pl.col(c).is_not_null() for c in inc_cols])
         out = out.join(income, on="case_id", how="left").with_columns(
@@ -592,7 +592,7 @@ def kept_features(report_path: str | Path) -> list[str]:
 
     build_features deliberately emits EVERY feature it constructs, so the report
     and the parquet can be inspected together. That makes it the caller's job to
-    apply the screen -- and a caller that forgets simply re-selects from the full
+    apply the screen, and a caller that forgets simply re-selects from the full
     set. Observed exactly that: the champion scorecard picked up
     bureau_a_records, which screening had dropped for PSI 0.614, because its IV
     was healthy and nothing enforced the earlier decision. In a project about
@@ -732,7 +732,7 @@ def screen_features(
         # Keep the leakage annotation when the IV rule drops a feature. A
         # PERFECTLY separating column comes back from optbinning as a single bin
         # with IV 0.0, so the IV screen reads a total leak as useless noise and
-        # drops it -- taking the one signal that would have surfaced it. The
+        # drops it, taking the one signal that would have surfaced it. The
         # univariate Gini is what catches that case, and it has to survive here.
         report.loc[low_iv, "reason"] = report.loc[low_iv].apply(
             lambda r: (
