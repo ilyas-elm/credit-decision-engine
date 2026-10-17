@@ -410,7 +410,9 @@ def main() -> None:
             ).collect(engine="streaming")
             on_test = test_ids.join(candidate, on="case_id", how="left")
             coverage = float(on_test["birth"].is_not_null().mean() or 0.0)
-            overall = float(
+            # Not `overall`: that name holds the conformal coverage report
+            # this function still needs further down.
+            overall_coverage = float(
                 all_ids.join(candidate, on="case_id", how="left")["birth"]
                 .is_not_null()
                 .mean()
@@ -419,13 +421,13 @@ def main() -> None:
             birth_coverage.append(
                 {
                     "column": f"{table}.{column}",
-                    "overall": round(overall, 4),
+                    "overall": round(overall_coverage, 4),
                     "test_weeks": round(coverage, 4),
                 }
             )
             candidate_frames[f"{table}.{column}"] = candidate
             print(
-                f"[dec] birth candidate {table}.{column}: overall {overall:.4f}, "
+                f"[dec] birth candidate {table}.{column}: overall {overall_coverage:.4f}, "
                 f"test-week coverage {coverage:.4f}",
                 flush=True,
             )
