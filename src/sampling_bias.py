@@ -517,7 +517,8 @@ def recovery_share(
 
     * **A negligible gap.** Dividing by it amplifies noise into a percentage.
     * **A NEGATIVE gap**, where hiding the rejects' labels made the model
-      BETTER. Measured here for the scorecard arms: A0 0.407 against A1 0.434.
+      BETTER. Measured here for the scorecard arms: A0 0.411 against A1 0.438
+      at a 10 % reject rate.
       The ratio then has a negative denominator, so an arm that is far worse
       than both scores a large POSITIVE "recovery", the catastrophic A5 arm
       came out at +2320% before this guard. There is no gap to recover, and the
@@ -569,6 +570,10 @@ def exploration_cost(
     forgo. Counting it would make exploration look free.
     """
     labels = np.asarray(explored_labels, dtype=float).ravel()
+    # NaN marks a case that was never explored. Dropping those here means
+    # `exposure`, if given, must already line up with the explored subset; the
+    # size check below turns a mismatch into an error rather than a silent
+    # pairing of the wrong rows.
     labels = labels[~np.isnan(labels)]
     if labels.size == 0:
         return 0.0

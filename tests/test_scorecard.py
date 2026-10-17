@@ -415,3 +415,41 @@ def test_the_configured_exclusions_are_the_measured_ones() -> None:
         "prev_amount_total",
         "prev_n_applications",
     }
+
+
+def test_selection_does_not_depend_on_the_row_order_of_the_iv_table() -> None:
+    """The correlation rule walks candidates in order, so the order is the rule.
+
+    `select_features` accepts a caller-supplied IV table. Given the same
+    truthful table with its rows reversed, an unsorted implementation keeps the
+    weaker member of every correlated pair while still appearing to apply the
+    brief. The live caller passes `iv_table` output, which is already sorted,
+    so this guards the assumption rather than a current defect.
+    """
+    rng = np.random.default_rng(0)
+    n = 4000
+    y = rng.binomial(1, 0.1, n)
+    strong = y * 2.0 + rng.normal(0, 1.0, n)
+    clone = strong + rng.normal(0, 0.05, n)  # all but identical, slightly different IV
+    X = pd.DataFrame({"strong": strong, "clone": clone, "noise": rng.normal(0, 1, n)})
+    params = ScorecardParams(
+        monotonic_trend="auto_asc_desc",
+        min_iv=0.02,
+        max_abs_corr=0.8,
+        scaling_method="pdo_odds",
+        points_at_odds=600.0,
+        target_odds=50.0,
+        pdo=20.0,
+    )
+
+    ivs = iv_table(X, y, params)
+    assert ivs["iv"].is_monotonic_decreasing, "iv_table must return descending IV"
+
+    descending, _ = select_features(X, y, params, ivs=ivs)
+    reversed_rows, _ = select_features(X, y, params, ivs=ivs.iloc[::-1].reset_index(drop=True))
+    shuffled, _ = select_features(X, y, params, ivs=ivs.sample(frac=1.0, random_state=1))
+
+    assert set(descending) == set(reversed_rows) == set(shuffled)
+    # And it is the higher-IV member of the correlated pair that survives.
+    best = ivs.loc[ivs["feature"].isin(["strong", "clone"]), "iv"].idxmax()
+    assert ivs.loc[best, "feature"] in descending

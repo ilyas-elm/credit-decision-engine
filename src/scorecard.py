@@ -144,6 +144,13 @@ def select_features(
     """
     params = params or ScorecardParams()
     ivs = iv_table(X, y, params) if ivs is None else ivs.copy()
+    # Sorted here, not assumed. The correlation rule walks the candidates in
+    # order and keeps the first of each clashing pair, so the order IS the
+    # rule: given the same IV table with its rows reversed, the pruning would
+    # keep the weaker feature of every pair and still look like it had applied
+    # the brief. `iv_table` already returns descending order, so this only
+    # matters for a caller that builds the table some other way.
+    ivs = ivs.sort_values("iv", ascending=False).reset_index(drop=True)
 
     decisions = ivs.set_index("feature").copy()
     decisions["kept"] = False
