@@ -30,6 +30,15 @@ from pathlib import Path
 OUTPUT = Path("/kaggle/working")
 INPUT_ROOT = Path("/kaggle/input")
 
+#: Reporting choices for the age-gap attribution, not model parameters. The
+#: audit already bands age by decade, and 60 is where approval collapses in
+#: this book, so it is the split the attribution explains.
+OLDER_FROM_AGE = 60
+#: The characteristic whose absence is tested as an age proxy. It is derived
+#: from the tax registry, which records employment payments, so retirees are
+#: missing from it by construction rather than by chance.
+INCOME_CHARACTERISTIC = "afford_taxincome_total"
+
 
 def ensure_packages() -> None:
     missing = [m for m in ("optbinning", "empulse") if not _have(m)]
@@ -78,7 +87,12 @@ def main() -> None:
         marginal_thresholds,
         one_minus_prob,
     )
-    from decision import DecisionEngine, choose_cutoff, referral_economics
+    from decision import (
+        DecisionEngine,
+        age_gap_attribution,
+        choose_cutoff,
+        referral_economics,
+    )
     from features import find_data_dir, kept_features, table_paths
     from profit import ProfitAssumptions, expected_loss_fraction
     from scorecard import ScorecardParams, fit_scorecard, select_features
@@ -434,6 +448,73 @@ def main() -> None:
                 audit[col] = g.to_dicts()
                 print(f"\n[dec] fairness audit by {col} (audit only, no mitigation):", flush=True)
                 print(g.to_pandas().to_string(index=False), flush=True)
+
+            # --- the mechanism behind the age gap ---------------------------
+            # The audit above is the finding; this is the cause. Age is not an
+            # input, so the disparity arrives through characteristics that are,
+            # and the model card quotes which ones. Joined on case_id: `t` came
+            # out of a join, so its row order need not match X_te and the
+            # points matrix.
+            if "birth" in t.columns:
+                points = pl.DataFrame({"case_id": te["case_id"]}).with_columns(
+                    [pl.Series(f, awarded_points[f].to_numpy()) for f in champion.features]
+                )
+                age_years = t.select(
+                    "case_id",
+                    (
+                        pl.lit(2020)
+                        - pl.col("birth").str.slice(0, 4).cast(pl.Int32, strict=False)
+                    ).alias("age"),
+                    "target",
+                ).filter(pl.col("age").is_not_null())
+                if INCOME_CHARACTERISTIC in te.columns:
+                    points = points.with_columns(
+                        pl.Series(
+                            "_no_income", te[INCOME_CHARACTERISTIC].is_null().to_numpy()
+                        )
+                    )
+                aligned = points.join(age_years, on="case_id", how="inner")
+                if aligned.height:
+                    mechanism = age_gap_attribution(
+                        aligned.select(champion.features).to_pandas(),
+                        aligned["age"].to_numpy(),
+                        aligned["target"].to_numpy(),
+                        income_missing=(
+                            aligned["_no_income"].to_numpy()
+                            if "_no_income" in aligned.columns
+                            else None
+                        ),
+                        older_from=OLDER_FROM_AGE,
+                    )
+                    audit["age_mechanism"] = mechanism
+                    print(
+                        f"\n[dec] age gap attribution ({OLDER_FROM_AGE}+ vs younger), "
+                        f"net {mechanism['total_points_gap']:+.1f} pts, of which "
+                        f"{mechanism['points_lost_to_negative_characteristics']:+.1f} "
+                        "from characteristics that penalise them:",
+                        flush=True,
+                    )
+                    for row in mechanism["by_characteristic"][:5]:
+                        print(
+                            f"[dec]   {row['characteristic']:34} "
+                            f"{row['points_older']:>6.1f} vs {row['points_younger']:>6.1f}"
+                            f"  gap {row['gap']:+.1f}",
+                            flush=True,
+                        )
+                    proxy = mechanism.get("income_record_as_age_proxy")
+                    if proxy:
+                        print(
+                            f"[dec]   an absent {INCOME_CHARACTERISTIC} is a "
+                            f"{proxy['accuracy']:.1%}-accurate test for being "
+                            f"{OLDER_FROM_AGE}+",
+                            flush=True,
+                        )
+                        for row in mechanism["default_rate_by_age_and_income_record"]:
+                            print(
+                                f"[dec]   {row['group']:8} {row['income_record']:18} "
+                                f"n={row['n']:>7,}  default {row['default_rate']:.4f}",
+                                flush=True,
+                            )
     except Exception as exc:  # noqa: BLE001
         print(f"[dec] fairness audit skipped: {type(exc).__name__}: {exc}", flush=True)
 

@@ -484,7 +484,15 @@ def main(argv: list[str] | None = None) -> int:
         stage = load_stage(args.stage)
         bundled = build_bundled_script(stage)
         size_kb = len(bundled.encode()) / 1024
-        print(f"[kaggle_run] stage {stage.name!r} -> {stage.ref}")
+        # The resolved target, not the committed placeholder: announcing
+        # KAGGLE_USERNAME/hc-<stage> while pushing to the real account is
+        # misleading. A dry run must still work with no username configured,
+        # so fall back to the placeholder rather than failing here.
+        try:
+            target = resolve_metadata(stage)["id"]
+        except StageError:
+            target = stage.ref
+        print(f"[kaggle_run] stage {stage.name!r} -> {target}")
         print(f"[kaggle_run] bundled script: {size_kb:.1f} KB")
 
         if args.dry_run:

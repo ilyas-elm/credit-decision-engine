@@ -1,0 +1,69 @@
+{
+  "windows": {
+    "policy": [
+      0,
+      22
+    ],
+    "dev": [
+      23,
+      63
+    ],
+    "test": [
+      64,
+      91
+    ]
+  },
+  "n_features": 36,
+  "features": [
+    "delq_dpd_recency_weighted",
+    "delq_overdue_max",
+    "inq_last90d",
+    "prev_share_rejected",
+    "delq_dpd_max_mean_over_contracts",
+    "afford_taxincome_total",
+    "inq_last180d",
+    "delq_n_payment_months",
+    "afford_credit_to_taxincome",
+    "delq_dpd_mean",
+    "delq_dpd_max",
+    "inq_last360d",
+    "afford_annuity_to_taxincome",
+    "inq_share_last30d",
+    "prev_n_rejected",
+    "bureau_a_records",
+    "inq_share_last180d",
+    "afford_credit_amount",
+    "inq_share_last90d",
+    "prev_amount_total",
+    "inq_last30d",
+    "prev_amount_max",
+    "afford_annuity",
+    "prev_amount_mean",
+    "prev_n_applications",
+    "delq_dpd_gt30_last12m",
+    "bureau_total_records",
+    "prev_n_distinct_status",
+    "delq_dpd_gt30_last24m",
+    "util_balance_total",
+    "bureau_b_records",
+    "util_limit_total",
+    "bureau_thin_file",
+    "util_max",
+    "util_overall",
+    "util_mean"
+  ],
+  "dev_subsample": 150000,
+  "n_fits": 160,
+  "reject_rates": [
+    10,
+    20,
+    30,
+    50
+  ],
+  "seeds": [
+    0,
+    1,
+    2
+  ],
+  "total_seconds": 1056.5
+}

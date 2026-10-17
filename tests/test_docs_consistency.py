@@ -306,3 +306,125 @@ def test_every_doc_table_row_matches_the_fairness_artefact(summary, readme) -> N
         assert f"| {row['n']:,} |" in readme, (
             f"README age table is missing the {row['age_band']}s row (n={row['n']:,})"
         )
+
+
+# --- The synthetic conformal comparison in the README --------------------
+#
+# This table is the one claim in either document that no Kaggle run produced:
+# it is a synthetic experiment, so CI can reproduce it exactly. It was quoted
+# as 300 draws while the only committed computation (test_conformal.py) used
+# 150 and asserted inequalities, so nothing checked the printed values.
+
+
+def test_the_synthetic_conformal_table_reproduces_exactly() -> None:
+    """Recompute the README's marginal-vs-Mondrian table and match every cell.
+
+    Uses the draw helper from test_conformal so there is one generator, not a
+    copy that could drift away from the numbers the suite reasons about.
+    """
+    import math
+
+    import numpy as np
+    from test_conformal import _exchangeable_draw
+
+    from conformal import (
+        DEFAULT,
+        NON_DEFAULT,
+        MondrianConformal,
+        coverage_report,
+        marginal_thresholds,
+        one_minus_prob,
+    )
+
+    alpha, draws, n = 0.10, 300, 6_000
+    rng = np.random.default_rng(7)
+    acc: dict[tuple[str, int], list[float]] = {
+        (name, label): [] for name in ("marginal", "mondrian") for label in (NON_DEFAULT, DEFAULT)
+    }
+    for _ in range(draws):
+        pd_cal, y_cal = _exchangeable_draw(rng, n, base_rate=0.03)
+        pd_test, _y = _exchangeable_draw(rng, n, base_rate=0.03)
+        y_test = _y
+        scores = one_minus_prob(np.column_stack([1.0 - pd_cal, pd_cal]))
+        shared = marginal_thresholds(scores[np.arange(y_cal.size), y_cal], alpha)
+        models = {
+            "marginal": MondrianConformal(alpha=alpha, thresholds=shared, n_calibration={}),
+            "mondrian": MondrianConformal.fit(pd_cal, y_cal, alpha),
+        }
+        for name, model in models.items():
+            report = coverage_report(model, pd_test, y_test)
+            for label in (NON_DEFAULT, DEFAULT):
+                value = report["coverage"][report["label"] == label]
+                if value.size and not math.isnan(value[0]):
+                    acc[(name, label)].append(float(value[0]))
+
+    cells = {key: float(np.mean(values)) for key, values in acc.items()}
+    expected = {
+        ("marginal", NON_DEFAULT): "0.964",
+        ("marginal", DEFAULT): "0.014",
+        ("mondrian", NON_DEFAULT): "0.900",
+        ("mondrian", DEFAULT): "0.899",
+    }
+    readme_text = _text("README.md")
+    for key, quoted in expected.items():
+        assert f"{cells[key]:.3f}" == quoted, (
+            f"{key} recomputes to {cells[key]:.4f}, README quotes {quoted}"
+        )
+        assert quoted in readme_text, f"README no longer quotes {key} = {quoted}"
+
+    # And the sentence under the table, which restates the marginal cell.
+    pct = f"{cells[('marginal', DEFAULT)] * 100:.1f}%"
+    assert pct in readme_text, f"README does not say the marginal band covers defaults {pct}"
+    # Line breaks fall wherever the reflow put them, so collapse whitespace.
+    collapsed = " ".join(readme_text.split())
+    assert f"{draws} calibration draws" in collapsed, (
+        f"README must state the draw count this test uses ({draws})"
+    )
+
+
+# --- Sampling-bias run metadata ------------------------------------------
+#
+# The runtime was quoted from a superseded run: the committed arms CSV comes
+# from the run that reported 17.6 min, not the earlier 17.7 one.
+
+
+@pytest.fixture(scope="module")
+def sb_summary() -> dict:
+    return json.loads((DOCS / "sampling_bias_summary.json").read_text())
+
+
+def test_the_summary_describes_the_committed_arms_csv(sb_summary, arms) -> None:
+    """Guards against quoting one run's metadata beside another run's numbers."""
+    assert sb_summary["n_fits"] == len(arms)
+    assert sorted({int(r["reject_rate"]) for r in arms}) == sorted(sb_summary["reject_rates"])
+    assert sorted({int(r["seed"]) for r in arms}) == sorted(sb_summary["seeds"])
+    # n_train varies by arm: A1 trains on the accepted subset and the
+    # augmentation arms add rows back. Only the oracle sees the base subsample.
+    oracle = {int(r["n_train"]) for r in arms if r["base_arm"] == "A0_oracle"}
+    assert oracle == {sb_summary["dev_subsample"]}
+
+
+def test_runtime_and_windows_are_quoted_from_that_summary(sb_summary, readme) -> None:
+    collapsed = " ".join(readme.split())
+    minutes = f"{sb_summary['total_seconds'] / 60:.1f} min"
+    assert minutes in collapsed, f"README must quote the run's total as {minutes}"
+    for name in ("policy", "dev", "test"):
+        lo, hi = sb_summary["windows"][name]
+        assert f"{lo}-{hi}" in collapsed, f"README must give the {name} window as {lo}-{hi}"
+
+
+def test_the_feature_cap_claim_matches_the_config_and_the_run(sb_summary, readme) -> None:
+    """The config asks for 40; the build yields fewer, so the cap never binds."""
+    import tomllib
+
+    configured = tomllib.loads((REPO / "config" / "default.toml").read_text())
+    requested = configured["sampling_bias"]["n_features"]
+    used = sb_summary["n_features"]
+    assert used < requested, (
+        f"the config requests {requested} features and the run used {used}; if the "
+        "build ever yields more than the cap, the README sentence saying the "
+        "selection never binds becomes false"
+    )
+    collapsed = " ".join(readme.split())
+    assert f"top {requested} features" in collapsed
+    assert f"produces {used}" in collapsed

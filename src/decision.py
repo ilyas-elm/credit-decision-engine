@@ -46,6 +46,7 @@ __all__ = [
     "Decision",
     "DecisionEngine",
     "referral_economics",
+    "age_gap_attribution",
 ]
 
 
@@ -458,3 +459,123 @@ def referral_economics(
         "total_review_cost": total_cost,
         "net_benefit": benefit - total_cost,
     }
+
+
+# --- Attributing a group disparity to characteristics --------------------
+
+
+def age_gap_attribution(
+    awarded_points: pd.DataFrame,
+    age: np.ndarray,
+    y_true: np.ndarray,
+    *,
+    income_missing: np.ndarray | None = None,
+    older_from: int = 60,
+) -> dict:
+    """Where a group's lost scorecard points come from, characteristic by
+    characteristic.
+
+    The fairness audit reports that older applicants are approved far less
+    often while defaulting less. That is the finding; this is the mechanism.
+    Age is not an input to the scorecard, so the disparity has to arrive
+    through characteristics that are, and a model card that cannot say which
+    ones has not finished the audit.
+
+    ``awarded_points`` is one column per characteristic, as
+    ``FittedScorecard.feature_points`` returns, with rows aligned to ``age``,
+    ``y_true`` and ``income_missing``. Alignment is the caller's job and it
+    matters: the demographic columns arrive through a join, whose row order
+    need not match the scored frame.
+
+    The per-characteristic gaps need not sum to the overall score gap in the
+    same direction. Some characteristics favour the older group and offset
+    part of what the others take away, so the total is smaller than the worst
+    contributors suggest. Both numbers are reported rather than one, because
+    quoting only the net understates how concentrated the cause is.
+
+    ``income_missing`` is optional. When given, it tests whether an absent
+    income record acts as a proxy for age: how often it coincides with being
+    older, and whether the absence carries any risk signal within each group.
+    A feature that merely marks age, and predicts nothing inside the group it
+    penalises, is a proxy rather than a risk factor.
+    """
+    age = np.asarray(age, dtype=float).ravel()
+    y_true = np.asarray(y_true).ravel().astype(int)
+    if len(awarded_points) != age.size or age.size != y_true.size:
+        raise ValueError(
+            f"Length mismatch: points={len(awarded_points)}, age={age.size}, "
+            f"y_true={y_true.size}. These must be row-aligned."
+        )
+    known = ~np.isnan(age)
+    if not known.any():
+        raise ValueError("No known ages; the attribution has nothing to compare.")
+
+    older = known & (age >= older_from)
+    younger = known & (age < older_from)
+    if not older.any() or not younger.any():
+        raise ValueError(
+            f"Need both groups: {int(older.sum())} aged {older_from}+ and "
+            f"{int(younger.sum())} below it."
+        )
+
+    by_characteristic = []
+    for name in awarded_points.columns:
+        points = awarded_points[name].to_numpy(dtype=float)
+        gap = float(points[older].mean() - points[younger].mean())
+        by_characteristic.append(
+            {
+                "characteristic": name,
+                "points_older": round(float(points[older].mean()), 1),
+                "points_younger": round(float(points[younger].mean()), 1),
+                "gap": round(gap, 1),
+            }
+        )
+    by_characteristic.sort(key=lambda row: row["gap"])
+
+    total = float(
+        awarded_points.to_numpy(dtype=float)[older].sum(axis=1).mean()
+        - awarded_points.to_numpy(dtype=float)[younger].sum(axis=1).mean()
+    )
+    losing = [row for row in by_characteristic if row["gap"] < 0]
+    out = {
+        "older_from_age": int(older_from),
+        "n_older": int(older.sum()),
+        "n_younger": int(younger.sum()),
+        "total_points_gap": round(total, 1),
+        "points_lost_to_negative_characteristics": round(
+            sum(row["gap"] for row in losing), 1
+        ),
+        "by_characteristic": by_characteristic,
+    }
+
+    if income_missing is None:
+        return out
+
+    missing = np.asarray(income_missing).ravel().astype(bool)
+    if missing.size != age.size:
+        raise ValueError(f"income_missing has {missing.size} rows, expected {age.size}.")
+
+    # How well the absence stands in for being older, over applicants whose
+    # age is known. Accuracy, not correlation: the claim is that it acts as a
+    # test for age, so the right measure is how often the test is right.
+    out["income_record_as_age_proxy"] = {
+        "accuracy": round(float((missing[known] == older[known]).mean()), 4),
+        "share_missing_among_older": round(float(missing[older].mean()), 4),
+        "share_missing_among_younger": round(float(missing[younger].mean()), 4),
+    }
+    risk = []
+    for label, group in (("older", older), ("younger", younger)):
+        for state, flag in (("no_income_record", True), ("has_income_record", False)):
+            mask = group & (missing == flag)
+            if not mask.any():
+                continue
+            risk.append(
+                {
+                    "group": label,
+                    "income_record": state,
+                    "n": int(mask.sum()),
+                    "default_rate": round(float(y_true[mask].mean()), 4),
+                }
+            )
+    out["default_rate_by_age_and_income_record"] = risk
+    return out

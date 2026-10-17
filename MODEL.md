@@ -135,8 +135,8 @@ the default class **0.000** of the time, so Mondrian moves it from 0 % to 75 %,
 but the guarantee should not be quoted as holding.
 
 At the tightest binding cutoff (71.5 % acceptance) the bands separate risk
-monotonically: approve 50.6 % at 1.1 % bad, refer 45.3 % at 2.9 %, decline 4.1
-% at 7.8 %. A **45 % referral rate is beyond any real review desk** and follows
+monotonically: approve 51.3 % at 1.1 % bad, refer 44.4 % at 2.9 %, decline 4.3
+% at 7.8 %. A **44 % referral rate is beyond any real review desk** and follows
 directly from α = 0.10 on a 3 % default book; α is the lever, and moving it is
 a business decision. The band stops paying for itself between **0.01 and 0.02
 per review**, against a *perfect-reviewer* upper bound.
@@ -236,7 +236,7 @@ not from convention.
 | **calibration in the large** | worst week 0.008, range -0.003 to +0.009 | any week \|gap\| > 0.010 | 2 consecutive weeks \|gap\| > 0.015 |
 | **score PSI vs train** | median 0.42, range 0.30-0.71 | weekly PSI > 0.60 | weekly PSI > 0.75, or 4-week median > 0.60 |
 | **conformal coverage, default class** | 0.747, target 0.90 | any week < 0.70 | 4-week mean < 0.65 |
-| **referral rate** | 45.3 % | outside 35-55 % | outside 30-60 % |
+| **referral rate** | 44.4 % | outside 35-55 % | outside 30-60 % |
 | **approved bad rate** | 1.1 % | > 1.5 % over 4 weeks | > 2.0 % over 4 weeks |
 
 Two notes on these. The PSI thresholds are deliberately set **above** the

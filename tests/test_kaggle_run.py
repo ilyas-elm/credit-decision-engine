@@ -24,6 +24,7 @@ from kaggle_run import (
     build_bundled_script,
     bundle_src,
     load_stage,
+    main,
     resolve_metadata,
     validate_metadata,
 )
@@ -189,6 +190,30 @@ def test_username_placeholder_is_substituted_in_kernel_sources(monkeypatch) -> N
     metadata = resolve_metadata(load_stage("models"))
     assert metadata["id"] == "someuser/hc-models"
     assert metadata["kernel_sources"] == ["someuser/hc-features"]
+
+
+def test_the_announced_target_is_the_resolved_one(monkeypatch, capsys) -> None:
+    """The log line must name the kernel that will actually be written.
+
+    It printed the committed placeholder while the push used the resolved id,
+    so a run announced KAGGLE_USERNAME/hc-decision and pushed elsewhere.
+    """
+    monkeypatch.setenv("KAGGLE_USERNAME", "someuser")
+    assert main(["decision", "--dry-run"]) == 0
+    out = capsys.readouterr().out
+    assert "someuser/hc-decision" in out
+    assert "KAGGLE_USERNAME/hc-decision" not in out
+
+
+def test_a_dry_run_still_works_with_no_username_available(monkeypatch, capsys) -> None:
+    """A fresh clone must be able to build a bundle before configuring Kaggle."""
+    monkeypatch.delenv("KAGGLE_USERNAME", raising=False)
+    monkeypatch.setattr(
+        "kaggle_run.kaggle_username",
+        lambda: (_ for _ in ()).throw(StageError("no username")),
+    )
+    assert main(["decision", "--dry-run"]) == 0
+    assert "KAGGLE_USERNAME/hc-decision" in capsys.readouterr().out
 
 
 def test_no_committed_metadata_carries_a_concrete_username() -> None:

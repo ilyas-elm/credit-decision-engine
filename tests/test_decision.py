@@ -11,6 +11,7 @@ from decision import (
     Cutoff,
     DecisionEngine,
     Recourse,
+    age_gap_attribution,
     choose_cutoff,
     referral_economics,
 )
@@ -511,3 +512,99 @@ def test_referral_economics_validates_its_inputs() -> None:
             review_costs=[0.0],
             review_accuracy=1.5,
         )
+
+
+# --- Attributing the age disparity ---------------------------------------
+
+
+def _attribution_frame():
+    """Two characteristics: one that penalises the older group, one that does not."""
+    age = np.array([70.0, 65.0, 62.0, 30.0, 35.0, 40.0])
+    points = pd.DataFrame(
+        {
+            "income_like": [10.0, 10.0, 10.0, 40.0, 40.0, 40.0],  # -30 for older
+            "neutral": [20.0, 20.0, 20.0, 20.0, 20.0, 20.0],  # no gap
+            "favours_older": [30.0, 30.0, 30.0, 20.0, 20.0, 20.0],  # +10 for older
+        }
+    )
+    y = np.array([0, 0, 0, 1, 0, 0])
+    return points, age, y
+
+
+def test_attribution_splits_the_gap_by_characteristic() -> None:
+    points, age, y = _attribution_frame()
+    out = age_gap_attribution(points, age, y)
+    gaps = {r["characteristic"]: r["gap"] for r in out["by_characteristic"]}
+    assert gaps == {"income_like": -30.0, "neutral": 0.0, "favours_older": 10.0}
+    assert out["n_older"] == 3
+    assert out["n_younger"] == 3
+
+
+def test_the_net_gap_and_the_losing_total_are_reported_separately() -> None:
+    """The distinction the README depends on.
+
+    Offsetting characteristics make the net gap smaller than the amount the
+    penalising ones take away, which is why a single number misreads as an
+    arithmetic error: 24 points lost against a 22-point net gap.
+    """
+    points, age, y = _attribution_frame()
+    out = age_gap_attribution(points, age, y)
+    assert out["total_points_gap"] == -20.0  # -30 + 0 + 10
+    assert out["points_lost_to_negative_characteristics"] == -30.0
+    assert out["total_points_gap"] > out["points_lost_to_negative_characteristics"]
+
+
+def test_sorted_worst_first() -> None:
+    points, age, y = _attribution_frame()
+    out = age_gap_attribution(points, age, y)
+    assert [r["characteristic"] for r in out["by_characteristic"]] == [
+        "income_like",
+        "neutral",
+        "favours_older",
+    ]
+
+
+def test_a_perfect_age_proxy_is_measured_as_one() -> None:
+    points, age, y = _attribution_frame()
+    missing = age >= 60  # absent for every older applicant, present for every younger
+    out = age_gap_attribution(points, age, y, income_missing=missing)
+    proxy = out["income_record_as_age_proxy"]
+    assert proxy["accuracy"] == 1.0
+    assert proxy["share_missing_among_older"] == 1.0
+    assert proxy["share_missing_among_younger"] == 0.0
+
+
+def test_an_uninformative_absence_shows_equal_risk_within_a_group() -> None:
+    """A proxy predicts age, not risk, inside the group it penalises."""
+    age = np.array([70.0, 70.0, 70.0, 70.0, 30.0, 30.0, 30.0, 30.0])
+    points = pd.DataFrame({"f": [10.0, 10.0, 10.0, 10.0, 40.0, 40.0, 40.0, 40.0]})
+    missing = np.array([True, True, False, False, True, True, False, False])
+    # Older: same default rate either way. Younger: absence is predictive.
+    y = np.array([1, 0, 1, 0, 1, 1, 0, 0])
+    out = age_gap_attribution(points, age, y, income_missing=missing)
+    rows = {
+        (r["group"], r["income_record"]): r["default_rate"]
+        for r in out["default_rate_by_age_and_income_record"]
+    }
+    assert rows[("older", "no_income_record")] == rows[("older", "has_income_record")]
+    assert rows[("younger", "no_income_record")] > rows[("younger", "has_income_record")]
+
+
+def test_missing_ages_are_excluded_not_treated_as_young() -> None:
+    age = np.array([70.0, 65.0, np.nan, 30.0, 35.0])
+    points = pd.DataFrame({"f": [10.0, 10.0, 999.0, 40.0, 40.0]})
+    y = np.zeros(5, dtype=int)
+    out = age_gap_attribution(points, age, y)
+    assert out["n_older"] == 2
+    assert out["n_younger"] == 2
+    assert out["by_characteristic"][0]["gap"] == -30.0  # the NaN row is ignored
+
+
+def test_one_sided_or_unaligned_input_is_rejected() -> None:
+    points = pd.DataFrame({"f": [1.0, 2.0, 3.0]})
+    with pytest.raises(ValueError, match="Need both groups"):
+        age_gap_attribution(points, np.array([70.0, 71.0, 72.0]), np.zeros(3, dtype=int))
+    with pytest.raises(ValueError, match="row-aligned"):
+        age_gap_attribution(points, np.array([70.0, 30.0]), np.zeros(2, dtype=int))
+    with pytest.raises(ValueError, match="No known ages"):
+        age_gap_attribution(points, np.full(3, np.nan), np.zeros(3, dtype=int))

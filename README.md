@@ -151,10 +151,11 @@ How far recourse is from clearing the cutoff, in scorecard points:
 
 | population | n | short by | actionable headroom | reachable |
 |---|---|---|---|---|
-| decline band | 9,701 | 55.0 | 25.7 | **3.9 %** |
-| refer band | 100,034 | 15.8 | 20.6 | **77.6 %** |
+| decline band | 9,701 | 43.4 | 22.2 | **3.9 %** |
+| refer band | 54,553 | 11.1 | 19.6 | **77.6 %** |
+| all below cutoff | 64,254 | 16.0 | 20.0 | **66.4 %** |
 
-Outright declines sit about three times further from the cutoff than anything
+Outright declines sit about 3.9 times further from the cutoff than anything
 an applicant can change: for them recourse is genuinely infeasible, and saying
 so is more honest than inventing advice. The referred population is a different
 question, **78 % of them could reach the cutoff** by borrowing less or waiting
@@ -247,10 +248,16 @@ and the finding is the deliverable.
 
 ## Question 3: sampling bias
 
-Kernel `ilyaselmaazouzi/hc-sampling-bias`: 160 fits, 17.7 min. Policy weeks
-0-22, development 23-63 (labels hidden for the rejected), test 64-91 with every
-label. 150k development cases per arm, identical features and fixed
-hyperparameters throughout, three seeds on the stochastic arms.
+Kernel `ilyaselmaazouzi/hc-sampling-bias`: 160 fits, 17.6 min
+([`sampling_bias_summary.json`](docs/sampling_bias_summary.json)). Policy weeks
+0-22, development
+23-63 (labels hidden for the
+rejected), test 64-91 with every
+label. 150k development cases per arm, identical
+features and fixed hyperparameters throughout, three seeds on the stochastic
+arms. The config asks for the top 40 features by IV and gain, but the build
+produces 36, so every arm simply uses all of them and that
+selection step never binds.
 
 **Limitation, which bounds every number here:** the Home Credit data already
 contains booked loans only. The real rejects are gone. This simulates a
