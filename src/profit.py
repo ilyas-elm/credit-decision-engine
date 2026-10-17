@@ -32,6 +32,8 @@ from itertools import product
 import numpy as np
 from empulse.metrics import empcs_score
 
+from config import checked_kwargs
+
 __all__ = [
     "ProfitAssumptions",
     "EmpcsResult",
@@ -79,8 +81,7 @@ class ProfitAssumptions:
         cannot be splatted in wholesale. Centralised here rather than left to
         every caller to remember.
         """
-        known = {f for f in cls.__dataclass_fields__}
-        return cls(**{k: v for k, v in section.items() if k in known})
+        return cls(**checked_kwargs(section, cls, "profit"))
 
     def as_kwargs(self) -> dict[str, float]:
         return {

@@ -41,6 +41,7 @@ from dataclasses import dataclass, field
 import numpy as np
 import pandas as pd
 
+from config import checked_kwargs
 from profit import ProfitAssumptions, expected_loss_fraction
 
 __all__ = [
@@ -81,11 +82,17 @@ class SamplingBiasParams:
             "parcelling_uplift",
             "exploration_pct",
         }
-        known = set(cls.__dataclass_fields__)
+        checked = checked_kwargs(
+            section,
+            cls,
+            "sampling_bias",
+            # The window fractions in this section build
+            # SamplingBiasWindows, not the experiment parameters.
+            consumed_elsewhere={"policy_frac", "dev_frac", "test_frac"},
+        )
         kwargs = {
             key: (tuple(value) if key in tuple_keys else value)
-            for key, value in section.items()
-            if key in known
+            for key, value in checked.items()
         }
         return cls(**kwargs)
 

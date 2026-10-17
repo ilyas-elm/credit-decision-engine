@@ -14,7 +14,49 @@ from typing import Any
 
 DEFAULT_CONFIG_PATH = Path(__file__).resolve().parents[1] / "config" / "default.toml"
 
-__all__ = ["Config", "SplitsConfig", "SamplingBiasWindows", "load_config"]
+__all__ = [
+    "Config",
+    "SplitsConfig",
+    "SamplingBiasWindows",
+    "load_config",
+    "checked_kwargs",
+]
+
+
+def checked_kwargs(
+    section: dict, cls: type, name: str, *, consumed_elsewhere: set[str] | None = None
+) -> dict:
+    """Keys from a config section, rejecting any the dataclass does not define.
+
+    The point of keeping parameters in TOML is that changing one is a visible
+    diff. That only holds if the file is actually read: a key that is misspelt
+    or renamed, and then quietly dropped, leaves the run on a default while the
+    diff says otherwise. A typo doing nothing is worse than a crash, because
+    the numbers still come out and look fine.
+
+    ``ChallengerParams`` checked this from the start; the other five sections
+    did not, which is the inconsistency this exists to remove.
+
+    ``consumed_elsewhere`` names keys that belong to the section but are read
+    by a different class, so they are neither unknown nor this class's to take.
+    ``[sampling_bias]`` is the case: its window fractions build
+    :class:`SamplingBiasWindows` while the rest build the experiment's
+    parameters. Naming them keeps the check strict for everything else.
+    """
+    known = set(cls.__dataclass_fields__)
+    # A nested table is a section in its own right, not a field: [profit]
+    # carries its sensitivity grid that way.
+    scalars = {
+        k: v
+        for k, v in section.items()
+        if not isinstance(v, dict) and k not in (consumed_elsewhere or set())
+    }
+    unknown = set(scalars) - known
+    if unknown:
+        raise ValueError(
+            f"[{name}] has unrecognised keys {sorted(unknown)}. Known: {sorted(known)}."
+        )
+    return scalars
 
 
 def _require_fractions_sum_to_one(name: str, fractions: dict[str, float]) -> None:

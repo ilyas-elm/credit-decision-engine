@@ -48,6 +48,8 @@ from pathlib import Path
 import numpy as np
 import polars as pl
 
+from config import checked_kwargs
+
 __all__ = [
     "FeatureParams",
     "DATE_FORMAT",
@@ -88,10 +90,8 @@ class FeatureParams:
     @classmethod
     def from_config(cls, section: dict) -> FeatureParams:
         tuples = {"dpd_windows_months", "inquiry_windows_days"}
-        known = set(cls.__dataclass_fields__)
-        return cls(
-            **{k: (tuple(v) if k in tuples else v) for k, v in section.items() if k in known}
-        )
+        checked = checked_kwargs(section, cls, "features")
+        return cls(**{k: (tuple(v) if k in tuples else v) for k, v in checked.items()})
 
 
 # --- date handling -------------------------------------------------------
@@ -625,8 +625,7 @@ class ScreeningParams:
 
     @classmethod
     def from_config(cls, section: dict) -> ScreeningParams:
-        known = set(cls.__dataclass_fields__)
-        return cls(**{k: v for k, v in section.items() if k in known})
+        return cls(**checked_kwargs(section, cls, "screening"))
 
 
 def screen_features(

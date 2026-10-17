@@ -29,6 +29,7 @@ import numpy as np
 import pandas as pd
 
 from calibrate import IsotonicCalibrator
+from config import checked_kwargs
 
 __all__ = ["ChallengerParams", "FittedChallenger", "fit_challenger"]
 
@@ -51,13 +52,7 @@ class ChallengerParams:
 
     @classmethod
     def from_config(cls, section: dict) -> ChallengerParams:
-        known = {f for f in cls.__dataclass_fields__}
-        unknown = set(section) - known
-        if unknown:
-            raise ValueError(
-                f"[challenger] has unrecognised keys {sorted(unknown)}. Known: {sorted(known)}."
-            )
-        return cls(**{k: v for k, v in section.items() if k in known})
+        return cls(**checked_kwargs(section, cls, "challenger"))
 
     def __post_init__(self) -> None:
         if self.optuna_trials > 30:

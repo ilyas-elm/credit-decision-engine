@@ -30,6 +30,8 @@ import pandas as pd
 from optbinning import BinningProcess, Scorecard
 from sklearn.linear_model import LogisticRegression
 
+from config import checked_kwargs
+
 __all__ = [
     "ScorecardParams",
     "iv_table",
@@ -58,6 +60,7 @@ class ScorecardParams:
 
     @classmethod
     def from_config(cls, section: dict) -> ScorecardParams:
+        checked_kwargs(section, cls, "scorecard")
         return cls(
             monotonic_trend=section["monotonic_trend"],
             min_iv=section["min_iv"],
