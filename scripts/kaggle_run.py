@@ -296,15 +296,32 @@ def kaggle_username() -> str:
 
 
 def resolve_metadata(stage: Stage) -> dict:
-    """Substitute the username placeholder in the kernel id.
+    """Substitute the username placeholder in the kernel id and its sources.
 
     The committed metadata says `KAGGLE_USERNAME/hc-<stage>` so that the repo
     carries no personal identifier; the real id is assembled at push time.
+
+    `kernel_sources` needs the same substitution. A downstream stage chains
+    `KAGGLE_USERNAME/hc-features`, and resolving only `id` would leave it
+    pointing at whoever happened to commit the file. Those upstream kernels
+    are private, so for anyone else the push would reference a kernel they
+    cannot read, which is the one failure mode a fresh clone cannot debug.
     """
     metadata = dict(stage.metadata)
-    ref = metadata["id"]
-    if ref.startswith(f"{USERNAME_PLACEHOLDER}/"):
-        metadata["id"] = ref.replace(USERNAME_PLACEHOLDER, kaggle_username(), 1)
+    username = None
+
+    def resolved(ref: str) -> str:
+        nonlocal username
+        if not ref.startswith(f"{USERNAME_PLACEHOLDER}/"):
+            return ref
+        if username is None:
+            username = kaggle_username()
+        return ref.replace(USERNAME_PLACEHOLDER, username, 1)
+
+    metadata["id"] = resolved(metadata["id"])
+    sources = metadata.get("kernel_sources")
+    if sources:
+        metadata["kernel_sources"] = [resolved(ref) for ref in sources]
     return metadata
 
 

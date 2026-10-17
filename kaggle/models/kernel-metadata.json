@@ -10,6 +10,8 @@
   "enable_internet": true,
   "competition_sources": [],
   "dataset_sources": [],
-  "kernel_sources": ["ilyaselmaazouzi/hc-features"],
+  "kernel_sources": [
+    "KAGGLE_USERNAME/hc-features"
+  ],
   "model_sources": []
 }

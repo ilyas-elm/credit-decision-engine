@@ -8,8 +8,13 @@
   "enable_gpu": false,
   "enable_tpu": false,
   "enable_internet": true,
-  "competition_sources": ["home-credit-credit-risk-model-stability"],
+  "competition_sources": [
+    "home-credit-credit-risk-model-stability"
+  ],
   "dataset_sources": [],
-  "kernel_sources": ["ilyaselmaazouzi/hc-features", "ilyaselmaazouzi/hc-models"],
+  "kernel_sources": [
+    "KAGGLE_USERNAME/hc-features",
+    "KAGGLE_USERNAME/hc-models"
+  ],
   "model_sources": []
 }

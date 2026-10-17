@@ -178,6 +178,36 @@ def test_username_placeholder_is_substituted_from_the_environment(monkeypatch) -
     assert committed["id"].startswith("KAGGLE_USERNAME/")
 
 
+def test_username_placeholder_is_substituted_in_kernel_sources(monkeypatch) -> None:
+    """A chained stage must resolve its upstream refs too, not only its own id.
+
+    Resolving `id` alone left `kernel_sources` pointing at whoever committed
+    the file. The upstream kernels are private, so for anyone else that push
+    references a kernel they cannot read.
+    """
+    monkeypatch.setenv("KAGGLE_USERNAME", "someuser")
+    metadata = resolve_metadata(load_stage("models"))
+    assert metadata["id"] == "someuser/hc-models"
+    assert metadata["kernel_sources"] == ["someuser/hc-features"]
+
+
+def test_no_committed_metadata_carries_a_concrete_username() -> None:
+    """Every ref in every committed stage, not just the one id a spot check hits.
+
+    The earlier version of this check looked at `id` on a single stage, and
+    that stage chains nothing, so it could not have caught a username left in
+    `kernel_sources`.
+    """
+    offenders = {}
+    for path in sorted(Path("kaggle").glob("*/kernel-metadata.json")):
+        metadata = json.loads(path.read_text())
+        refs = [metadata["id"], *(metadata.get("kernel_sources") or [])]
+        bad = [r for r in refs if not r.startswith("KAGGLE_USERNAME/")]
+        if bad:
+            offenders[path.parent.name] = bad
+    assert not offenders, f"committed metadata carries a real username: {offenders}"
+
+
 def test_missing_credentials_name_both_manual_steps(monkeypatch) -> None:
     """The check delegates to the CLI, so an unauthenticated CLI must surface
     the real instructions, OAuth login, not the kaggle.json that CLI 2.x
