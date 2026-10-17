@@ -11,9 +11,19 @@ catch: a leaky column, an all-but-missing column, a drifting column and rows
 dated after date_decision, so that a screening test failing to flag them fails
 the test rather than passing on clean data.
 
-Shapes are asserted against the real tables once docs/DATA_NOTES.md exists; until
-then these are the schema as the brief describes it, which is explicitly marked
-unverified there.
+What these do and do not replicate, because the difference matters when a test
+passes. The suffix conventions (P, M, A, D, T, L), the depth-0/1/2 shapes with
+num_group1 and num_group2, and the base table keyed by case_id over WEEK_NUM
+are all as the real data has them, and docs/DATA_NOTES.md confirms it. The
+column-to-table assignment is NOT: one depth-2 fixture stands in for whichever
+depth-2 table a test needs, so test_features maps it onto
+train_credit_bureau_a_2, and several real column names appear here in tables
+they do not belong to. These are a shape to exercise the pipeline, not a clone
+of the schema.
+
+That leaves one thing they cannot check, which is whether the prefixes the
+feature build searches for exist in the real tables it reads them from.
+test_features covers that separately, against data/sample when it is present.
 """
 
 from __future__ import annotations

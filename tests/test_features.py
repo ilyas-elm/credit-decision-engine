@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import datetime as dt
 import math
+from pathlib import Path
 
 import numpy as np
 import polars as pl
@@ -624,3 +625,55 @@ def test_dpd_is_averaged_over_contracts_not_over_payment_months(tmp_path) -> Non
     # The worst month survives both passes, and every month is counted once.
     assert row["delq_dpd_max"] == pytest.approx(100.0)
     assert row["delq_n_payment_months"] == 11
+
+
+# --- The real schema, when a sample is available -------------------------
+
+SAMPLE_DIR = Path(__file__).resolve().parent.parent / "data" / "sample"
+needs_sample = pytest.mark.skipif(
+    not SAMPLE_DIR.exists(),
+    reason="needs data/sample, which the make-sample kernel produces and CI never has",
+)
+
+#: Every prefix the feature build discovers by, and the table it reads it from.
+#: Kept here rather than imported so that renaming a prefix in features.py
+#: without changing this fails loudly instead of silently agreeing with itself.
+DISCOVERED = [
+    ("train_credit_bureau_a_2", ["pmts_dpd_", "pmts_overdue_"]),
+    ("train_credit_bureau_a_1", ["credlmt_", "outstandingamount_"]),
+    ("train_applprev_1", ["status_", "rejectreason_", "credamount_", "annuity_"]),
+]
+
+
+@needs_sample
+@pytest.mark.parametrize("table, prefixes", DISCOVERED, ids=[t for t, _ in DISCOVERED])
+def test_the_prefixes_the_build_searches_for_exist_in_the_real_table(table, prefixes) -> None:
+    """The one thing the synthetic fixtures cannot check.
+
+    Columns are found by prefix within a named table. The fixtures reuse one
+    depth-2 shape for several roles and put real column names in tables they
+    do not belong to, so they exercise the prefix logic without confirming it
+    points anywhere real. A prefix that matched nothing would silently yield a
+    whole family of missing features rather than an error.
+    """
+    from features import find_data_dir, table_paths
+
+    paths = table_paths(find_data_dir(SAMPLE_DIR), table)
+    assert paths, f"{table} is absent from the sample"
+    names = pl.scan_parquet(paths[0]).collect_schema().names()
+    for prefix in prefixes:
+        assert [c for c in names if c.startswith(prefix)], (
+            f"no column in {table} starts with {prefix!r}; the feature build "
+            "would return nothing for that family and say nothing about it"
+        )
+
+
+@needs_sample
+def test_the_payment_month_and_year_columns_are_named_as_the_build_expects() -> None:
+    """Named exactly, not by prefix, so a rename would be a KeyError on Kaggle."""
+    from features import find_data_dir, table_paths
+
+    paths = table_paths(find_data_dir(SAMPLE_DIR), "train_credit_bureau_a_2")
+    assert paths
+    names = set(pl.scan_parquet(paths[0]).collect_schema().names())
+    assert {"pmts_month_158T", "pmts_year_1139T"} <= names
