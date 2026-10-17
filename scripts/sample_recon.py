@@ -64,9 +64,47 @@ def _payment_rows(data_dir: Path) -> pl.LazyFrame:
 
 def post_decision_leakage(data_dir: Path) -> None:
     """Why the post-decision drop exists, in two numbers."""
+    # Three denominators, reported together because quoting one without
+    # saying which invites exactly the confusion it caused: 8.4 % of all rows
+    # and 10.7 % of the rows carrying a DPD are the same measurement.
+    frame = pl.concat(
+        [pl.scan_parquet(p) for p in table_paths(data_dir, BUREAU_PAYMENTS)],
+        how="diagonal_relaxed",
+    )
+    base = base_frame(data_dir).select("case_id", "decision_date")
+    overall = (
+        frame.select(["case_id", "pmts_month_158T", "pmts_year_1139T"])
+        .join(base, on="case_id", how="inner")
+        .with_columns(
+            pl.date(
+                pl.col("pmts_year_1139T").cast(pl.Int32, strict=False),
+                pl.col("pmts_month_158T").cast(pl.Int32, strict=False),
+                1,
+            ).alias("payment_date")
+        )
+        .select(
+            pl.len().alias("all_rows"),
+            (pl.col("payment_date") > pl.col("decision_date")).sum().alias("post_all"),
+            pl.col("payment_date").is_not_null().sum().alias("dated"),
+        )
+        .collect(engine="streaming")
+    )
+    all_rows = overall["all_rows"][0]
+    post_all = overall["post_all"][0]
+    dated = overall["dated"][0]
+
     rows = _payment_rows(data_dir)
-    share = rows.select(pl.col("post_decision").mean()).collect(engine="streaming").item()
-    print(f"bureau payment rows dated after date_decision: {share:.2%}")
+    counted = rows.select(
+        pl.len().alias("with_dpd"), pl.col("post_decision").sum().alias("post_with_dpd")
+    ).collect(engine="streaming")
+    with_dpd, post_with_dpd = counted["with_dpd"][0], counted["post_with_dpd"][0]
+
+    print(f"depth-2 payment rows: {all_rows:,}")
+    print(f"  dated after date_decision: {post_all:,}")
+    print(f"    = {post_all / all_rows:.1%} of all rows")
+    print(f"    = {post_all / dated:.1%} of the {dated:,} with a parseable payment month")
+    print(f"  of those, carrying a real DPD: {post_with_dpd:,}")
+    print(f"    = {post_with_dpd / with_dpd:.1%} of the {with_dpd:,} rows carrying a DPD")
 
     # The leak itself: the worst delinquency recorded only AFTER the decision.
     # A feature built from these rows is reading the outcome.

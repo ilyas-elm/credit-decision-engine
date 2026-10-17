@@ -13,12 +13,17 @@ docs/DATA_NOTES.md. Two of them change how this module has to work:
 
 Post-decision records
 ---------------------
-8.4 % of the depth-2 payment rows are dated AFTER their own `date_decision`,
-and 49,325 of those carry a real DPD. Measured on the local sample, the maximum
-post-decision DPD has a univariate Gini of +0.097 against the target: it is
-genuinely predictive, because it is partly the outcome being predicted. Every
-record dated after the decision is dropped, which is the brief's rule and is
-not a formality here.
+On the 3 % sample, 483,832 of the 5,744,322 depth-2 payment rows are dated
+AFTER their own `date_decision`, and 132,759 of those carry a real DPD. Three
+denominators are in play and they are easy to confuse: that is 8.4 % of all
+rows, 24.1 % of the rows with a parseable payment month, and 10.7 % of the
+rows carrying a DPD value, which is the figure MODEL.md quotes.
+
+Taking the maximum post-decision DPD per case gives a univariate Gini of
++0.19 against the target over the 29,914 cases that have one: it is genuinely
+predictive, because it is partly the outcome being predicted. Every record
+dated after the decision is dropped, which is the brief's rule and is not a
+formality here. `scripts/sample_recon.py` recomputes all of it.
 
 Scope, stated because the brief's preparation step is broader
 ----------------------------------------------------------
