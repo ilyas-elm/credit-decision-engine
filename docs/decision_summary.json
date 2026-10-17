@@ -55,6 +55,31 @@
     }
   },
   "fairness": {
+    "birth_column_coverage": [
+      {
+        "column": "person_1.birth_259D",
+        "overall": 1.0,
+        "test_weeks": 1.0
+      },
+      {
+        "column": "static_cb_0.dateofbirth_337D",
+        "overall": 0.9077,
+        "test_weeks": 0.9626
+      },
+      {
+        "column": "static_cb_0.birthdate_574D",
+        "overall": 0.3982,
+        "test_weeks": 0.0
+      }
+    ],
+    "birth_column_agreement": {
+      "columns": [
+        "person_1.birth_259D",
+        "static_cb_0.dateofbirth_337D"
+      ],
+      "n_overlapping": 1385691,
+      "same_birth_year": 0.9994
+    },
     "sex": [
       {
         "sex": "F",
@@ -206,6 +231,38 @@
         "share_missing_among_older": 0.9633,
         "share_missing_among_younger": 0.0821
       },
+      "income_record_missing_by_age_band": [
+        {
+          "age_band": 20,
+          "n": 27384,
+          "share_missing": 0.0438
+        },
+        {
+          "age_band": 30,
+          "n": 48676,
+          "share_missing": 0.0539
+        },
+        {
+          "age_band": 40,
+          "n": 45188,
+          "share_missing": 0.0639
+        },
+        {
+          "age_band": 50,
+          "n": 35221,
+          "share_missing": 0.1741
+        },
+        {
+          "age_band": 60,
+          "n": 54407,
+          "share_missing": 0.9534
+        },
+        {
+          "age_band": 70,
+          "n": 14638,
+          "share_missing": 1.0
+        }
+      ],
       "default_rate_by_age_and_income_record": [
         {
           "group": "older",
@@ -234,5 +291,5 @@
       ]
     }
   },
-  "total_seconds": 89.2
+  "total_seconds": 73.0
 }

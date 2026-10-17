@@ -223,7 +223,17 @@ characteristics**:
 Income is derived from the tax registry, which records employment payments, and
 retirees do not appear in it: **96.3 %** of the over-60s have no income record
 against **8.2 %** of everyone younger, which makes the absence a **93.2
-%-accurate test for being over 60**.
+%-accurate test for being over 60**. It does not fade in gradually, it steps:
+
+| age band | n | share with no tax-registry income |
+|---|---|---|
+| 20s | 27,384 | 4.4 % |
+| 30s | 48,676 | 5.4 % |
+| 40s | 45,188 | 6.4 % |
+| 50s | 35,221 | 17.4 % |
+| 60s | 54,407 | **95.3 %** |
+| 70s | 14,638 | **100.0 %** |
+
 
 The obvious conclusion would be that the scorecard treats a missing income
 record as risky. It does not. That is the Missing bin on both characteristics:
@@ -242,7 +252,8 @@ higher default.
 
 What produces the gap is drift. `afford_annuity_to_taxincome` runs from 31.4
 points at worst to 65.4 at best, and the Missing bin's 45.1 was fixed when the
-scorecard was fitted:
+scorecard was fitted (`scripts/drift_recon.py` recomputes this table and the
+one below it from a pulled features parquet):
 
 | | median ratio | mean points, non-missing |
 |---|---|---|

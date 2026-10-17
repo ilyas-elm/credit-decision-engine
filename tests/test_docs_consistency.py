@@ -565,3 +565,62 @@ def test_the_absence_is_not_riskier_in_either_group(mechanism, readme) -> None:
         assert f"{absent * 100:.2f} %" in " ".join(readme.split()), (
             f"README does not quote the {group} absent-record rate {absent * 100:.2f} %"
         )
+
+
+def test_the_income_absence_table_matches_the_artefact(mechanism, readme) -> None:
+    """Every row, since the previous table was wrong in three of four cells."""
+    for band in mechanism["income_record_missing_by_age_band"]:
+        cells = f"| {band['age_band']}s | {band['n']:,} |"
+        assert cells in readme, f"README has no row for the {band['age_band']}s: {cells}"
+        share = f"{band['share_missing'] * 100:.1f} %"
+        assert share in readme, (
+            f"README does not quote the {band['age_band']}s missing share = {share}"
+        )
+
+
+def test_the_absence_steps_rather_than_drifting_up_with_age(mechanism, readme) -> None:
+    """The README calls it a step. Check the data still shows one."""
+    bands = sorted(
+        mechanism["income_record_missing_by_age_band"], key=lambda b: b["age_band"]
+    )
+    shares = [b["share_missing"] for b in bands]
+    biggest_jump = max(b - a for a, b in zip(shares, shares[1:], strict=False))
+    assert biggest_jump > 0.5, (
+        f"the largest jump between consecutive bands is {biggest_jump:.2f}; the "
+        "README describes a step, not a gradient"
+    )
+    assert "it steps" in " ".join(readme.split())
+
+
+# --- Birth column coverage -----------------------------------------------
+
+
+def test_birth_column_coverage_table_matches_the_artefact(summary) -> None:
+    coverage = summary["fairness"].get("birth_column_coverage")
+    assert coverage, "decision_summary.json has no fairness.birth_column_coverage"
+    notes = (REPO / "docs" / "DATA_NOTES.md").read_text()
+    for row in coverage:
+        cells = f"| `{row['column']}` | {row['overall']:.3f} |"
+        assert cells in notes, f"DATA_NOTES row for {row['column']} does not match: {cells}"
+        assert f"{row['test_weeks']:.4f}" in notes, (
+            f"DATA_NOTES does not give {row['column']} test-week coverage "
+            f"{row['test_weeks']:.4f}"
+        )
+
+
+def test_the_chosen_birth_column_is_the_best_covered_on_the_test_weeks(summary) -> None:
+    """The point of the table: overall fill rate is not what matters."""
+    coverage = summary["fairness"]["birth_column_coverage"]
+    best = max(coverage, key=lambda r: r["test_weeks"])
+    assert best["column"] == "person_1.birth_259D"
+    # And the trap it documents: a column that looks usable overall yet is empty.
+    trap = next(r for r in coverage if r["column"] == "static_cb_0.birthdate_574D")
+    assert trap["overall"] > 0.3 and trap["test_weeks"] == 0.0
+
+
+def test_the_birth_agreement_rate_is_quoted(summary) -> None:
+    agreement = summary["fairness"].get("birth_column_agreement")
+    assert agreement, "decision_summary.json has no fairness.birth_column_agreement"
+    notes = " ".join((REPO / "docs" / "DATA_NOTES.md").read_text().split())
+    assert f"{agreement['same_birth_year'] * 100:.2f} %" in notes
+    assert f"{agreement['n_overlapping']:,}" in notes

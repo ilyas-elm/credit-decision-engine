@@ -228,14 +228,17 @@ Two columns carry the same information and survive:
 | column | overall | test weeks |
 |---|---|---|
 | `static_cb_0.birthdate_574D` | 0.398 | **0.0000** |
-| `static_cb_0.dateofbirth_337D` | 0.912 | 0.9626 |
+| `static_cb_0.dateofbirth_337D` | 0.908 | 0.9626 |
 | `person_1.birth_259D` | 1.000 | **1.0000** |
 
-The overall column and the agreement below are reproduced by
-`scripts/sample_recon.py` on the sample; the test-week column comes from the
-decision stage, which picks the birth column by exactly this measurement.
+Both columns come from the decision stage, which picks its birth column by
+exactly this measurement and records the table in
+[`decision_summary.json`](decision_summary.json) under
+`fairness.birth_column_coverage`. `scripts/sample_recon.py` recomputes the
+overall column on the 3 % sample, where it lands within half a point (0.9115
+against 0.908 for `dateofbirth_337D`).
 
-They agree: `birth_259D` and `dateofbirth_337D` give an identical age on 99.96
-% of overlapping cases. **A column's overall fill rate says nothing about the
-period being measured**, and this is the same structural drift that makes
-`bureau_a_records` fail the PSI screen at 0.61.
+They agree: `birth_259D` and `dateofbirth_337D` give the same birth year for
+99.94 % of the 1,385,691 cases that carry both. **A column's overall fill rate
+says nothing about the period being measured**, and this is the same structural
+drift that makes `bureau_a_records` fail the PSI screen at 0.61.
