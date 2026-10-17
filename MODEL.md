@@ -1,13 +1,13 @@
 # MODEL.md, credit decision engine on Home Credit data
 
-Every number here was measured on the full 1.5M-case dataset, not sampled or
-illustrated. Most come from a committed Kaggle kernel; the collinearity and
-sign-flip figures in *Limitations* were computed locally from those kernels'
-outputs, which is noted where they appear. The test count in *Reproducing* is
-the only figure from synthetic fixtures, and says so.
+Every result here was measured on the full 1.5M-case dataset by a committed
+Kaggle kernel, except where the line says otherwise: the collinearity and
+sign-flip figures were computed locally from those kernels' outputs, the
+post-decision figures in §3 come from the 3 % sample, and the test count in §8
+from synthetic fixtures.
 
-Where a result is unflattering or unresolved it is stated as such, because a
-model document that only records successes is not usable for review.
+Where a result is unflattering or unresolved it is stated as such. A model
+document that records only successes is not usable for review.
 
 ---
 
@@ -28,9 +28,9 @@ Two models are maintained:
   forbidden.
 
 The **decision layer runs entirely on the champion**. Calibrating the referral
-band on the challenger while explaining decisions with the scorecard would mean
-the reasons justify a decision a different model made, incoherent, and a
-governance problem for a lender.
+band on the challenger while explaining decisions with the scorecard would have
+the reasons justify a decision a different model made: incoherent, and for a
+lender a governance problem.
 
 ## 2. Data and target
 
@@ -71,13 +71,12 @@ human review, never dropped automatically. The test weeks are never read for
 any selection decision.
 
 **Post-decision records are dropped.** `credit_bureau_a_2` is a monthly payment
-history, and a large minority of its rows postdate the application they belong
-to. Measured on the 3 % sample, 10.7 % of rows carrying a DPD value are dated
-after their own `date_decision`, and the maximum DPD over just those rows
-scores a univariate Gini of +0.19 against the target: it is partly the outcome
-being predicted. No stage records the full-data share, so these are the
-sample's figures rather than the book's; `scripts/sample_recon.py` recomputes
-them.
+history and a large minority of its rows postdate the application they belong
+to. On the 3 % sample, 10.7 % of rows carrying a DPD value are dated after
+their own `date_decision`, and the maximum DPD over those rows scores a
+univariate Gini of +0.19 against the target: it is partly the outcome being
+predicted. No stage records the full-data share; `scripts/sample_recon.py`
+recomputes the sample's.
 
 **No class rebalancing anywhere.** `is_unbalance` and `scale_pos_weight` are
 set explicitly to neutral. Rebalancing distorts the probabilities the profit
@@ -92,16 +91,14 @@ matches. This caught a real defect: the challenger used LightGBM's
 failed on the image.
 
 **Sign flips: found, measured and removed.** Three characteristics scored
-*more* points as their event rate rose, because their multivariate coefficients
-came out negative, the table read "the more you previously borrowed, the safer
-you are". The cause was joint collinearity in the previous-applications family
-rather than any one column: pairwise pruning at 0.80 still left a cluster
-correlated 0.60-0.78 (condition number 15.1), so excluding one flip merely
-moved it to the next. They are now barred in config, at a cost measured locally
-on the full-data features (not by a kernel) of **0.0012 Gini and 0.0010
-stability**, about 0.3 % relative, 16 characteristics down to 13. The scorecard
-now reads correctly end to end, which is the champion's whole purpose.
-`FittedScorecard.sign_flips()` guards against regression.
+*more* points as their event rate rose, so the table read "the more you
+previously borrowed, the safer you are". The cause was joint collinearity
+across the previous-applications family rather than any one column, so they are
+barred in config, at a cost measured locally on the full-data features of
+**0.0012 Gini and 0.0010 stability**, about 0.3 % relative, 16 characteristics
+down to 13. The scorecard now reads correctly end to end, which is the
+champion's whole purpose, and `FittedScorecard.sign_flips()` guards against
+regression. The README records the diagnosis.
 
 ## 4. Out-of-time performance
 
@@ -177,19 +174,17 @@ variance rather than price: net is negative at every budget and the damage runs
 2-53x the cost.
 
 This agrees in direction with Kozodoi et al. (2024, arXiv:2407.13009; EJOR
-324(2), 2025), who find reject inference has modest potential while fixing
-evaluation matters more, and whose §7.1.2 predicts gains rising as acceptance
-falls. The A5 arm here reproduces that direction monotonically but turns
-positive far earlier than their 20 % acceptance threshold. The README sets out
-the comparison in full; what matters for this model card is why: the selection
-here is simulated on an already-booked population, so the hidden labels belong
-to applicants the original lender had already approved. That is the easier
-problem, and **the recoveries reported here are an upper bound**.
+324(2), 2025): reject inference has modest potential, fixing evaluation matters
+more, and gains rise as acceptance falls. A5 reproduces that direction but
+turns positive far earlier than their 20 % threshold, because the selection
+here is simulated on an already-booked population. The hidden labels belong to
+applicants the original lender approved, which is the easier problem, so **the
+recoveries reported here are an upper bound**. The README gives the comparison.
 
 **EMP assumptions are assumptions**, and at the literature's values the profit
 analysis is degenerate (§4). Every profit number is reported across a grid.
 
-**Drift is real and unaddressed.** Score PSI is 0.42-0.50 train-to-test, above
+**Drift is real and unaddressed.** The PD PSI is 0.42-0.50 train-to-test, above
 any conventional alert threshold, and it is the direct cause of the conformal
 coverage failure.
 
@@ -212,30 +207,24 @@ cohort gives up 19.6 scorecard points net, 21.1 of them on the two
 income-derived characteristics. Income comes from the tax registry, which
 records employment payments, so 96.3 % of the over-60s have no income record
 against 8.2 % of everyone younger: the absence is a 93.2 %-accurate test for
-being over 60.
+being over 60. The scorecard does not treat it as risky. Its Missing bin scores
+the neutral 45.1 points, matching a 3.05 % event rate against the train weeks'
+3.13 %, and the absence is not riskier anywhere in the data. The gap is that
+the bin is frozen at fit time while everyone else moved: applicants with an
+income record averaged 46.4 points on `afford_annuity_to_taxincome` at fit time
+and 61.7 by the test weeks. The over-60s were not marked down; the rest drifted
+past them. The README works through it.
 
-The scorecard does not treat that absence as risky. Its Missing bin scores 45.1
-points on both characteristics, the neutral middle, matching its 3.05 % event
-rate against the train weeks' 3.13 %. Nor is the absence riskier anywhere in
-the data, on the train weeks the bins were fitted on or on the test weeks
-within either age group. The gap comes from that bin being frozen at fit time
-while the rest moved: applicants with an income record averaged 46.4 points on
-`afford_annuity_to_taxincome` on the train weeks, against the bin's 45.1, and
-61.7 by the test weeks as their median annuity-to-income ratio fell from 0.267
-to 0.034. The over-60s were not marked down; the rest drifted past them. The
-README sets out the figures.
+That failure generalises: a static Missing bin becomes a relative penalty
+whenever the scored population moves, which belongs in the monitoring plan
+below rather than in a threshold constraint. The durable fix is a pension and
+benefit income source, so retirees leave the Missing bin altogether.
 
-This is the PD PSI of 0.42-0.50 surfacing as a group disparity, and it
-generalises: a static Missing bin becomes a relative penalty whenever the
-scored population moves. That belongs in the monitoring plan below, not in a
-threshold constraint. The durable fix is a pension and benefit income source,
-so retirees leave the Missing bin altogether.
-
-An earlier cause of the same disparity was an outright bug in the income
-column, fixed before these numbers were produced; the README records it. Fixing
-it lifted the champion from Gini 0.376 to 0.396 and stability 0.340 to 0.360,
-left the challenger unmoved, and raised approval for the 70+ group from 8.6 %
-to 11.8 %. Attributed and partly reduced, not removed.
+An earlier cause of the same disparity was a bug in the income column, fixed
+before these numbers were produced and recorded in the README. Fixing it lifted
+the champion from Gini 0.376 to 0.396 and stability 0.340 to 0.360, left the
+challenger unmoved, and raised approval for the 70+ group from 8.6 % to 11.8 %.
+Attributed and partly reduced, not removed.
 
 ## 7. Monitoring plan
 

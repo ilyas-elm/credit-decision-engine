@@ -95,7 +95,7 @@ degeneracy there is a result about the assumptions rather than something to
 tune away. Under this portfolio's economics, the model's value is not in
 choosing an approval cutoff.
 
-Score PSI above 0.25 for both models (0.50 and 0.42) is worth flagging: in
+A PD PSI above 0.25 for both models (0.50 and 0.42) is worth flagging: in
 production that is an alert threshold, and it reflects genuine drift over 92
 weeks rather than a modelling defect. Test-week PSI is reported here only; it
 is never used for any selection decision.
@@ -558,6 +558,17 @@ way, and raised approval for the over-70s from 8.6 % to 11.8 %. The same
 conflation is the reason the group disparity above is a drift artefact rather
 than a risk judgement: once the absence is null it gets its own bin, and that
 bin is where the drift bites.
+
+**Pruning correlated pairs does not fix a correlated cluster.** Three scorecard
+characteristics came out with negative multivariate coefficients, so they
+scored *more* points as their event rate rose and the table read "the more you
+previously borrowed, the safer you are". The cause was joint collinearity
+across the whole previous-applications family, not any one pair: pruning every
+pair above 0.80 still left a cluster correlated 0.60-0.78, condition number
+15.1, so excluding one flip simply moved it to the next characteristic. Barring
+sign flips outright in config was the fix, and it cost 0.0012 Gini and 0.0010
+stability, about 0.3 % relative, for 16 characteristics down to 13. A readable
+scorecard is worth that, and `FittedScorecard.sign_flips()` keeps it readable.
 
 **The IV floor is sample-size dependent.** IV is computed on the bins it chose,
 so it is biased upward and the bias shrinks with n. Over three pure-noise
