@@ -572,3 +572,55 @@ def test_absent_tax_registry_means_unknown_income_not_zero(tmp_path) -> None:
     # The 200 with no registry row at all are UNKNOWN, not zero.
     assert absent["afford_taxincome_total"].null_count() == absent.height
     assert absent.height == 200
+
+
+def test_dpd_is_averaged_over_contracts_not_over_payment_months(tmp_path) -> None:
+    """Pins the two-level rollup on the project's strongest feature.
+
+    `delq_dpd_mean` reduces payment months per contract and then contracts per
+    case, so one short bad contract is not averaged away by a long clean one.
+    Collapsing the two group_by passes into one would silently switch it to a
+    pooled mean over payment rows, changing both the strongest feature by IV
+    and the reason code shown most often to declined applicants, with nothing
+    else in the suite noticing.
+
+    One case, two contracts: ten clean months and a single month at DPD 100.
+    Contract-averaged gives 50, pooled over rows gives 100/11 = 9.09.
+    """
+    decision = dt.date(2020, 6, 1)
+    base = pl.DataFrame(
+        {
+            "case_id": [1],
+            "date_decision": [decision.isoformat()],
+            "WEEK_NUM": [0],
+            "target": [0],
+            "MONTH": [202006],
+        }
+    )
+    months = [(2020, m) for m in range(1, 6)] + [(2019, m) for m in range(8, 13)]
+    payments = pl.DataFrame(
+        {
+            "case_id": [1] * 11,
+            "num_group1": [0] * 10 + [1],
+            "num_group2": list(range(10)) + [0],
+            "pmts_dpd_1073P": [0.0] * 10 + [100.0],
+            "pmts_overdue_1140A": [0.0] * 11,
+            "pmts_year_1139T": [y for y, _ in months] + [2020],
+            "pmts_month_158T": [m for _, m in months] + [5],
+        }
+    )
+    base.write_parquet(tmp_path / "train_base.parquet")
+    payments.write_parquet(tmp_path / "train_credit_bureau_a_2.parquet")
+
+    features, _ = build_features(tmp_path, FeatureParams())
+    row = features.filter(pl.col("case_id") == 1).to_dicts()[0]
+
+    pooled = 100.0 / 11.0
+    assert row["delq_dpd_mean"] == pytest.approx(50.0), (
+        f"expected the contract average 50.0, got {row['delq_dpd_mean']}; "
+        f"the pooled mean over payment rows would be {pooled:.2f}"
+    )
+    assert row["delq_dpd_mean"] != pytest.approx(pooled, abs=1e-6)
+    # The worst month survives both passes, and every month is counted once.
+    assert row["delq_dpd_max"] == pytest.approx(100.0)
+    assert row["delq_n_payment_months"] == 11
