@@ -476,3 +476,92 @@ def test_the_referral_rate_is_quoted_consistently(economics, summary, readme, mo
     assert f"{from_csv * 100:.0f} % referral rate" in collapsed_readme
     assert f"{from_csv * 100:.0f} % referral rate" in collapsed_model
     assert f"{from_csv * 100:.1f} %" in collapsed_model
+
+
+# --- The age-gap attribution ---------------------------------------------
+#
+# This replaced a narrative that no code produced. Every figure the documents
+# quote for it now comes from fairness.age_mechanism, and the previous text
+# got three of them wrong (22 for 19.6, 24 for 21.1, 94 % for 93.2 %) while
+# resting on a claim the data contradicts.
+
+
+@pytest.fixture(scope="module")
+def mechanism(summary) -> dict:
+    assert "age_mechanism" in summary["fairness"], (
+        "decision_summary.json has no fairness.age_mechanism; the documents' "
+        "attribution would be unbacked again"
+    )
+    return summary["fairness"]["age_mechanism"]
+
+
+def test_the_net_gap_and_the_losing_total_are_both_quoted(mechanism, readme) -> None:
+    """Two numbers, because quoting one makes the other look like an error."""
+    collapsed = " ".join(readme.split())
+    net = abs(mechanism["total_points_gap"])
+    losing = abs(mechanism["points_lost_to_negative_characteristics"])
+    assert f"{net:.1f} scorecard points" in collapsed, f"README must quote the net gap {net:.1f}"
+    assert f"{losing:.1f}" in collapsed, f"README must quote the losing total {losing:.1f}"
+    assert losing > net, "the offsetting characteristics are the reason both are reported"
+
+
+def test_the_two_income_characteristics_dominate_and_their_sum_is_quoted(
+    mechanism, readme
+) -> None:
+    by_name = {r["characteristic"]: r for r in mechanism["by_characteristic"]}
+    income = [c for c in by_name if c.startswith("afford_")]
+    assert len(income) == 2, f"expected two income characteristics, found {income}"
+    total = sum(by_name[c]["gap"] for c in income)
+    assert f"{abs(total):.1f} of the loss" in " ".join(readme.split()), (
+        f"README must attribute {abs(total):.1f} points to the income pair"
+    )
+    # They must be the two worst, or the sentence naming them is misleading.
+    worst_two = {r["characteristic"] for r in mechanism["by_characteristic"][:2]}
+    assert worst_two == set(income), f"the two worst are {worst_two}, not the income pair"
+
+
+@pytest.mark.parametrize(
+    "characteristic", ["afford_annuity_to_taxincome", "afford_taxincome_total"]
+)
+def test_each_income_characteristic_row_is_quoted(mechanism, readme, characteristic) -> None:
+    row = next(r for r in mechanism["by_characteristic"] if r["characteristic"] == characteristic)
+    cells = f"| {row['points_older']} | {row['points_younger']} | **{row['gap']}** |"
+    assert cells in readme, f"README row for {characteristic} does not match: {cells}"
+
+
+def test_the_proxy_figures_are_quoted(mechanism, readme, model_doc) -> None:
+    proxy = mechanism["income_record_as_age_proxy"]
+    for doc_name, doc in (("README", readme), ("MODEL", model_doc)):
+        collapsed = " ".join(doc.split())
+        assert f"{proxy['accuracy'] * 100:.1f}" in collapsed, (
+            f"{doc_name} does not quote the proxy accuracy "
+            f"{proxy['accuracy'] * 100:.1f} %"
+        )
+        for key in ("share_missing_among_older", "share_missing_among_younger"):
+            assert f"{proxy[key] * 100:.1f} %" in collapsed, (
+                f"{doc_name} does not quote {key} = {proxy[key] * 100:.1f} %"
+            )
+
+
+def test_the_absence_is_not_riskier_in_either_group(mechanism, readme) -> None:
+    """The load-bearing fact. The previous narrative asserted the opposite.
+
+    If a rerun ever makes the absence genuinely riskier for one group, the
+    documents' explanation stops holding and this fails rather than going
+    quietly stale.
+    """
+    rates = {
+        (r["group"], r["income_record"]): r["default_rate"]
+        for r in mechanism["default_rate_by_age_and_income_record"]
+    }
+    for group in ("older", "younger"):
+        absent = rates[(group, "no_income_record")]
+        present = rates[(group, "has_income_record")]
+        assert absent <= present, (
+            f"among the {group} group a missing income record now defaults at "
+            f"{absent:.4f} against {present:.4f}; the documents say the absence "
+            "carries no extra risk"
+        )
+        assert f"{absent * 100:.2f} %" in " ".join(readme.split()), (
+            f"README does not quote the {group} absent-record rate {absent * 100:.2f} %"
+        )

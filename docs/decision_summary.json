@@ -114,7 +114,125 @@
         "observed_default": 0.01311654597622626,
         "mean_pd": 0.03796590182062787
       }
-    ]
+    ],
+    "age_mechanism": {
+      "older_from_age": 60,
+      "n_older": 69045,
+      "n_younger": 156469,
+      "total_points_gap": -19.6,
+      "points_lost_to_negative_characteristics": -24.5,
+      "by_characteristic": [
+        {
+          "characteristic": "afford_annuity_to_taxincome",
+          "points_older": 45.7,
+          "points_younger": 60.2,
+          "gap": -14.5
+        },
+        {
+          "characteristic": "afford_taxincome_total",
+          "points_older": 45.4,
+          "points_younger": 52.0,
+          "gap": -6.6
+        },
+        {
+          "characteristic": "delq_n_payment_months",
+          "points_older": 46.2,
+          "points_younger": 49.5,
+          "gap": -3.3
+        },
+        {
+          "characteristic": "prev_n_distinct_status",
+          "points_older": 44.4,
+          "points_younger": 44.5,
+          "gap": -0.1
+        },
+        {
+          "characteristic": "delq_dpd_gt30_last24m",
+          "points_older": 45.6,
+          "points_younger": 45.5,
+          "gap": 0.1
+        },
+        {
+          "characteristic": "inq_share_last90d",
+          "points_older": 45.3,
+          "points_younger": 45.2,
+          "gap": 0.1
+        },
+        {
+          "characteristic": "inq_share_last180d",
+          "points_older": 45.8,
+          "points_younger": 45.6,
+          "gap": 0.2
+        },
+        {
+          "characteristic": "delq_dpd_mean",
+          "points_older": 47.8,
+          "points_younger": 47.4,
+          "gap": 0.4
+        },
+        {
+          "characteristic": "inq_last30d",
+          "points_older": 45.8,
+          "points_younger": 45.3,
+          "gap": 0.4
+        },
+        {
+          "characteristic": "prev_share_rejected",
+          "points_older": 45.0,
+          "points_younger": 44.2,
+          "gap": 0.8
+        },
+        {
+          "characteristic": "inq_last90d",
+          "points_older": 46.9,
+          "points_younger": 46.1,
+          "gap": 0.8
+        },
+        {
+          "characteristic": "delq_overdue_max",
+          "points_older": 47.0,
+          "points_younger": 46.0,
+          "gap": 1.0
+        },
+        {
+          "characteristic": "inq_last360d",
+          "points_older": 47.2,
+          "points_younger": 46.1,
+          "gap": 1.1
+        }
+      ],
+      "income_record_as_age_proxy": {
+        "accuracy": 0.9318,
+        "share_missing_among_older": 0.9633,
+        "share_missing_among_younger": 0.0821
+      },
+      "default_rate_by_age_and_income_record": [
+        {
+          "group": "older",
+          "income_record": "no_income_record",
+          "n": 66508,
+          "default_rate": 0.0124
+        },
+        {
+          "group": "older",
+          "income_record": "has_income_record",
+          "n": 2537,
+          "default_rate": 0.0134
+        },
+        {
+          "group": "younger",
+          "income_record": "no_income_record",
+          "n": 12840,
+          "default_rate": 0.0225
+        },
+        {
+          "group": "younger",
+          "income_record": "has_income_record",
+          "n": 143629,
+          "default_rate": 0.0265
+        }
+      ]
+    }
   },
-  "total_seconds": 84.5
+  "total_seconds": 89.2
 }
