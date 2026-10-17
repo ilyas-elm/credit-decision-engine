@@ -151,14 +151,14 @@ its recoveries are bounded by that.
 **Sampling bias is large; reject inference helps only under severe selection.**
 A lender measuring on its own approved book **understates its Gini by
 0.05-0.16**, consistently at every reject rate, through range restriction
-rather than any modelling fault. Reject inference is a different story: at a
-10 % reject rate almost nothing helps and the gap is only 0.011 Gini, while at
-50 % the gap is 0.135 and three arms recover most of it. The best performer is
-**A2, the crudest arm**, label every reject bad with no model and no
-weighting, which recovers 97 % at a 30 % reject rate and is not beaten by any
-more elaborate method. A random-exploration budget was harmful everywhere, and
-on variance rather than price: net is negative at every budget and the damage
-runs 2-53x the cost.
+rather than any modelling fault. Reject inference is a different story: at a 10
+% reject rate almost nothing helps and the gap is only 0.011 Gini, while at 50
+% the gap is 0.135 and three arms recover most of it. The best performer is
+**A2, the crudest arm**, label every reject bad with no model and no weighting,
+which recovers 97 % at a 30 % reject rate and is not beaten by any more
+elaborate method. A random-exploration budget was harmful everywhere, and on
+variance rather than price: net is negative at every budget and the damage runs
+2-53x the cost.
 
 This agrees in direction with Kozodoi et al. (2024, arXiv:2407.13009; EJOR
 324(2), 2025), who find reject inference has modest potential while fixing

@@ -126,13 +126,14 @@ acceptance:
 | decline | 4.3 % | 0.078 |
 
 The bands separate risk monotonically, which is the minimum one should demand.
-A 45 % referral rate is far beyond any real review desk, and that is a direct
+A 44 % referral rate is far beyond any real review desk, and that is a direct
 consequence of α = 0.10 on a 3 % default book.
 
 **The review band stops paying for itself at about 0.02 per review**
-([figure](docs/figures/referral_economics.png)): against 1,982 units of loss
+([figure](docs/figures/referral_economics.png)): against 1,964 units of loss
 avoided (assuming a *perfect* reviewer, an upper bound, not an estimate),
-102,054 reviews cost 1,021 at 0.01 and 2,041 at 0.02.
+100,034 reviews cost 1,000 at 0.01 and 2,001 at 0.02, which turns net benefit
+from +964 to -37.
 
 ![Referral economics](docs/figures/referral_economics.png)
 
@@ -155,9 +156,9 @@ How far recourse is from clearing the cutoff, in scorecard points:
 | refer band | 54,553 | 11.1 | 19.6 | **77.6 %** |
 | all below cutoff | 64,254 | 16.0 | 20.0 | **66.4 %** |
 
-Outright declines sit about 3.9 times further from the cutoff than anything
-an applicant can change: for them recourse is genuinely infeasible, and saying
-so is more honest than inventing advice. The referred population is a different
+Outright declines sit about 3.9 times further from the cutoff than anything an
+applicant can change: for them recourse is genuinely infeasible, and saying so
+is more honest than inventing advice. The referred population is a different
 question, **78 % of them could reach the cutoff** by borrowing less or waiting
 out recent credit searches.
 
@@ -169,10 +170,10 @@ out recent credit searches.
 | M | 80,199 | 0.564 | 0.0299 | 0.0247 |
 
 Women are approved less often (48.5 % vs 56.4 %) while defaulting less often
-(1.76 % vs 2.99 %), and the model over-predicts their risk while under-predicting
-men's. The disparity is not a threshold artefact; it is miscalibration by
-group, in the direction that penalises the lower-risk group. Reported, not
-mitigated, as the brief requires.
+(1.76 % vs 2.99 %), and the model over-predicts their risk while
+under-predicting men's. The disparity is not a threshold artefact; it is
+miscalibration by group, in the direction that penalises the lower-risk group.
+Reported, not mitigated, as the brief requires.
 
 | age band | n | approval rate | observed default | mean PD |
 |---|---|---|---|---|
@@ -250,14 +251,11 @@ and the finding is the deliverable.
 
 Kernel `ilyaselmaazouzi/hc-sampling-bias`: 160 fits, 17.6 min
 ([`sampling_bias_summary.json`](docs/sampling_bias_summary.json)). Policy weeks
-0-22, development
-23-63 (labels hidden for the
-rejected), test 64-91 with every
-label. 150k development cases per arm, identical
-features and fixed hyperparameters throughout, three seeds on the stochastic
-arms. The config asks for the top 40 features by IV and gain, but the build
-produces 36, so every arm simply uses all of them and that
-selection step never binds.
+0-22, development 23-63 (labels hidden for the rejected), test 64-91 with every
+label. 150k development cases per arm, identical features and fixed
+hyperparameters throughout, three seeds on the stochastic arms. The config asks
+for the top 40 features by IV and gain, but the build produces 36, so every arm
+simply uses all of them and that selection step never binds.
 
 **Limitation, which bounds every number here:** the Home Credit data already
 contains booked loans only. The real rejects are gone. This simulates a

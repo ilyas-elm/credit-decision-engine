@@ -428,3 +428,51 @@ def test_the_feature_cap_claim_matches_the_config_and_the_run(sb_summary, readme
     collapsed = " ".join(readme.split())
     assert f"top {requested} features" in collapsed
     assert f"produces {used}" in collapsed
+
+
+# --- Referral economics --------------------------------------------------
+#
+# Four figures in one sentence were all from a superseded run: loss avoided,
+# the review count, and the cost at each of the two review prices. Only the
+# conclusion drawn from them was still right.
+
+
+@pytest.fixture(scope="module")
+def economics() -> list[dict[str, str]]:
+    with (DOCS / "referral_economics.csv").open() as fh:
+        return list(csv.DictReader(fh))
+
+
+def test_referral_economics_figures_are_quoted(economics, readme) -> None:
+    base = economics[0]
+    by_cost = {float(r["review_cost"]): r for r in economics}
+    collapsed = " ".join(readme.split())
+    for label, value in (
+        ("loss avoided", f"{float(base['loss_avoided']):,.0f}"),
+        ("reviews", f"{int(base['n_referred']):,}"),
+        ("cost at 0.01", f"{float(by_cost[0.01]['total_review_cost']):,.0f}"),
+        ("cost at 0.02", f"{float(by_cost[0.02]['total_review_cost']):,.0f}"),
+    ):
+        assert value in collapsed, f"README does not quote the {label} = {value}"
+
+
+def test_the_break_even_claim_matches_the_sign_change(economics, readme) -> None:
+    """The README says the band stops paying at about 0.02. Check it flips there."""
+    by_cost = {float(r["review_cost"]): float(r["net_benefit"]) for r in economics}
+    assert by_cost[0.01] > 0 > by_cost[0.02], (
+        f"net benefit does not change sign between 0.01 and 0.02: {by_cost}"
+    )
+    assert "about 0.02 per review" in " ".join(readme.split())
+
+
+def test_the_referral_rate_is_quoted_consistently(economics, summary, readme, model_doc) -> None:
+    """One rate, three places: the CSV, the band counts and the prose."""
+    from_csv = float(economics[0]["share_referred"])
+    bands = summary["band_counts"]
+    from_counts = bands["refer"] / sum(bands.values())
+    assert from_csv == pytest.approx(from_counts, abs=1e-6)
+    collapsed_readme = " ".join(readme.split())
+    collapsed_model = " ".join(model_doc.split())
+    assert f"{from_csv * 100:.0f} % referral rate" in collapsed_readme
+    assert f"{from_csv * 100:.0f} % referral rate" in collapsed_model
+    assert f"{from_csv * 100:.1f} %" in collapsed_model
