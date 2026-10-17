@@ -608,3 +608,18 @@ def test_one_sided_or_unaligned_input_is_rejected() -> None:
         age_gap_attribution(points, np.array([70.0, 30.0]), np.zeros(2, dtype=int))
     with pytest.raises(ValueError, match="No known ages"):
         age_gap_attribution(points, np.full(3, np.nan), np.zeros(3, dtype=int))
+
+
+def test_income_absence_is_reported_per_decade() -> None:
+    """The README tabulates the absence by age band, so it has to be computed."""
+    age = np.array([25.0, 35.0, 65.0, 75.0, 75.0])
+    points = pd.DataFrame({"f": [40.0, 40.0, 10.0, 10.0, 10.0]})
+    missing = np.array([False, False, True, True, True])
+    out = age_gap_attribution(
+        points, age, np.zeros(5, dtype=int), income_missing=missing
+    )
+    rows = {r["age_band"]: r for r in out["income_record_missing_by_age_band"]}
+    assert set(rows) == {20, 30, 60, 70}
+    assert rows[20]["share_missing"] == 0.0
+    assert rows[70]["share_missing"] == 1.0
+    assert rows[70]["n"] == 2

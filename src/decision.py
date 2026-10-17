@@ -563,6 +563,23 @@ def age_gap_attribution(
         "share_missing_among_older": round(float(missing[older].mean()), 4),
         "share_missing_among_younger": round(float(missing[younger].mean()), 4),
     }
+    # Per decade, because the README tabulates it that way and because the
+    # jump between consecutive bands is the evidence that the absence tracks
+    # age rather than anything about the applicant.
+    bands = []
+    for band in sorted({int(a // 10 * 10) for a in age[known]}):
+        mask = known & (age // 10 * 10 == band)
+        if not mask.any():
+            continue
+        bands.append(
+            {
+                "age_band": band,
+                "n": int(mask.sum()),
+                "share_missing": round(float(missing[mask].mean()), 4),
+            }
+        )
+    out["income_record_missing_by_age_band"] = bands
+
     risk = []
     for label, group in (("older", older), ("younger", younger)):
         for state, flag in (("no_income_record", True), ("has_income_record", False)):

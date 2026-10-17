@@ -91,6 +91,18 @@ matches. This caught a real defect: the challenger used LightGBM's
 `eval_X`/`eval_y`, which exist only in 4.7, so every model kernel would have
 failed on the image.
 
+**Sign flips: found, measured and removed.** Three characteristics scored
+*more* points as their event rate rose, because their multivariate coefficients
+came out negative, the table read "the more you previously borrowed, the safer
+you are". The cause was joint collinearity in the previous-applications family
+rather than any one column: pairwise pruning at 0.80 still left a cluster
+correlated 0.60-0.78 (condition number 15.1), so excluding one flip merely
+moved it to the next. They are now barred in config, at a cost measured locally
+on the full-data features (not by a kernel) of **0.0012 Gini and 0.0010
+stability**, about 0.3 % relative, 16 characteristics down to 13. The scorecard
+now reads correctly end to end, which is the champion's whole purpose.
+`FittedScorecard.sign_flips()` guards against regression.
+
 ## 4. Out-of-time performance
 
 Test weeks 69-91, 225,514 cases, fitted on by nothing.
@@ -180,18 +192,6 @@ analysis is degenerate (§4). Every profit number is reported across a grid.
 **Drift is real and unaddressed.** Score PSI is 0.42-0.50 train-to-test, above
 any conventional alert threshold, and it is the direct cause of the conformal
 coverage failure.
-
-**Sign flips: found, measured and removed.** Three characteristics scored
-*more* points as their event rate rose, because their multivariate coefficients
-came out negative, the table read "the more you previously borrowed, the safer
-you are". The cause was joint collinearity in the previous-applications family
-rather than any one column: pairwise pruning at 0.80 still left a cluster
-correlated 0.60-0.78 (condition number 15.1), so excluding one flip merely
-moved it to the next. They are now barred in config, at a cost measured locally
-on the full-data features (not by a kernel) of **0.0012 Gini and 0.0010
-stability**, about 0.3 % relative, 16 characteristics down to 13. The scorecard
-now reads correctly end to end, which is the champion's whole purpose.
-`FittedScorecard.sign_flips()` guards against regression.
 
 **Fairness.** Women are approved less often (48.5 % vs 56.4 %) while defaulting
 less often (1.76 % vs 2.99 %), and the model over-predicts their risk (+0.0102)
