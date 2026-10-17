@@ -10,7 +10,7 @@ team evaluates models: out-of-time, on calibration, stability and profit.
 > artefact it came from committed under [`docs/`](docs). A few figures in the
 > closing sections are measured on the 3 % local sample or on synthetic data
 > instead, and say which. The badge is CI on a fresh clone: `uv sync --frozen`,
-> lint, and the 399 of its 403 tests that need no competition data, since none
+> lint, and the 399 of its 404 tests that need no competition data, since none
 > of that is committed. [MODEL.md](MODEL.md) is the model documentation.
 
 ## The three questions, answered
@@ -300,12 +300,18 @@ address none of it, and neither would reweighting: the scorecard's treatment of
 the absent record is already neutral and already matches its risk. Two things
 would work, and both are changes to the pipeline rather than the cutoff. Give
 retirees an income source the registry does not carry, pensions and benefits,
-so that they are not in the Missing bin at all and the proxy dissolves. And
-refit, or at least monitor the distance between a Missing bin's fixed points
-and the live population's mean points on the same characteristic, because a
-static Missing bin silently becomes a relative penalty as soon as the scored
-population moves. Neither is implemented here. This is an audit, as scoped, and
-the finding is the deliverable.
+so that they are not in the Missing bin at all and the proxy dissolves. That
+one is not implemented: the dataset has no such source, so it is a finding
+rather than a fix, and this is an audit as scoped.
+
+The second is implemented. Monitor the distance between a Missing bin's fixed
+points and the live population's mean points on the same characteristic,
+because a static Missing bin silently becomes a relative penalty as soon as the
+scored population moves. It is now a row in [MODEL.md](MODEL.md)'s monitoring
+plan, measured at +1.3 points at fit time against +16.5 over the test weeks,
+and flagged as a refit trigger rather than a recalibration one, since
+recalibration moves levels and only a refit moves a bin's points.
+`scripts/drift_recon.py` computes it.
 
 ## Question 3: sampling bias
 
@@ -486,7 +492,7 @@ lazy with `collect(engine="streaming")` and the features land as Float32.
 | Feature screening + report | [`docs/feature_report.csv`](docs/feature_report.csv) | **done, full data** |
 | Sampling-bias experiment (arms A0-A6) | `src/sampling_bias.py` | **done, run on full data** |
 
-403 tests. The 399 CI runs need only generated fixtures; the other four check
+404 tests. The 399 CI runs need only generated fixtures; the other four check
 the feature build's column discovery against `data/sample` and skip without it.
 All six kernels have been run end to end on the real competition data.
 

@@ -694,3 +694,24 @@ def test_the_grid_size_the_readme_explains_is_the_grid_that_ran(sensitivity, rea
     assert f"{len(combos)} combinations" in collapsed
     assert f"the {len(combos) - len(feasible)} where" in collapsed
     assert f"so {len(feasible)}" in collapsed
+
+
+def test_the_monitoring_plan_carries_the_signal_the_audit_asked_for(model_doc, readme) -> None:
+    """Section 6 concluded the drift remedy belonged in the monitoring plan.
+
+    It was not there, and none of the other signals would catch it: the model
+    ranks as well as ever and the bins are unchanged while the Missing cohort
+    is marked down. If the row is dropped, the audit goes back to pointing at
+    something that does not exist.
+    """
+    plan = model_doc[model_doc.index("## 7. Monitoring plan") :]
+    assert "Missing-bin drift" in plan, (
+        "MODEL.md section 6 says the remedy belongs in the monitoring plan; "
+        "section 7 has no row for it"
+    )
+    # Both documents quote the same two figures for it.
+    for figure in ("+1.3", "+16.5"):
+        assert figure in model_doc, f"MODEL.md does not quote {figure}"
+        assert figure in readme, f"README does not quote {figure}"
+    # And the README no longer claims neither remedy is implemented.
+    assert "Neither is implemented here" not in readme
