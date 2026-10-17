@@ -10,7 +10,7 @@ team evaluates models: out-of-time, on calibration, stability and profit.
 > artefact it came from committed under [`docs/`](docs). A few figures in the
 > closing sections are measured on the 3 % local sample or on synthetic data
 > instead, and say which. The badge is CI on a fresh clone: `uv sync --frozen`,
-> lint, and 394 tests against synthetic fixtures, since the competition data is
+> lint, and 395 tests against synthetic fixtures, since the competition data is
 > never committed. [MODEL.md](MODEL.md) is the model documentation.
 
 ## The three questions, answered
@@ -484,7 +484,7 @@ lazy with `collect(engine="streaming")` and the features land as Float32.
 | Feature screening + report | [`docs/feature_report.csv`](docs/feature_report.csv) | **done, full data** |
 | Sampling-bias experiment (arms A0-A6) | `src/sampling_bias.py` | **done, run on full data** |
 
-394 tests, all on generated fixtures. All six kernels have been run end to end
+395 tests, all on generated fixtures. All six kernels have been run end to end
 on the real competition data.
 
 ## Environment

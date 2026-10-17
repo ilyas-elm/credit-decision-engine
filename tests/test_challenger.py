@@ -255,3 +255,23 @@ def test_challenger_can_skip_calibration(blocks, params) -> None:
     fitted = fit_challenger(X_tr, y_tr, X_va, y_va, params=params, calibrate=False)
     assert fitted.calibrator is None
     assert np.array_equal(fitted.predict_pd(X_te), fitted.predict_pd_raw(X_te))
+
+
+def test_calibration_leaves_gini_untouched_on_these_fixtures(blocks, params) -> None:
+    """Pins the claim calibrate.py makes about its own effect on ranking.
+
+    Isotonic can only move Gini by merging distinct scores into a tie. The
+    docstring used to quote "around 3e-4" as measured here; it is in fact
+    exactly zero on this distribution, and a figure nobody can reproduce is
+    worse than none. If a change to the fixtures or to the calibrator starts
+    merging scores, this fails and the docstring needs rewriting with it.
+    """
+    (X_tr, y_tr), (X_va, y_va), (X_te, y_te) = blocks["train"], blocks["val"], blocks["test"]
+    model = fit_challenger(X_tr, y_tr, X_va, y_va, params=params)
+    raw = model.predict_pd(X_te)
+    calibrated = IsotonicCalibrator().fit(model.predict_pd(X_va), y_va).transform(raw)
+
+    assert gini(y_te, calibrated) == pytest.approx(gini(y_te, raw), abs=1e-12)
+    # The mechanism, stated so the zero above is understood rather than assumed:
+    # calibration here introduces no ties that were not already present.
+    assert len(np.unique(calibrated)) == len(np.unique(raw))

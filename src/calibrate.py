@@ -43,11 +43,14 @@ class IsotonicCalibrator:
     raw score was lower, the calibrated one is lower or equal.
 
     Not quite "Gini is unchanged", though. Isotonic output is a step function,
-    so it maps distinct raw scores onto equal calibrated ones, and those new
-    ties shift AUC slightly, a tied pair counts 0.5 where it previously
-    counted 0 or 1. Measured on the test fixtures the shift is around 3e-4 of
-    Gini, and it can go either way. So the champion/challenger comparison
-    reports which PD it used rather than claiming the two are interchangeable.
+    so it maps distinct raw scores onto equal calibrated ones, and each new tie
+    shifts AUC a little: a tied pair counts 0.5 where it previously counted 0
+    or 1. How much depends entirely on how many pairs the steps merge. On this
+    suite's fixtures the shift is exactly zero, because the steps fall between
+    the scores rather than across them; on a construction with a deliberate
+    level error it reaches a few parts in a thousand, in either direction. So
+    the champion/challenger comparison records which PD it used rather than
+    treating raw and calibrated as interchangeable.
     """
 
     model: IsotonicRegression | None = None
