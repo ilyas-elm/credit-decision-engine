@@ -204,48 +204,72 @@ overlapping cases.
 
 #### Why, the model has no age feature
 
-Age is not an input. The disparity is built entirely out of a proxy, and the
-mechanism is attributable to two characteristics. Of the 22 scorecard points
-the 60+ cohort gives up against everyone else, **24 come from the two
-income-derived features** (others net back a little):
+Age is not an input, so the disparity is built out of a proxy. The attribution
+below is computed by the decision stage and recorded in
+[`decision_summary.json`](docs/decision_summary.json) under
+`fairness.age_mechanism`, so it can be checked rather than taken on trust.
+
+The 60+ cohort gives up **19.6 scorecard points** net against everyone else.
+The characteristics that cost them points account for 24.5, so the rest hand a
+little back, and **21.1 of the loss comes from the two income-derived
+characteristics**:
 
 | characteristic | points, 60+ | points, under 60 | gap |
 |---|---|---|---|
-| `afford_annuity_to_taxincome` | 37.3 | 52.8 | **-15.5** |
-| `afford_taxincome_total` | 35.8 | 44.2 | **-8.4** |
+| `afford_annuity_to_taxincome` | 45.7 | 60.2 | **-14.5** |
+| `afford_taxincome_total` | 45.4 | 52.0 | **-6.6** |
+| `delq_n_payment_months` | 46.2 | 49.5 | -3.3 |
 
-Income here is derived from the tax registry, which records employment
-payments. Retirees do not appear in it:
+Income is derived from the tax registry, which records employment payments, and
+retirees do not appear in it: **96.3 %** of the over-60s have no income record
+against **8.2 %** of everyone younger, which makes the absence a **93.2
+%-accurate test for being over 60**.
 
-| age band | share with no tax-registry income |
-|---|---|
-| 20s | 15.7 % |
-| 50s | 24.2 % |
-| **60s** | **92.2 %** |
-| **70+** | **100.0 %** |
+The obvious conclusion would be that the scorecard treats a missing income
+record as risky. It does not. That is the Missing bin on both characteristics:
 
-So "no income record" is a 94 %-accurate proxy for being over 60, and
-`afford_annuity_to_taxincome` is undefined for almost all of them. The decisive
-check is whether that absence carries any risk signal in the group it is
-penalising. It does not:
+| characteristic | bin | n (train) | event rate | WoE | points |
+|---|---|---|---|---|---|
+| `afford_annuity_to_taxincome` | Missing | 390,648 | 3.05 % | +0.0253 | 45.1 |
+| `afford_taxincome_total` | Missing | 390,645 | 3.05 % | +0.0253 | 45.1 |
 
-| | no tax income | has tax income |
+The bin sits at the neutral middle, which is what its event rate warrants. The
+absence carries no extra risk on the train weeks the bins were fitted on (3.050
+% against 3.165 % for everyone else) and *less* risk on the test weeks, within
+both groups: 1.24 % against 1.34 % among the over-60s, 2.25 % against 2.65 %
+among the under-60s. Nowhere in the data is a missing income record a sign of
+higher default.
+
+What produces the gap is drift. `afford_annuity_to_taxincome` runs from 31.4
+points at worst to 65.4 at best, and the Missing bin's 45.1 was fixed when the
+scorecard was fitted:
+
+| | median ratio | mean points, non-missing |
 |---|---|---|
-| **60+** | 1.78 % default | 1.86 % default |
-| under 60 | 4.31 % default | 3.47 % default |
+| train weeks | 0.267 | 46.4 |
+| test weeks | 0.034 | **61.7** |
 
-For working-age applicants a missing employment record is mildly predictive.
-For the over-60s it is not predictive at all; it just means retired. The model
-learned the first relationship and applied it to a population where it is
-meaningless, and the cutoff turned that into an approval rate of 8.6 % for the
-safest group in the book.
+On the train weeks the population with an income record averaged 46.4 points,
+within a point and a half of the Missing bin. By the test weeks their median
+annuity-to-income ratio had fallen from 0.267 to 0.034, 86.6 % of them sat in
+the two best bins, and they averaged 61.7. `afford_taxincome_total` moved the
+same way, median income 11,933 to 107,563 and mean points 45.6 to 52.6. The
+Missing bin cannot follow, because its points are frozen at fit time. **The
+over-60s were not marked down; everyone else moved up and left them behind.**
+This is the same drift as the score PSI of 0.50 reported above, surfacing as a
+group disparity.
 
-The fix is not a fairness constraint bolted on at the threshold. The income
-proxy is employment-only and should not serve as a general affordability
-denominator: either a pension and benefit source is added, or the feature is
-restricted to the population where it means what it claims. That is a change to
-the feature build, and it is not implemented here. This is an audit, as scoped,
-and the finding is the deliverable.
+That changes what the fix is. A fairness constraint at the threshold would
+address none of it, and neither would reweighting: the scorecard's treatment of
+the absent record is already neutral and already matches its risk. Two things
+would work, and both are changes to the pipeline rather than the cutoff. Give
+retirees an income source the registry does not carry, pensions and benefits,
+so that they are not in the Missing bin at all and the proxy dissolves. And
+refit, or at least monitor the distance between a Missing bin's fixed points
+and the live population's mean points on the same characteristic, because a
+static Missing bin silently becomes a relative penalty as soon as the scored
+population moves. Neither is implemented here. This is an audit, as scoped, and
+the finding is the deliverable.
 
 ## Question 3: sampling bias
 
@@ -478,6 +502,26 @@ the real sample, clipping the credit-limit denominator at 1e-9 produced a
 utilisation feature topping **1.1 × 10¹³**, because 91% of cases report a zero
 limit. It would have passed every screen. `safe_ratio` returns null instead,
 and the binning process has a Missing bin for exactly that.
+
+**A missing value is not a zero, and the difference was worth 0.02 Gini.**
+`afford_taxincome_total` summed a case's tax-registry records. A case absent
+from every registry summed to zero, so "no employment record" was written down
+as "earns nothing" and landed in the lowest income bin beside genuinely
+low-paid applicants, 34 % of the book in one bin. The fix was to distinguish
+the two: sum the records when any exists, and return null when none does.
+
+```python
+present = pl.any_horizontal([pl.col(c).is_not_null() for c in inc_cols])
+pl.when(present).then(pl.sum_horizontal([pl.col(c).fill_null(0.0) for c in inc_cols]))
+  .otherwise(None)
+```
+
+It lifted the champion from Gini 0.376 to 0.396 and stability 0.340 to 0.360,
+left the challenger unmoved, because a GBM splits on the missingness either
+way, and raised approval for the over-70s from 8.6 % to 11.8 %. The same
+conflation is the reason the group disparity above is a drift artefact rather
+than a risk judgement: once the absence is null it gets its own bin, and that
+bin is where the drift bites.
 
 **The IV floor is sample-size dependent.** IV is computed on the bins it chose,
 so it is biased upward and the bias shrinks with n. Over three pure-noise

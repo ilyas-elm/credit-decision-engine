@@ -207,26 +207,35 @@ realised 1.2 %, so a roughly threefold over-prediction becomes an approval gap
 at the cutoff. Age is excluded from recourse, so those applicants are told why
 and offered nothing to do about it.
 
-**The mechanism is a proxy, and it is attributable.** Age is not an input. Of
-the 22 scorecard points the 60+ cohort gives up, 24 come from the two
-income-derived characteristics. Income is derived from the tax registry, which
-records employment payments, so 92 % of applicants in their 60s and 100 % of
-those 70+ have none, making "no income record" a 94 %-accurate proxy for being
-over 60. Within that group the absence carries no risk signal whatsoever (1.78
-% default against 1.86 %), while for working-age applicants it is mildly
-predictive (4.31 % against 3.47 %). The model learned the second relationship
-and applied it to a population where it is meaningless. The remedy is in the
-feature build, a pension and benefit income source, or restricting the proxy to
-the population it describes, not a constraint at the threshold. One cause WAS a
-bug and was fixed as one: afford_taxincome_total recorded a case absent from
-every tax registry as earning nothing rather than unknown, putting 34 % of the
-book in the lowest income bin beside genuinely low earners. Fixing it lifted
-the champion (Gini 0.376 to 0.396, stability 0.340 to 0.360) while leaving the
-challenger unmoved, and raised approval for the 70+ group from 8.6 % to 11.8 %.
-The disparity survives: the Missing bin still pools retirees with working-age
-applicants who have no employment record, for whom that absence genuinely is
-risky. The remaining fix needs a pension and benefit income source, which this
-dataset does not contain. Attributed and partly reduced, not removed.
+**The mechanism is a proxy, and it is drift.** Age is not an input. The 60+
+cohort gives up 19.6 scorecard points net, 21.1 of them on the two
+income-derived characteristics. Income comes from the tax registry, which
+records employment payments, so 96.3 % of the over-60s have no income record
+against 8.2 % of everyone younger: the absence is a 93.2 %-accurate test for
+being over 60.
+
+The scorecard does not treat that absence as risky. Its Missing bin scores 45.1
+points on both characteristics, the neutral middle, matching its 3.05 % event
+rate against the train weeks' 3.13 %. Nor is the absence riskier anywhere in
+the data, on the train weeks the bins were fitted on or on the test weeks
+within either age group. The gap comes from that bin being frozen at fit time
+while the rest moved: applicants with an income record averaged 46.4 points on
+`afford_annuity_to_taxincome` on the train weeks, against the bin's 45.1, and
+61.7 by the test weeks as their median annuity-to-income ratio fell from 0.267
+to 0.034. The over-60s were not marked down; the rest drifted past them. The
+README sets out the figures.
+
+This is the score PSI of 0.42-0.50 surfacing as a group disparity, and it
+generalises: a static Missing bin becomes a relative penalty whenever the
+scored population moves. That belongs in the monitoring plan below, not in a
+threshold constraint. The durable fix is a pension and benefit income source,
+so retirees leave the Missing bin altogether.
+
+An earlier cause of the same disparity was an outright bug in the income
+column, fixed before these numbers were produced; the README records it. Fixing
+it lifted the champion from Gini 0.376 to 0.396 and stability 0.340 to 0.360,
+left the challenger unmoved, and raised approval for the 70+ group from 8.6 %
+to 11.8 %. Attributed and partly reduced, not removed.
 
 ## 7. Monitoring plan
 
