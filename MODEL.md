@@ -110,7 +110,7 @@ level, not trend. The champion wins only on week-to-week smoothness.
 **Profit cannot separate them.** A loan is profitable while `p(default) < roi /
 (roi + E[loss])`. At the literature's assumptions that break-even is **49.0 %**
 against a book defaulting at **3.1 %**, so approving everyone is optimal, EMPCS
-is ≈0 for both, and only 7 of 21 assumption points in the widened sensitivity
+is ≈0 for both, and only 8 of 21 assumption points in the widened sensitivity
 grid make a cutoff bind at all. **On this portfolio the model's value is not in
 choosing an approval cutoff.**
 
@@ -126,13 +126,13 @@ conformal at α = 0.10, calibrated on val_b:
 
 | | coverage | target |
 |---|---|---|
-| non-default | 0.960 | 0.90 ✓ |
+| non-default | 0.959 | 0.90 ✓ |
 | **default** | **0.747** | 0.90 ✗, below target in **23 of 23 weeks** |
 
 Conformal guarantees coverage *under exchangeability*; these weeks are not
 exchangeable with val_b. It is still worth having, a marginal threshold covers
-the default class **0.000** of the time, so Mondrian moves it from 0 % to
-75 %, but the guarantee should not be quoted as holding.
+the default class **0.000** of the time, so Mondrian moves it from 0 % to 75 %,
+but the guarantee should not be quoted as holding.
 
 At the tightest binding cutoff (71.5 % acceptance) the bands separate risk
 monotonically: approve 50.6 % at 1.1 % bad, refer 45.3 % at 2.9 %, decline 4.1
@@ -151,27 +151,25 @@ its recoveries are bounded by that.
 **Sampling bias is large; reject inference helps only under severe selection.**
 A lender measuring on its own approved book **understates its Gini by
 0.05-0.16**, consistently at every reject rate. Reject inference is a different
-story: at a
-10 % reject rate almost nothing helps and the gap is only 0.011 Gini, while at
-50 % the gap is 0.135 and three arms recover most of it. The best performer is
-**A2, the crudest arm**, label every reject bad, no model and no weighting,
-which recovers 97 % at a 30 % reject rate and is not beaten by any of the more
-elaborate methods. A random-exploration budget was actively harmful everywhere,
-and on variance rather than price: priced as profit at a fixed binding
-acceptance against the realised loss on loans bought to learn from, net is
-negative at every budget and the damage runs 2-53× the cost. Kozodoi et al.
-(2024, arXiv:2407.13009; EJOR 324(2), 2025) conclude that reject inference has
-"modest potential to improve scorecard performance" while addressing bias
-during evaluation is "a much more promising route". Their §7.1.2 gives a
-testable boundary condition: BASL improves scorecards at acceptance rates below
-20 %, with gains rising as acceptance falls, and largest at a 2-5 % bad rate
-among accepts.
+story: at a 10 % reject rate almost nothing helps and the gap is only 0.011
+Gini, while at 50 % the gap is 0.135 and three arms recover most of it. The
+best performer is **A2, the crudest arm**, label every reject bad, no model and
+no weighting, which recovers 97 % at a 30 % reject rate and is not beaten by
+any of the more elaborate methods. A random-exploration budget was actively
+harmful everywhere, and on variance rather than price: priced as profit at a
+fixed binding acceptance against the realised loss on loans bought to learn
+from, net is negative at every budget and the damage runs 2-53× the cost.
+Kozodoi et al. (2024, arXiv:2407.13009; EJOR 324(2), 2025) conclude that reject
+inference has "modest potential to improve scorecard performance" while
+addressing bias during evaluation is "a much more promising route". Their
+§7.1.2 gives a testable boundary condition: BASL improves scorecards at
+acceptance rates below 20 %, with gains rising as acceptance falls, and largest
+at a 2-5 % bad rate among accepts.
 
 Tested against A5, the BASL-inspired arm here, the DIRECTION reproduces
-exactly: recovery is strictly monotone in acceptance rate (-1.08, -0.23,
-+0.60, +0.89
-at 90 %, 80 %, 70 % and 50 % acceptance). The THRESHOLD does not: A5 turns
-positive between 80 % and 70 %, far above their 20 %. This book's 3.14 %
+exactly: recovery is strictly monotone in acceptance rate (-1.08, -0.23, +0.60,
++0.89 at 90 %, 80 %, 70 % and 50 % acceptance). The THRESHOLD does not: A5
+turns positive between 80 % and 70 %, far above their 20 %. This book's 3.14 %
 default rate sits inside their favourable 2-5 % band, but the decisive
 difference is that the selection here is simulated on an already-booked
 population, so the hidden labels belong to applicants the original lender had
@@ -190,12 +188,11 @@ coverage failure.
 came out negative, the table read "the more you previously borrowed, the safer
 you are". The cause was joint collinearity in the previous-applications family
 rather than any one column: pairwise pruning at 0.80 still left a cluster
-correlated
-0.60-0.78 (condition number 15.1), so excluding one flip merely moved it to the
-next. They are now barred in config, at a cost measured locally on the
-full-data features (not by a kernel) of **0.0012 Gini and 0.0010 stability**,
-about 0.3 % relative, 16 characteristics down to 13. The scorecard now reads
-correctly end to end, which is the champion's whole purpose.
+correlated 0.60-0.78 (condition number 15.1), so excluding one flip merely
+moved it to the next. They are now barred in config, at a cost measured locally
+on the full-data features (not by a kernel) of **0.0012 Gini and 0.0010
+stability**, about 0.3 % relative, 16 characteristics down to 13. The scorecard
+now reads correctly end to end, which is the champion's whole purpose.
 `FittedScorecard.sign_flips()` guards against regression.
 
 **Fairness.** Women are approved less often (47.6 % vs 56.1 %) while defaulting
@@ -205,12 +202,12 @@ threshold artefact, and it runs against the lower-risk group. **Audit only, no
 mitigation**, as scoped.
 
 **By age the disparity is larger.** Applicants in their 60s are approved at
-25.4 % and those 70+ at 11.8 %, against 61-68 % for everyone younger, while being
-the safest groups in the book (1.2-1.3 % default against 4.5 % for the 20s).
-The model predicts them as the riskiest, mean PD 3.7-3.8 % against a realised
-1.2 %, so a roughly threefold over-prediction becomes an approval gap at the
-cutoff. Age is excluded from recourse, so those applicants are told why and
-offered nothing to do about it.
+25.4 % and those 70+ at 11.8 %, against 61-68 % for everyone younger, while
+being the safest groups in the book (1.2-1.3 % default against 4.5 % for the
+20s). The model predicts them as the riskiest, mean PD 3.7-3.8 % against a
+realised 1.2 %, so a roughly threefold over-prediction becomes an approval gap
+at the cutoff. Age is excluded from recourse, so those applicants are told why
+and offered nothing to do about it.
 
 **The mechanism is a proxy, and it is attributable.** Age is not an input. Of
 the 22 scorecard points the 60+ cohort gives up, 24 come from the two
@@ -224,15 +221,14 @@ and applied it to a population where it is meaningless. The remedy is in the
 feature build, a pension and benefit income source, or restricting the proxy to
 the population it describes, not a constraint at the threshold. One cause WAS a
 bug and was fixed as one: afford_taxincome_total recorded a case absent from
-every tax registry as earning nothing rather than unknown, putting
-34 % of the book in the lowest income bin beside genuinely low earners. Fixing
-it lifted the champion (Gini 0.376 to 0.396, stability 0.340 to 0.360) while
-leaving the challenger unmoved, and raised approval for the 70+ group from 8.6
-% to 11.8 %. The disparity survives: the Missing bin still pools retirees with
-working-age applicants who have no employment record, for whom that absence
-genuinely is risky. The remaining fix needs a pension and benefit income
-source, which this dataset does not contain. Attributed and partly reduced, not
-removed.
+every tax registry as earning nothing rather than unknown, putting 34 % of the
+book in the lowest income bin beside genuinely low earners. Fixing it lifted
+the champion (Gini 0.376 to 0.396, stability 0.340 to 0.360) while leaving the
+challenger unmoved, and raised approval for the 70+ group from 8.6 % to 11.8 %.
+The disparity survives: the Missing bin still pools retirees with working-age
+applicants who have no employment record, for whom that absence genuinely is
+risky. The remaining fix needs a pension and benefit income source, which this
+dataset does not contain. Attributed and partly reduced, not removed.
 
 ## 7. Monitoring plan
 

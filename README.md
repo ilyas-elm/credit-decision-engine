@@ -46,16 +46,15 @@ correctly end to end.
 
 ## Question 1: what the challenger adds
 
-About **3 Gini points** (0.394 →
-0.426), and it keeps them once stability is measured: the stability metric moves
-0.359 → 0.391. The margin narrowed from 5 points after an income-encoding fix
-that helped the scorecard and left the challenger unmoved (below). Neither
-model's Gini decays over the test weeks: both slopes are positive, so the
-metric's 88× falling-slope penalty never engages and the gap is driven by
-level, not trend. The challenger is also *slightly* better calibrated and
-noticeably more stable in its score distribution (PSI 0.42 vs 0.50). The one
-thing the champion wins is week-to-week smoothness (residual sd 0.047 vs
-0.051).
+About **3 Gini points** (0.394 → 0.426), and it keeps them once stability is
+measured: the stability metric moves 0.359 → 0.391. The margin narrowed from 5
+points after an income-encoding fix that helped the scorecard and left the
+challenger unmoved (below). Neither model's Gini decays over the test weeks:
+both slopes are positive, so the metric's 88× falling-slope penalty never
+engages and the gap is driven by level, not trend. The challenger is also
+*slightly* better calibrated and noticeably more stable in its score
+distribution (PSI 0.42 vs 0.50). The one thing the champion wins is
+week-to-week smoothness (residual sd 0.047 vs 0.051).
 
 It is a real but unspectacular gain, bought with hundreds of trees against a
 13-characteristic scorecard, under monotone constraints taken from the
@@ -82,8 +81,8 @@ is never used for any selection decision.
 ![Weekly Gini, champion vs challenger](docs/figures/weekly_gini.png)
 
 Both curves rise over the test weeks, which is why the stability metric's 88×
-falling-slope penalty never engages for either model. Also:
-[calibration by bucket](docs/figures/calibration.png).
+falling-slope penalty never engages for either model. Also: [calibration by
+bucket](docs/figures/calibration.png).
 
 ## Question 2: the cutoff and the review band
 
@@ -98,7 +97,7 @@ the test weeks:
 
 | | coverage | target |
 |---|---|---|
-| non-default | 0.960 | 0.90 ✓ |
+| non-default | 0.959 | 0.90 ✓ |
 | **default** | **0.747** | 0.90 ✗, **below target in 23 of 23 weeks** |
 
 Split conformal guarantees coverage *under exchangeability*, and these weeks
@@ -115,7 +114,7 @@ promise, and vastly better than the alternative.
 ### Where the cutoff sits
 
 Swept across all 21 assumption points: the profit-maximising acceptance rate
-runs from **71.5 % to 100 %**, and **only 7 of 21 points bind at all**. At the
+runs from **71.5 % to 100 %**, and **only 8 of 21 points bind at all**. At the
 literature's assumptions the answer remains "approve everyone". The layer is
 exercised at the tightest binding corner (roi 0.02, LGD-heavy), giving 71.5 %
 acceptance:
@@ -205,8 +204,7 @@ overlapping cases.
 
 Age is not an input. The disparity is built entirely out of a proxy, and the
 mechanism is attributable to two characteristics. Of the 22 scorecard points
-the
-60+ cohort gives up against everyone else, **24 come from the two
+the 60+ cohort gives up against everyone else, **24 come from the two
 income-derived features** (others net back a little):
 
 | characteristic | points, 60+ | points, under 60 | gap |
@@ -244,8 +242,8 @@ The fix is not a fairness constraint bolted on at the threshold. The income
 proxy is employment-only and should not serve as a general affordability
 denominator: either a pension and benefit source is added, or the feature is
 restricted to the population where it means what it claims. That is a change to
-the feature build, and it is not implemented here. This is an audit, as
-scoped, and the finding is the deliverable.
+the feature build, and it is not implemented here. This is an audit, as scoped,
+and the finding is the deliverable.
 
 ## Question 3: sampling bias
 
@@ -311,11 +309,11 @@ Four things come out of this:
 **Against the literature.** Kozodoi, Lessmann, Alamgir, Moreira-Matias and
 Papakonstantinou, *Fighting Sampling Bias: A Framework for Training and
 Evaluating Credit Scoring Models*
-([arXiv:2407.13009](https://arxiv.org/abs/2407.13009),
-2024; *European Journal of Operational Research* 324(2), 2025). They conclude
-that "reject inference is a difficult problem with modest potential to improve
-scorecard performance", and that addressing sampling bias during evaluation is
-"a much more promising route to improve scoring practices".
+([arXiv:2407.13009](https://arxiv.org/abs/2407.13009), 2024; *European Journal
+of Operational Research* 324(2), 2025). They conclude that "reject inference is
+a difficult problem with modest potential to improve scorecard performance",
+and that addressing sampling bias during evaluation is "a much more promising
+route to improve scoring practices".
 
 Their §7.1.2 gives a sharper, testable claim: BASL improves scorecards **at
 acceptance rates below 20 %**, with gains rising as acceptance falls (§8), and
@@ -393,11 +391,10 @@ not. Every number quoted above is committed:
 | [`sampling_bias_arms.csv`](docs/sampling_bias_arms.csv) | every arm, reject rate, seed and model |
 | [`sampling_bias_exploration.csv`](docs/sampling_bias_exploration.csv) | exploration cost against profit gain, per p |
 
-Memory, measured rather than assumed: the features stage on the 3% local
-sample peaks at 0.83 GB resident (`getrusage` and `/usr/bin/time -l` agree to
-within 1 MB), against the brief's ~4 GB budget for an 8 GB machine. The build
-is polars lazy with `collect(engine="streaming")` and the features land as
-Float32.
+Memory, measured rather than assumed: the features stage on the 3% local sample
+peaks at 0.83 GB resident (`getrusage` and `/usr/bin/time -l` agree to within 1
+MB), against the brief's ~4 GB budget for an 8 GB machine. The build is polars
+lazy with `collect(engine="streaming")` and the features land as Float32.
 
 ## What is built
 
@@ -422,8 +419,8 @@ Float32.
 | Feature screening + report | [`docs/feature_report.csv`](docs/feature_report.csv) | **done, full data** |
 | Sampling-bias experiment (arms A0-A6) | `src/sampling_bias.py` | **done, run on full data** |
 
-277 tests, all on generated fixtures. All six kernels have been run end to
-end on the real competition data.
+277 tests, all on generated fixtures. All six kernels have been run end to end
+on the real competition data.
 
 ## Environment
 
@@ -484,8 +481,8 @@ is a full-data decision, and the local sample exists to make the code run, not
 to decide which features live.
 
 **Why the refer band is class-conditional.** On synthetic exchangeable data at
-a
-3% default rate and a 90% coverage target, averaged over 300 calibration draws:
+a 3% default rate and a 90% coverage target, averaged over 300 calibration
+draws:
 
 | | non-default coverage | **default coverage** |
 |---|---|---|
