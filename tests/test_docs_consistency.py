@@ -17,6 +17,7 @@ previous run and need updating to the new one.
 
 from __future__ import annotations
 
+import contextlib
 import csv
 import json
 from pathlib import Path
@@ -166,4 +167,79 @@ def test_recourse_reach_for_the_refer_band_is_quoted(summary, readme) -> None:
     quoted = f"{share:.0f} %"
     assert quoted in readme or quoted.replace(" ", "") in readme, (
         f"README does not quote the refer-band recourse reach = {quoted}"
+    )
+
+
+# --- Sampling-bias experiment --------------------------------------------
+
+
+@pytest.fixture(scope="module")
+def arms() -> list[dict[str, str]]:
+    with (DOCS / "sampling_bias_arms.csv").open() as fh:
+        return list(csv.DictReader(fh))
+
+
+def _mean(values: list[float]) -> float:
+    return sum(values) / len(values)
+
+
+def _numeric(rows: list[dict[str, str]], column: str) -> list[float]:
+    out = []
+    for row in rows:
+        # A blank cell means the arm reports no value here, which is not the
+        # same as a zero: A0 and A1 have no recovery share by definition.
+        with contextlib.suppress(ValueError):
+            out.append(float(row[column]))
+    return out
+
+
+REJECT_RATES = ("10", "20", "30", "50")
+
+
+@pytest.mark.parametrize("model", ["lightgbm", "scorecard"])
+@pytest.mark.parametrize("reject_rate", REJECT_RATES)
+def test_evaluation_bias_table_matches_the_arms_csv(arms, readme, model, reject_rate) -> None:
+    """Every cell of the evaluation-bias table, to the 3 places it is quoted.
+
+    One cell said -0.070 where the mean over the run's rows is -0.069476. No
+    aggregation of that column reaches -0.070, so it was a transcription slip
+    rather than a different definition.
+    """
+    selected = [r for r in arms if r["model"] == model and r["reject_rate"] == reject_rate]
+    assert selected, f"no {model} rows at reject rate {reject_rate}"
+    quoted = f"{_mean(_numeric(selected, 'evaluation_bias')):.3f}"
+    assert quoted in readme, (
+        f"README does not quote {model} evaluation bias at r={reject_rate} % = {quoted}"
+    )
+
+
+@pytest.mark.parametrize(
+    "base_arm",
+    ["A2_hard_cutoff", "A3_fuzzy", "A4_parcelling", "A5_self_learning", "A6_exploration"],
+)
+@pytest.mark.parametrize("reject_rate", REJECT_RATES)
+def test_recovery_table_matches_the_arms_csv(arms, readme, base_arm, reject_rate) -> None:
+    """The recovery table, averaged over seeds and over each arm's variants.
+
+    A4 spans k in {1.5, 2} and A6 spans p in {1, 2, 5}, so a cell for those is
+    a mean across the variants as well as the seeds.
+    """
+    selected = [
+        r
+        for r in arms
+        if r["model"] == "lightgbm"
+        and r["base_arm"] == base_arm
+        and r["reject_rate"] == reject_rate
+    ]
+    values = _numeric(selected, "recovery_share")
+    assert values, f"no recovery_share for {base_arm} at r={reject_rate}"
+    quoted = f"{_mean(values):.2f}"
+    assert quoted in readme, (
+        f"README does not quote {base_arm} recovery at r={reject_rate} % = {quoted}"
+    )
+
+
+def test_the_fit_count_is_the_number_of_rows(arms, readme) -> None:
+    assert f"{len(arms)} fits" in readme, (
+        f"README must say '{len(arms)} fits' to match sampling_bias_arms.csv"
     )

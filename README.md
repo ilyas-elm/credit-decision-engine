@@ -263,7 +263,7 @@ over everyone:
 
 | reject rate | 10 % | 20 % | 30 % | 50 % |
 |---|---|---|---|---|
-| LightGBM | -0.076 | -0.082 | -0.070 | -0.051 |
+| LightGBM | -0.076 | -0.082 | -0.069 | -0.051 |
 | scorecard | -0.094 | -0.127 | -0.136 | -0.157 |
 
 A lender measuring on its own approved book **understates its Gini by 5 to 16
@@ -299,8 +299,10 @@ Four things come out of this:
    loans bought to learn from, net is negative at every budget and reject rate,
    with the damage running **2-53× the cost** (at r=30 %, p=1 %: cost 7.2,
    profit -382). The 100/p inverse-propensity weight gives a few hundred cases
-   the same total weight as tens of thousands. The ratio improves as the budget
-   grows, which is the variance signature.
+   the same total weight as tens of thousands. The largest budget is the least
+   bad at every reject rate (p=5 % runs 1.5-4.9x against 2.6-53x at p=1 %),
+   which is the variance signature, though it is not monotone in p: at the 10 %
+   and 20 % reject rates p=2 % is worse than p=1 %.
 4. **The scorecard mostly has no gap to recover.** At 10 % and 20 % reject rates
    its accepts-only model is *better* than its own oracle (0.438 against 0.411),
    so recovery is undefined and reported as such. Binned logistic regression is
