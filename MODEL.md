@@ -240,6 +240,7 @@ not from convention.
 | **conformal coverage, default class** | 0.747, target 0.90 | any week < 0.70 | 4-week mean < 0.65 |
 | **referral rate** | 44.4 % | outside 35-55 % | outside 30-60 % |
 | **approved bad rate** | 1.1 % | > 1.5 % over 4 weeks | > 2.0 % over 4 weeks |
+| **Missing-bin drift**, worst affordability characteristic | +16.5 pts, range +13.9 to +17.3, against +1.3 at fit | any week > +20 | 4-week mean > +25, or a refit that moves it by > 10 |
 
 Two notes on these. The PSI thresholds are deliberately set **above** the
 conventional 0.25: this model already exceeds that against its own training
@@ -248,9 +249,21 @@ be worse than useless. And the default-class coverage threshold is set below
 its nominal target because the band already misses it, the monitor's job is to
 catch further deterioration, not to re-report a known shortfall every week.
 
+The last row is there because of what the fairness audit turned up in §6. A
+Missing bin's points are fixed when the scorecard is fitted, so as the
+population that *has* a value drifts into better bins, the cohort that does not
+is marked down relative to everyone else without anything about it changing. On
+`afford_annuity_to_taxincome` that gap has gone from +1.3 points at fit time to
++16.5, which is most of the 19.6 points the over-60s give up. It is measured as
+the live non-missing population's mean points minus the Missing bin's fixed
+points, per characteristic, and `scripts/drift_recon.py` computes it. Its
+thresholds sit above the current level for the same reason the PSI ones do.
+
 Recalibration should be triggered by the calibration-in-the-large signal rather
 than by Gini: the model's ranking is more durable than its levels, which is
-what the drift evidence shows.
+what the drift evidence shows. This signal is different, and recalibration will
+not fix it: only a refit moves a bin's points, so a sustained Missing-bin gap
+is a refit trigger rather than a recalibration one.
 
 ## 8. Reproducing
 

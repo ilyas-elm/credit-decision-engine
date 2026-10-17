@@ -89,6 +89,9 @@ def main(argv: list[str]) -> int:
                 f"median={np.median(values):>12,.3f}  mean points={points[index].mean():5.1f}  "
                 f"in the two best bins={best_two:.1%}"
             )
+            # The monitoring signal in MODEL.md section 7: how far the
+            # population that has a value has drifted above the frozen bin.
+            print(f"         gap above the Missing bin: {points[index].mean() - missing:+.1f} pts")
 
     # The claim the drift explanation rests on: the absence is not riskier.
     print("\ndefault rate by whether a tax-registry income record exists")
