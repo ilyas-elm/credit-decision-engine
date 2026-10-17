@@ -70,10 +70,14 @@ train-vs-validation > 0.25 drops, and univariate Gini > 0.5 is flagged for
 human review, never dropped automatically. The test weeks are never read for
 any selection decision.
 
-**Post-decision records are dropped.** 8.4 % of the bureau payment rows are
-dated *after* their own `date_decision`, and the maximum post-decision DPD has
-a univariate Gini of +0.097 against the target: it is partly the outcome being
-predicted.
+**Post-decision records are dropped.** `credit_bureau_a_2` is a monthly payment
+history, and a large minority of its rows postdate the application they belong
+to. Measured on the 3 % sample, 10.7 % of rows carrying a DPD value are dated
+after their own `date_decision`, and the maximum DPD over just those rows
+scores a univariate Gini of +0.19 against the target: it is partly the outcome
+being predicted. No stage records the full-data share, so these are the
+sample's figures rather than the book's; `scripts/sample_recon.py` recomputes
+them.
 
 **No class rebalancing anywhere.** `is_unbalance` and `scale_pos_weight` are
 set explicitly to neutral. Rebalancing distorts the probabilities the profit

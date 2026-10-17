@@ -231,6 +231,10 @@ Two columns carry the same information and survive:
 | `static_cb_0.dateofbirth_337D` | 0.912 | 0.9626 |
 | `person_1.birth_259D` | 1.000 | **1.0000** |
 
+The overall column and the agreement below are reproduced by
+`scripts/sample_recon.py` on the sample; the test-week column comes from the
+decision stage, which picks the birth column by exactly this measurement.
+
 They agree: `birth_259D` and `dateofbirth_337D` give an identical age on 99.96
 % of overlapping cases. **A column's overall fill rate says nothing about the
 period being measured**, and this is the same structural drift that makes
