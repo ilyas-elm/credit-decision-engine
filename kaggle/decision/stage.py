@@ -391,7 +391,12 @@ def main() -> None:
             ("static_cb_0", "birthdate_574D", cb),
         ]
         test_ids = te.select("case_id")
+        all_ids = joined.select("case_id")
         birth, best = None, 0.0
+        # Recorded, not just printed. DATA_NOTES tabulates these and the
+        # numbers were previously reconnaissance nobody could re-derive.
+        birth_coverage: list[dict] = []
+        candidate_frames: dict[str, pl.DataFrame] = {}
         for table, column, paths in birth_candidates:
             if not paths:
                 continue
@@ -405,12 +410,57 @@ def main() -> None:
             ).collect(engine="streaming")
             on_test = test_ids.join(candidate, on="case_id", how="left")
             coverage = float(on_test["birth"].is_not_null().mean() or 0.0)
+            overall = float(
+                all_ids.join(candidate, on="case_id", how="left")["birth"]
+                .is_not_null()
+                .mean()
+                or 0.0
+            )
+            birth_coverage.append(
+                {
+                    "column": f"{table}.{column}",
+                    "overall": round(overall, 4),
+                    "test_weeks": round(coverage, 4),
+                }
+            )
+            candidate_frames[f"{table}.{column}"] = candidate
             print(
-                f"[dec] birth candidate {table}.{column}: test-week coverage {coverage:.4f}",
+                f"[dec] birth candidate {table}.{column}: overall {overall:.4f}, "
+                f"test-week coverage {coverage:.4f}",
                 flush=True,
             )
             if coverage > best:
                 birth, best = candidate, coverage
+        audit["birth_column_coverage"] = birth_coverage
+
+        # Do two surviving columns actually describe the same person? DATA_NOTES
+        # claims they agree; this measures it on the cases that carry both.
+        pair = ("person_1.birth_259D", "static_cb_0.dateofbirth_337D")
+        if all(name in candidate_frames for name in pair):
+            left, right = (candidate_frames[name] for name in pair)
+            both = left.join(right, on="case_id", how="inner", suffix="_other").filter(
+                pl.col("birth").is_not_null() & pl.col("birth_other").is_not_null()
+            )
+            if both.height:
+                same_year = (
+                    both.select(
+                        (
+                            pl.col("birth").str.slice(0, 4)
+                            == pl.col("birth_other").str.slice(0, 4)
+                        ).mean()
+                    )
+                    .item()
+                )
+                audit["birth_column_agreement"] = {
+                    "columns": list(pair),
+                    "n_overlapping": int(both.height),
+                    "same_birth_year": round(float(same_year), 4),
+                }
+                print(
+                    f"[dec] {pair[0]} and {pair[1]} agree on birth year for "
+                    f"{same_year:.4%} of {both.height:,} overlapping cases",
+                    flush=True,
+                )
         if birth is not None and best > 0.0:
             demo = (
                 birth if demo is None else demo.join(birth, on="case_id", how="full", coalesce=True)

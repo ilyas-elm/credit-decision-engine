@@ -228,7 +228,7 @@ Two columns carry the same information and survive:
 | column | overall | test weeks |
 |---|---|---|
 | `static_cb_0.birthdate_574D` | 0.398 | **0.0000** |
-| `static_cb_0.dateofbirth_337D` | 0.912 | 0.9657 |
+| `static_cb_0.dateofbirth_337D` | 0.912 | 0.9626 |
 | `person_1.birth_259D` | 1.000 | **1.0000** |
 
 They agree: `birth_259D` and `dateofbirth_337D` give an identical age on 99.96
