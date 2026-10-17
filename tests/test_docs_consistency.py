@@ -243,3 +243,66 @@ def test_the_fit_count_is_the_number_of_rows(arms, readme) -> None:
     assert f"{len(arms)} fits" in readme, (
         f"README must say '{len(arms)} fits' to match sampling_bias_arms.csv"
     )
+
+
+# --- Fairness audit ------------------------------------------------------
+#
+# These numbers drifted the furthest. The tables in both documents were
+# updated after a re-run and the prose underneath them was not, so the
+# README's own table said 0.485 while the sentence below it said 47.6 %.
+
+
+def test_fairness_rates_reconstruct_the_approve_count(summary) -> None:
+    """The artefact has to be self-consistent before the prose is checked.
+
+    Approvals implied by the per-sex rates must equal the approve band, which
+    is what established that the JSON was right and the prose was stale.
+    """
+    by_sex = summary["fairness"]["sex"]
+    implied = sum(row["n"] * row["approval_rate"] for row in by_sex)
+    assert round(implied) == pytest.approx(summary["band_counts"]["approve"], abs=2)
+
+
+@pytest.mark.parametrize("sex", ["F", "M"])
+def test_sex_approval_and_default_rates_are_quoted(summary, readme, model_doc, sex) -> None:
+    row = next(r for r in summary["fairness"]["sex"] if r["sex"] == sex)
+    approval = f"{row['approval_rate'] * 100:.1f} %"
+    default = f"{row['observed_default'] * 100:.2f} %"
+    for name, doc in (("README.md", readme), ("MODEL.md", model_doc)):
+        assert approval in doc, f"{name} does not quote {sex} approval = {approval}"
+        assert default in doc, f"{name} does not quote {sex} observed default = {default}"
+
+
+@pytest.mark.parametrize("sex", ["F", "M"])
+def test_sex_calibration_gaps_are_quoted(summary, model_doc, sex) -> None:
+    """mean PD minus observed default, the number that makes it miscalibration."""
+    row = next(r for r in summary["fairness"]["sex"] if r["sex"] == sex)
+    gap = f"{row['mean_pd'] - row['observed_default']:+.4f}"
+    assert gap in model_doc, f"MODEL.md does not quote the {sex} calibration gap = {gap}"
+
+
+def test_the_oldest_age_bands_approval_rates_are_quoted(summary, readme, model_doc) -> None:
+    bands = {row["age_band"]: row for row in summary["fairness"]["age_band"]}
+    for band in (60, 70):
+        quoted = f"{bands[band]['approval_rate'] * 100:.1f} %"
+        assert quoted in readme, f"README does not quote the {band}s approval = {quoted}"
+        assert quoted in model_doc, f"MODEL.md does not quote the {band}s approval = {quoted}"
+
+
+def test_the_younger_approval_range_is_quoted(summary, readme, model_doc) -> None:
+    """The range over the bands below 60, which was quoted a point too wide."""
+    younger = [r["approval_rate"] for r in summary["fairness"]["age_band"] if r["age_band"] < 60]
+    quoted = f"{min(younger) * 100:.0f}-{max(younger) * 100:.0f} %"
+    assert quoted in readme, f"README must give the younger approval range as {quoted}"
+    assert quoted in model_doc, f"MODEL.md must give the younger approval range as {quoted}"
+
+
+def test_every_doc_table_row_matches_the_fairness_artefact(summary, readme) -> None:
+    """The tables themselves, so prose and table cannot drift apart again."""
+    for row in summary["fairness"]["sex"]:
+        cells = f"| {row['n']:,} | {row['approval_rate']:.3f} |"
+        assert cells in readme, f"README sex table row for {row['sex']} does not match: {cells}"
+    for row in summary["fairness"]["age_band"]:
+        assert f"| {row['n']:,} |" in readme, (
+            f"README age table is missing the {row['age_band']}s row (n={row['n']:,})"
+        )

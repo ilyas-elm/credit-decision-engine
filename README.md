@@ -167,8 +167,8 @@ out recent credit searches.
 | F | 145,315 | 0.485 | 0.0176 | 0.0278 |
 | M | 80,199 | 0.564 | 0.0299 | 0.0247 |
 
-Women are approved less often (47.6 % vs 56.1 %) while defaulting less often
-(1.8 % vs 3.0 %), and the model over-predicts their risk while under-predicting
+Women are approved less often (48.5 % vs 56.4 %) while defaulting less often
+(1.76 % vs 2.99 %), and the model over-predicts their risk while under-predicting
 men's. The disparity is not a threshold artefact; it is miscalibration by
 group, in the direction that penalises the lower-risk group. Reported, not
 mitigated, as the brief requires.
@@ -183,9 +183,9 @@ mitigated, as the brief requires.
 | **70+** | 14,638 | **0.118** | **0.0131** | **0.0380** |
 
 Applicants in their 60s are approved at **25.4 %** and those 70+ at **11.8 %**,
-against 61-68 % for everyone younger, while being the safest groups in the
+against 61-67 % for everyone younger, while being the safest groups in the
 book, defaulting at 1.2-1.3 % against 4.5 % for applicants in their 20s. The
-model predicts them as the riskiest: a mean PD of 3.8-3.9 % for a group that
+model predicts them as the riskiest: a mean PD of 3.7-3.8 % for a group that
 defaults at 1.2 %, roughly a threefold over-prediction, while under-predicting
 the youngest by about half.
 

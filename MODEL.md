@@ -150,31 +150,25 @@ its recoveries are bounded by that.
 
 **Sampling bias is large; reject inference helps only under severe selection.**
 A lender measuring on its own approved book **understates its Gini by
-0.05-0.16**, consistently at every reject rate. Reject inference is a different
-story: at a 10 % reject rate almost nothing helps and the gap is only 0.011
-Gini, while at 50 % the gap is 0.135 and three arms recover most of it. The
-best performer is **A2, the crudest arm**, label every reject bad, no model and
-no weighting, which recovers 97 % at a 30 % reject rate and is not beaten by
-any of the more elaborate methods. A random-exploration budget was actively
-harmful everywhere, and on variance rather than price: priced as profit at a
-fixed binding acceptance against the realised loss on loans bought to learn
-from, net is negative at every budget and the damage runs 2-53× the cost.
-Kozodoi et al. (2024, arXiv:2407.13009; EJOR 324(2), 2025) conclude that reject
-inference has "modest potential to improve scorecard performance" while
-addressing bias during evaluation is "a much more promising route". Their
-§7.1.2 gives a testable boundary condition: BASL improves scorecards at
-acceptance rates below 20 %, with gains rising as acceptance falls, and largest
-at a 2-5 % bad rate among accepts.
+0.05-0.16**, consistently at every reject rate, through range restriction
+rather than any modelling fault. Reject inference is a different story: at a
+10 % reject rate almost nothing helps and the gap is only 0.011 Gini, while at
+50 % the gap is 0.135 and three arms recover most of it. The best performer is
+**A2, the crudest arm**, label every reject bad with no model and no
+weighting, which recovers 97 % at a 30 % reject rate and is not beaten by any
+more elaborate method. A random-exploration budget was harmful everywhere, and
+on variance rather than price: net is negative at every budget and the damage
+runs 2-53x the cost.
 
-Tested against A5, the BASL-inspired arm here, the DIRECTION reproduces
-exactly: recovery is strictly monotone in acceptance rate (-1.08, -0.23, +0.60,
-+0.89 at 90 %, 80 %, 70 % and 50 % acceptance). The THRESHOLD does not: A5
-turns positive between 80 % and 70 %, far above their 20 %. This book's 3.14 %
-default rate sits inside their favourable 2-5 % band, but the decisive
-difference is that the selection here is simulated on an already-booked
-population, so the hidden labels belong to applicants the original lender had
-already approved. That is the easier problem, and the recoveries here are an
-upper bound.
+This agrees in direction with Kozodoi et al. (2024, arXiv:2407.13009; EJOR
+324(2), 2025), who find reject inference has modest potential while fixing
+evaluation matters more, and whose §7.1.2 predicts gains rising as acceptance
+falls. The A5 arm here reproduces that direction monotonically but turns
+positive far earlier than their 20 % acceptance threshold. The README sets out
+the comparison in full; what matters for this model card is why: the selection
+here is simulated on an already-booked population, so the hidden labels belong
+to applicants the original lender had already approved. That is the easier
+problem, and **the recoveries reported here are an upper bound**.
 
 **EMP assumptions are assumptions**, and at the literature's values the profit
 analysis is degenerate (§4). Every profit number is reported across a grid.
@@ -195,14 +189,14 @@ stability**, about 0.3 % relative, 16 characteristics down to 13. The scorecard
 now reads correctly end to end, which is the champion's whole purpose.
 `FittedScorecard.sign_flips()` guards against regression.
 
-**Fairness.** Women are approved less often (47.6 % vs 56.1 %) while defaulting
-less often (1.76 % vs 2.99 %), and the model over-predicts their risk (+0.0097)
-while under-predicting men's (-0.0061). This is miscalibration by group, not a
+**Fairness.** Women are approved less often (48.5 % vs 56.4 %) while defaulting
+less often (1.76 % vs 2.99 %), and the model over-predicts their risk (+0.0102)
+while under-predicting men's (-0.0052). This is miscalibration by group, not a
 threshold artefact, and it runs against the lower-risk group. **Audit only, no
 mitigation**, as scoped.
 
 **By age the disparity is larger.** Applicants in their 60s are approved at
-25.4 % and those 70+ at 11.8 %, against 61-68 % for everyone younger, while
+25.4 % and those 70+ at 11.8 %, against 61-67 % for everyone younger, while
 being the safest groups in the book (1.2-1.3 % default against 4.5 % for the
 20s). The model predicts them as the riskiest, mean PD 3.7-3.8 % against a
 realised 1.2 %, so a roughly threefold over-prediction becomes an approval gap
