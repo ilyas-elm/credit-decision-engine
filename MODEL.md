@@ -116,7 +116,7 @@ Test weeks 69-91, 225,514 cases, fitted on by nothing.
 | **stability metric** | 0.3594 | **0.3909** |
 | Brier | 0.02131 | **0.02117** |
 | worst-week calibration gap | 0.0095 | **0.0084** |
-| score PSI vs train | 0.5028 | **0.4202** |
+| PSI of predicted PD vs train | 0.5028 | **0.4202** |
 
 The challenger adds about **3 Gini points** and keeps them once stability is
 measured. Note *why*: neither model decays, both slopes are positive, so the
@@ -225,7 +225,7 @@ while the rest moved: applicants with an income record averaged 46.4 points on
 to 0.034. The over-60s were not marked down; the rest drifted past them. The
 README sets out the figures.
 
-This is the score PSI of 0.42-0.50 surfacing as a group disparity, and it
+This is the PD PSI of 0.42-0.50 surfacing as a group disparity, and it
 generalises: a static Missing bin becomes a relative penalty whenever the
 scored population moves. That belongs in the monitoring plan below, not in a
 threshold constraint. The durable fix is a pension and benefit income source,
@@ -247,7 +247,7 @@ not from convention.
 | **weekly Gini** (challenger) | mean 0.421, sd 0.059, min ~0.31 | any week < 0.30 (mean - 2 sd) | 2 consecutive weeks < 0.30, or 4-week mean < 0.35 |
 | **Gini trend** | slope +0.0017 /wk | 8-week slope < 0 | 8-week slope < -0.003 (the metric penalises this 88×) |
 | **calibration in the large** | worst week 0.008, range -0.003 to +0.009 | any week \|gap\| > 0.010 | 2 consecutive weeks \|gap\| > 0.015 |
-| **score PSI vs train** | median 0.42, range 0.30-0.71 | weekly PSI > 0.60 | weekly PSI > 0.75, or 4-week median > 0.60 |
+| **PSI of predicted PD vs train** | median 0.42, range 0.30-0.71 | weekly PSI > 0.60 | weekly PSI > 0.75, or 4-week median > 0.60 |
 | **conformal coverage, default class** | 0.747, target 0.90 | any week < 0.70 | 4-week mean < 0.65 |
 | **referral rate** | 44.4 % | outside 35-55 % | outside 30-60 % |
 | **approved bad rate** | 1.1 % | > 1.5 % over 4 weeks | > 2.0 % over 4 weeks |

@@ -20,6 +20,7 @@ from __future__ import annotations
 import contextlib
 import csv
 import json
+import sys
 from pathlib import Path
 
 import pytest
@@ -624,3 +625,50 @@ def test_the_birth_agreement_rate_is_quoted(summary) -> None:
     notes = " ".join((REPO / "docs" / "DATA_NOTES.md").read_text().split())
     assert f"{agreement['same_birth_year'] * 100:.2f} %" in notes
     assert f"{agreement['n_overlapping']:,}" in notes
+
+
+# --- Claims the README makes about itself and the repo -------------------
+
+
+def test_the_quoted_test_count_is_the_real_one(readme) -> None:
+    """The README states how many tests there are, in two places.
+
+    Both said 277 while the suite had grown past 350. Counting the collected
+    tests here keeps the claim honest without anyone remembering to update it.
+    """
+    import subprocess
+
+    result = subprocess.run(
+        [sys.executable, "-m", "pytest", "--collect-only", "-q", str(REPO / "tests")],
+        capture_output=True,
+        text=True,
+        cwd=REPO,
+    )
+    last = [ln for ln in result.stdout.strip().splitlines() if ln.strip()][-1]
+    collected = int(last.split()[0])
+    occurrences = readme.count(f"{collected} tests")
+    assert occurrences == 2, (
+        f"the suite collects {collected} tests; the README says "
+        f"'{collected} tests' {occurrences} times, expected 2 "
+        "(the status note and the build table)"
+    )
+
+
+def test_the_residual_sd_in_prose_matches_the_table(comparison, readme) -> None:
+    """Question 1 quoted 0.047 vs 0.051 above a table saying 0.0521 vs 0.0592."""
+    champion = float(comparison["scorecard"]["gini_resid_std"])
+    challenger = float(comparison["lightgbm"]["gini_resid_std"])
+    assert champion < challenger, "the champion is said to win on smoothness"
+    quoted = f"residual sd {champion:.3f} vs {challenger:.3f}"
+    assert quoted in " ".join(readme.split()), f"README must say '{quoted}'"
+
+
+def test_the_recourse_ratio_compares_shortfall_to_headroom(summary, readme) -> None:
+    """The sentence claims declines sit further below the cutoff than recourse
+    can lift them, so the ratio is their shortfall over their own headroom.
+    An earlier fix used the refer band's shortfall instead, giving 3.9x."""
+    band = summary["recourse_reach"]["decline_band"]
+    ratio = band["mean_shortfall_points"] / band["mean_actionable_headroom_points"]
+    assert f"about {ratio:.0f} times further below the cutoff" in " ".join(readme.split()), (
+        f"README must give the decline shortfall-to-headroom ratio as {ratio:.0f}x"
+    )

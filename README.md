@@ -6,21 +6,43 @@ A credit decision system, not just a classifier, built on the Kaggle *Home
 Credit: Credit Risk Model Stability* data, and evaluated the way a credit risk
 team evaluates models: out-of-time, on calibration, stability and profit.
 
-> **Status:** all three questions have full-data numbers below, and
-> [MODEL.md](MODEL.md) documents the model for review. Every pipeline stage
-> has been run on the full competition data on Kaggle. The badge above is CI
-> on a fresh clone: `uv sync --frozen`, lint, and 277 tests on synthetic
-> fixtures.
+> Every result below comes from a Kaggle run over the full 1.5M cases, with the
+> artefact it came from committed under [`docs/`](docs). A few figures in the
+> closing sections are measured on the 3 % local sample or on synthetic data
+> instead, and say which. The badge is CI on a fresh clone: `uv sync --frozen`,
+> lint, and 372 tests against synthetic fixtures, since the competition data is
+> never committed. [MODEL.md](MODEL.md) is the model documentation.
 
-## The three questions
+## The three questions, answered
 
-1. What does a gradient-boosted challenger add over a classic scorecard once
-   stability, calibration and profit are measured, not just AUC?
-2. Where should the approval cutoff and the manual-review band sit, and what do
-   they cost?
-3. If the lender only observed outcomes for loans it approved, how wrong would
-   its validation be, and which fix recovers the most per unit of cost: reject
-   inference, or a small random-approval (exploration) budget?
+**1. What does a gradient-boosted challenger add over a classic scorecard once
+stability, calibration and profit are measured, not just AUC?** About 3 Gini
+points (0.394 to 0.426), and it keeps them under the competition's stability
+metric (0.359 to 0.391). It is also better calibrated and its score
+distribution drifts less. But profit cannot separate the two at all: on this
+book no approval cutoff binds and EMPCS is ≈0 for both, so the gain is real,
+modest, and not where the money is.
+[Detail](#question-1-what-the-challenger-adds).
+
+**2. Where should the approval cutoff and the manual-review band sit, and what
+do they cost?** The cutoff is degenerate at the literature's assumptions, so it
+is exercised at the tightest corner of a widened grid: 71.5 % acceptance, where
+only 8 of 21 assumption points make a cutoff bind at all. The conformal review
+band is the more interesting answer, and it is a negative one: it covers the
+default class 0.747 against a 0.90 target, misses in all 23 test weeks, refers
+44 % of applicants, and stops paying for itself at about 0.02 per review.
+[Detail](#question-2-the-cutoff-and-the-review-band).
+
+**3. If the lender only observed outcomes for loans it approved, how wrong
+would its validation be, and which fix recovers the most per unit of cost:
+reject inference, or a small random-approval (exploration) budget?** Its own
+book understates Gini by 0.05 to 0.16, at every reject rate and always in the
+same direction. Of the fixes, the crudest reject-inference arm wins, labelling
+every reject bad recovers 97 % of the lost signal at a 30 % reject rate, while
+a random-approval budget is net negative at every setting tested, on variance
+rather than price. Fixing the evaluation matters more than fixing the training,
+which is what Kozodoi et al. (2024) also conclude.
+[Detail](#question-3-sampling-bias).
 
 ## Headline numbers
 
@@ -37,7 +59,7 @@ Full data, 1,526,659 cases, evaluated out-of-time on the last 23 weeks
 | **stability metric** | 0.3594 | **0.3909** | challenger |
 | Brier | 0.02131 | **0.02117** | challenger |
 | calibration-in-the-large, worst week | 0.0095 | **0.0084** | challenger |
-| score PSI vs train | 0.5028 | **0.4202** | challenger |
+| PSI of predicted PD vs train | 0.5028 | **0.4202** | challenger |
 | EMPCS | ≈0 | ≈0 | (see below) |
 
 The champion is a **13-characteristic** scorecard with no sign flips: every
@@ -54,7 +76,7 @@ both slopes are positive, so the metric's 88× falling-slope penalty never
 engages and the gap is driven by level, not trend. The challenger is also
 *slightly* better calibrated and noticeably more stable in its score
 distribution (PSI 0.42 vs 0.50). The one thing the champion wins is
-week-to-week smoothness (residual sd 0.047 vs 0.051).
+week-to-week smoothness (residual sd 0.052 vs 0.059).
 
 It is a real but unspectacular gain, bought with hundreds of trees against a
 13-characteristic scorecard, under monotone constraints taken from the
@@ -101,10 +123,11 @@ the test weeks:
 | **default** | **0.747** | 0.90 ✗, **below target in 23 of 23 weeks** |
 
 Split conformal guarantees coverage *under exchangeability*, and these weeks
-are not exchangeable with val_b: the default rate and the score distribution
-both drift (score PSI 0.54). So the guarantee fails, in the same direction and
-in every single week. This is exactly why the brief says to measure coverage
-rather than assume it.
+are not exchangeable with val_b: the default rate and the predicted-PD
+distribution both drift (PSI 0.26 from val_b to test, against the 0.25 that
+would trigger an alert in production). So the guarantee fails, in the same
+direction and in every single week. This is exactly why the brief says to
+measure coverage rather than assume it.
 
 It is still worth doing. A marginal threshold on the same data covers the
 default class **0.000** of the time; it is the majority class's threshold
@@ -156,11 +179,11 @@ How far recourse is from clearing the cutoff, in scorecard points:
 | refer band | 54,553 | 11.1 | 19.6 | **77.6 %** |
 | all below cutoff | 64,254 | 16.0 | 20.0 | **66.4 %** |
 
-Outright declines sit about 3.9 times further from the cutoff than anything an
-applicant can change: for them recourse is genuinely infeasible, and saying so
-is more honest than inventing advice. The referred population is a different
-question, **78 % of them could reach the cutoff** by borrowing less or waiting
-out recent credit searches.
+Outright declines sit about 2 times further below the cutoff than everything an
+applicant could change is worth: for them recourse is genuinely infeasible, and
+saying so is more honest than inventing advice. The referred population is a
+different question, **78 % of them could reach the cutoff** by borrowing less
+or waiting out recent credit searches.
 
 ### Fairness audit (audit only, no mitigation)
 
@@ -199,8 +222,8 @@ offered nothing to do about it, which is honest, and also the point at which an
 audit stops being an academic exercise.
 
 Verified before reporting: `birth_259D` gives ages 23-73 (1st-99th percentile,
-median 44) and agrees with the independent `dateofbirth_337D` on 99.96 % of
-overlapping cases.
+median 44) and gives the same birth year as the independent `dateofbirth_337D`
+for 99.94 % of the 1,385,691 cases carrying both.
 
 #### Why, the model has no age feature
 
@@ -267,7 +290,7 @@ the two best bins, and they averaged 61.7. `afford_taxincome_total` moved the
 same way, median income 11,933 to 107,563 and mean points 45.6 to 52.6. The
 Missing bin cannot follow, because its points are frozen at fit time. **The
 over-60s were not marked down; everyone else moved up and left them behind.**
-This is the same drift as the score PSI of 0.50 reported above, surfacing as a
+This is the same drift as the PD PSI of 0.50 reported above, surfacing as a
 group disparity.
 
 That changes what the fix is. A fairness constraint at the threshold would
@@ -461,7 +484,7 @@ lazy with `collect(engine="streaming")` and the features land as Float32.
 | Feature screening + report | [`docs/feature_report.csv`](docs/feature_report.csv) | **done, full data** |
 | Sampling-bias experiment (arms A0-A6) | `src/sampling_bias.py` | **done, run on full data** |
 
-277 tests, all on generated fixtures. All six kernels have been run end to end
+372 tests, all on generated fixtures. All six kernels have been run end to end
 on the real competition data.
 
 ## Environment
@@ -510,9 +533,11 @@ overwritten by it.
 **Never clip a denominator to avoid dividing by zero.** It trades an error for
 something worse: a finite number of enormous magnitude that looks like data. On
 the real sample, clipping the credit-limit denominator at 1e-9 produced a
-utilisation feature topping **1.1 × 10¹³**, because 91% of cases report a zero
-limit. It would have passed every screen. `safe_ratio` returns null instead,
-and the binning process has a Missing bin for exactly that.
+utilisation feature topping **1.1 × 10¹³**, because the summed credit limit is
+zero for 91 % of bureau contract rows (the individual limit columns are 92-94 %
+null, and a null filled with zero is still a zero denominator). It would have
+passed every screen. `safe_ratio` returns null instead, and the binning process
+has a Missing bin for exactly that.
 
 **A missing value is not a zero, and the difference was worth 0.02 Gini.**
 `afford_taxincome_total` summed a case's tax-registry records. A case absent
@@ -584,6 +609,6 @@ set from the variation actually observed rather than from convention.
 
 ## Stack
 
-Python 3.11, polars (lazy/streaming) for the feature build, pandas only at the
+Python 3.13, polars (lazy/streaming) for the feature build, pandas only at the
 model boundary, scikit-learn, LightGBM, optbinning, empulse, matplotlib,
 pytest.
