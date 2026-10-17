@@ -7,7 +7,9 @@ found by comparing directory timestamps by hand, which is not a control.
 
 from __future__ import annotations
 
+import ast
 import json
+from pathlib import Path
 
 from provenance import PROVENANCE_FILE, check_chain, fingerprint, read_provenance, write_provenance
 
@@ -129,3 +131,56 @@ def test_unreadable_provenance_is_treated_as_absent(tmp_path) -> None:
     run.mkdir(parents=True)
     (run / PROVENANCE_FILE).write_text("{ not json")
     assert read_provenance(run) is None
+
+
+DEFAULT_CHAIN = {
+    "models": ["features"],
+    "sampling-bias": ["features"],
+    "decision": ["features", "models"],
+}
+
+
+def _recorded_keys(stage_dir: Path) -> tuple[set[str], set[str]]:
+    """The input and output keys a stage's source passes to write_provenance."""
+    tree = ast.parse((stage_dir / "stage.py").read_text())
+    inputs: set[str] = set()
+    outputs: set[str] = set()
+    for node in ast.walk(tree):
+        if not (isinstance(node, ast.Call) and getattr(node.func, "id", "") == "write_provenance"):
+            continue
+        for kw in node.keywords:
+            if kw.arg in ("inputs", "outputs") and isinstance(kw.value, ast.Dict):
+                keys = {k.value for k in kw.value.keys if isinstance(k, ast.Constant)}
+                (inputs if kw.arg == "inputs" else outputs).update(keys)
+    return inputs, outputs
+
+
+def test_every_chained_stage_records_provenance_at_all() -> None:
+    kaggle = Path(__file__).resolve().parent.parent / "kaggle"
+    for stage in {*DEFAULT_CHAIN, *(u for ups in DEFAULT_CHAIN.values() for u in ups)}:
+        inputs, outputs = _recorded_keys(kaggle / stage)
+        assert inputs or outputs, f"{stage} is in the chain but records no provenance"
+
+
+def test_each_dependency_in_the_chain_is_actually_fingerprinted() -> None:
+    """check_chain compares keys by name and skips any it finds on one side only.
+
+    That makes a missed key a silent pass rather than a failure: a stage that
+    starts reading a new upstream file without adding it to `inputs` would
+    never be reported stale for it. Nothing else ties the chain declaration to
+    what the stages record, so this does.
+    """
+    kaggle = Path(__file__).resolve().parent.parent / "kaggle"
+    unchecked = []
+    for stage, upstreams in DEFAULT_CHAIN.items():
+        downstream_inputs, _ = _recorded_keys(kaggle / stage)
+        for upstream in upstreams:
+            _, upstream_outputs = _recorded_keys(kaggle / upstream)
+            if not (upstream_outputs & downstream_inputs):
+                unchecked.append(
+                    f"{stage} depends on {upstream}, which publishes "
+                    f"{sorted(upstream_outputs)}, but {stage} records inputs "
+                    f"{sorted(downstream_inputs)}: no overlap, so staleness "
+                    "between them can never be detected"
+                )
+    assert not unchecked, "; ".join(unchecked)

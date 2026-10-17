@@ -10,7 +10,7 @@ team evaluates models: out-of-time, on calibration, stability and profit.
 > artefact it came from committed under [`docs/`](docs). A few figures in the
 > closing sections are measured on the 3 % local sample or on synthetic data
 > instead, and say which. The badge is CI on a fresh clone: `uv sync --frozen`,
-> lint, and 396 tests against synthetic fixtures, since the competition data is
+> lint, and 399 tests against synthetic fixtures, since the competition data is
 > never committed. [MODEL.md](MODEL.md) is the model documentation.
 
 ## The three questions, answered
@@ -136,7 +136,9 @@ promise, and vastly better than the alternative.
 
 ### Where the cutoff sits
 
-Swept across all 21 assumption points: the profit-maximising acceptance rate
+The grid is three values each of success rate, default rate and ROI, which is
+27 combinations less the 6 where success and default rates sum above 1, so 21
+are evaluated. Swept across all of them, the profit-maximising acceptance rate
 runs from **71.5 % to 100 %**, and **only 8 of 21 points bind at all**. At the
 literature's assumptions the answer remains "approve everyone". The layer is
 exercised at the tightest binding corner (roi 0.02, LGD-heavy), giving 71.5 %
@@ -484,7 +486,7 @@ lazy with `collect(engine="streaming")` and the features land as Float32.
 | Feature screening + report | [`docs/feature_report.csv`](docs/feature_report.csv) | **done, full data** |
 | Sampling-bias experiment (arms A0-A6) | `src/sampling_bias.py` | **done, run on full data** |
 
-396 tests, all on generated fixtures. All six kernels have been run end to end
+399 tests, all on generated fixtures. All six kernels have been run end to end
 on the real competition data.
 
 ## Environment

@@ -672,3 +672,25 @@ def test_the_recourse_ratio_compares_shortfall_to_headroom(summary, readme) -> N
     assert f"about {ratio:.0f} times further below the cutoff" in " ".join(readme.split()), (
         f"README must give the decline shortfall-to-headroom ratio as {ratio:.0f}x"
     )
+
+
+def test_the_grid_size_the_readme_explains_is_the_grid_that_ran(sensitivity, readme) -> None:
+    """21 is 27 minus the infeasible corner, and the README now says so.
+
+    Four places quote "21 assumption points" against a 3x3x3 grid in config,
+    which reads as an error until the skipped combinations are named.
+    """
+    import tomllib
+    from itertools import product
+
+    grid = tomllib.loads((REPO / "config" / "default.toml").read_text())["profit"]["sensitivity"]
+    combos = list(product(grid["success_rate"], grid["default_rate"], grid["roi"]))
+    feasible = [c for c in combos if c[0] + c[1] <= 1.0]
+    assert len(feasible) == len(sensitivity), (
+        f"the grid yields {len(feasible)} feasible points but cutoff_sensitivity.csv "
+        f"has {len(sensitivity)}"
+    )
+    collapsed = " ".join(readme.split())
+    assert f"{len(combos)} combinations" in collapsed
+    assert f"the {len(combos) - len(feasible)} where" in collapsed
+    assert f"so {len(feasible)}" in collapsed
