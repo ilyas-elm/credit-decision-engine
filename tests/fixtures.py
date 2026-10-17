@@ -6,10 +6,10 @@ code under test: table names, the P/M/A/D/T/L column-suffix groups, depth 0/1/2
 shapes with num_group1 / num_group2, and a base table keyed by case_id over
 WEEK_NUM.
 
-The generator deliberately plants the defects the pipeline is supposed to catch
--- a leaky column, an all-but-missing column, a drifting column and rows dated
-after date_decision, so that a screening test failing to flag them fails the
-test rather than passing on clean data.
+The generator deliberately plants the defects the pipeline is supposed to
+catch: a leaky column, an all-but-missing column, a drifting column and rows
+dated after date_decision, so that a screening test failing to flag them fails
+the test rather than passing on clean data.
 
 Shapes are asserted against the real tables once docs/DATA_NOTES.md exists; until
 then these are the schema as the brief describes it, which is explicitly marked

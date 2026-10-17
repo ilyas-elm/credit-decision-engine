@@ -116,7 +116,7 @@ choosing an approval cutoff.**
 
 ## 5. Calibration and stability
 
-The champion required recalibration (val_a gap −0.013) and received isotonic
+The champion required recalibration (val_a gap -0.013) and received isotonic
 regression; the challenger is calibrated unconditionally. Worst-week
 calibration gaps are small (≤ 0.009) and the weekly default rate ranges 1.77
 %-2.79 %.
@@ -167,8 +167,9 @@ testable boundary condition: BASL improves scorecards at acceptance rates below
 20 %, with gains rising as acceptance falls, and largest at a 2-5 % bad rate
 among accepts.
 
-Tested against A5, the BASL-inspired arm here, the DIRECTION reproduces exactly
--- recovery is strictly monotone in acceptance rate (-1.08, -0.23, +0.60, +0.89
+Tested against A5, the BASL-inspired arm here, the DIRECTION reproduces
+exactly: recovery is strictly monotone in acceptance rate (-1.08, -0.23,
++0.60, +0.89
 at 90 %, 80 %, 70 % and 50 % acceptance). The THRESHOLD does not: A5 turns
 positive between 80 % and 70 %, far above their 20 %. This book's 3.14 %
 default rate sits inside their favourable 2-5 % band, but the decisive
@@ -199,7 +200,7 @@ correctly end to end, which is the champion's whole purpose.
 
 **Fairness.** Women are approved less often (47.6 % vs 56.1 %) while defaulting
 less often (1.76 % vs 2.99 %), and the model over-predicts their risk (+0.0097)
-while under-predicting men's (−0.0061). This is miscalibration by group, not a
+while under-predicting men's (-0.0061). This is miscalibration by group, not a
 threshold artefact, and it runs against the lower-risk group. **Audit only, no
 mitigation**, as scoped.
 
@@ -240,9 +241,9 @@ not from convention.
 
 | signal | observed | investigate | escalate |
 |---|---|---|---|
-| **weekly Gini** (challenger) | mean 0.421, sd 0.059, min ~0.31 | any week < 0.30 (mean − 2 sd) | 2 consecutive weeks < 0.30, or 4-week mean < 0.35 |
-| **Gini trend** | slope +0.0017 /wk | 8-week slope < 0 | 8-week slope < −0.003 (the metric penalises this 88×) |
-| **calibration in the large** | worst week 0.008, range −0.003 to +0.009 | any week \|gap\| > 0.010 | 2 consecutive weeks \|gap\| > 0.015 |
+| **weekly Gini** (challenger) | mean 0.421, sd 0.059, min ~0.31 | any week < 0.30 (mean - 2 sd) | 2 consecutive weeks < 0.30, or 4-week mean < 0.35 |
+| **Gini trend** | slope +0.0017 /wk | 8-week slope < 0 | 8-week slope < -0.003 (the metric penalises this 88×) |
+| **calibration in the large** | worst week 0.008, range -0.003 to +0.009 | any week \|gap\| > 0.010 | 2 consecutive weeks \|gap\| > 0.015 |
 | **score PSI vs train** | median 0.42, range 0.30-0.71 | weekly PSI > 0.60 | weekly PSI > 0.75, or 4-week median > 0.60 |
 | **conformal coverage, default class** | 0.747, target 0.90 | any week < 0.70 | 4-week mean < 0.65 |
 | **referral rate** | 45.3 % | outside 35-55 % | outside 30-60 % |

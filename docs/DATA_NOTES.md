@@ -208,7 +208,7 @@ Worth recording, because it is the argument for screening on full data:
 |---|---|---|
 | `delq_dpd_gt30_last12m` IV | 0.1995 | 0.1668 (**+19.6 %** overstated) |
 | `delq_dpd_max_mean_over_contracts` IV | 0.3482 | 0.3009 (**+15.7 %**) |
-| `prev_n_rejected` IV | 0.0978 | 0.1394 (**−29.9 %** understated) |
+| `prev_n_rejected` IV | 0.0978 | 0.1394 (**-29.9 %** understated) |
 
 The sample moved individual IVs by up to 30 % in both directions and flipped
 one keep/drop decision (`delq_n_payment_months`, 0.0198 on the sample against

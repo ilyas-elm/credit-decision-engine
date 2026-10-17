@@ -211,8 +211,8 @@ income-derived features** (others net back a little):
 
 | characteristic | points, 60+ | points, under 60 | gap |
 |---|---|---|---|
-| `afford_annuity_to_taxincome` | 37.3 | 52.8 | **−15.5** |
-| `afford_taxincome_total` | 35.8 | 44.2 | **−8.4** |
+| `afford_annuity_to_taxincome` | 37.3 | 52.8 | **-15.5** |
+| `afford_taxincome_total` | 35.8 | 44.2 | **-8.4** |
 
 Income here is derived from the tax registry, which records employment
 payments. Retirees do not appear in it:
@@ -265,8 +265,8 @@ over everyone:
 
 | reject rate | 10 % | 20 % | 30 % | 50 % |
 |---|---|---|---|---|
-| LightGBM | −0.076 | −0.082 | −0.070 | −0.051 |
-| scorecard | −0.094 | −0.127 | −0.136 | −0.157 |
+| LightGBM | -0.076 | -0.082 | -0.070 | -0.051 |
+| scorecard | -0.094 | -0.127 | -0.136 | -0.157 |
 
 A lender measuring on its own approved book **understates its Gini by 5 to 16
 points**, range restriction, not a modelling fault. The scorecard is hurt
@@ -275,16 +275,16 @@ reject rate while the challenger's does not.
 
 ### Which fix recovers the most?
 
-Share of the A0 − A1 gap recovered, LightGBM, where that gap is at least 0.01
+Share of the A0 - A1 gap recovered, LightGBM, where that gap is at least 0.01
 Gini (it is, at every reject rate):
 
 | arm | r=10 % | r=20 % | r=30 % | r=50 % |
 |---|---|---|---|---|
 | A2 hard cutoff | 0.06 | 0.67 | **0.97** | **0.88** |
 | A3 fuzzy | 0.28 | 0.29 | 0.18 | 0.65 |
-| A4 parcelling | 1.05 | −0.20 | −0.18 | 0.16 |
-| A5 self-learning | −1.08 | −0.23 | 0.60 | 0.89 |
-| A6 exploration | −2.61 | −5.63 | −3.90 | −1.06 |
+| A4 parcelling | 1.05 | -0.20 | -0.18 | 0.16 |
+| A5 self-learning | -1.08 | -0.23 | 0.60 | 0.89 |
+| A6 exploration | -2.61 | -5.63 | -3.90 | -1.06 |
 
 Four things come out of this:
 
@@ -300,7 +300,7 @@ Four things come out of this:
    Priced as profit at a fixed binding acceptance against realised loss on the
    loans bought to learn from, net is negative at every budget and reject rate,
    with the damage running **2-53× the cost** (at r=30 %, p=1 %: cost 7.2,
-   profit −382). The 100/p inverse-propensity weight gives a few hundred cases
+   profit -382). The 100/p inverse-propensity weight gives a few hundred cases
    the same total weight as tens of thousands. The ratio improves as the budget
    grows, which is the variance signature.
 4. **The scorecard mostly has no gap to recover.** At 10 % and 20 % reject rates
@@ -328,7 +328,7 @@ acceptance rate:
 
 | acceptance | 90 % | 80 % | 70 % | 50 % |
 |---|---|---|---|---|
-| A5 recovery | −1.08 | −0.23 | **+0.60** | **+0.89** |
+| A5 recovery | -1.08 | -0.23 | **+0.60** | **+0.89** |
 
 That is their relationship, found independently on different data: the less a
 policy accepts, the more reject inference is worth.
@@ -365,8 +365,39 @@ Tests and CI run entirely on generated fixtures (`tests/fixtures.py`) that
 match the competition schema. Competition data is never committed, so a fresh
 clone needs no Kaggle credentials to go green.
 
-Full-data results come from Kaggle CPU kernels run from this repo's committed
-code; the kernel versions used will be linked here.
+Full-data results come from Kaggle CPU kernels, pushed from this repo by
+`scripts/kaggle_run.py <stage>`, which bundles `src/` and `config/` into the
+kernel so the run uses committed code and nothing else. The chain is
+`make-sample` and `env-probe`, then `features`, then `models` and
+`sampling-bias`, then `decision`; the later stages read the feature build
+through `kernel_sources`, so it runs once. Each generated bundle carries the
+short commit it was built from in its header, which is what ties a result back
+to a revision. The kernels themselves are private, as the brief requires, so
+there is no public kernel URL to link: reproduction goes through the code here,
+not through my Kaggle account. Run them under your own account by setting
+`KAGGLE_USERNAME`, or `[kaggle] username` in the config.
+
+Reproducing the chain needs competition access, but reading the results does
+not. Every number quoted above is committed:
+
+| Artefact | What is in it |
+|---|---|
+| [`comparison.csv`](docs/comparison.csv) | the headline table, champion vs challenger |
+| [`feature_report.csv`](docs/feature_report.csv) | per feature: missing %, IV, PSI, univariate Gini, kept or dropped, and why |
+| [`scorecard_table.csv`](docs/scorecard_table.csv) | the scorecard: characteristic, bin, WoE, points |
+| [`decision_summary.json`](docs/decision_summary.json) | cutoff, band shares, conformal thresholds, recourse reach, sign-flip check, fairness audit |
+| [`conformal_coverage_by_week.csv`](docs/conformal_coverage_by_week.csv) | realised coverage per class per test week |
+| [`cutoff_sensitivity.csv`](docs/cutoff_sensitivity.csv) | the cutoff across the profit-assumption grid |
+| [`referral_economics.csv`](docs/referral_economics.csv) | share referred against loss avoided, by review cost |
+| [`decide_examples.json`](docs/decide_examples.json) | `decide()` output on real applicants, no identifiers |
+| [`sampling_bias_arms.csv`](docs/sampling_bias_arms.csv) | every arm, reject rate, seed and model |
+| [`sampling_bias_exploration.csv`](docs/sampling_bias_exploration.csv) | exploration cost against profit gain, per p |
+
+Memory, measured rather than assumed: the features stage on the 3% local
+sample peaks at 0.83 GB resident (`getrusage` and `/usr/bin/time -l` agree to
+within 1 MB), against the brief's ~4 GB budget for an 8 GB machine. The build
+is polars lazy with `collect(engine="streaming")` and the features land as
+Float32.
 
 ## What is built
 
@@ -414,7 +445,7 @@ score ≈0.2557) while returning a number ~50× larger, so the error flatters
 itself. `tests/test_profit.py` pins this down and will fail if a future
 `empulse` flips the convention back.
 
-**Stability metric.** `mean(gini) + 88·min(0, slope) − 0.5·std(residuals)`,
+**Stability metric.** `mean(gini) + 88·min(0, slope) - 0.5·std(residuals)`,
 computed on the weekly Gini curve as the model produces it. Scores are never
 post-processed per week to improve it.
 
