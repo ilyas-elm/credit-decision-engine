@@ -327,6 +327,52 @@ def test_every_doc_table_row_matches_the_fairness_artefact(summary, readme) -> N
 # 150 and asserted inequalities, so nothing checked the printed values.
 
 
+#: The noise sizes the README's IV-floor caveat quotes, and the max IV each
+#: produces. Reproducing them needs the draw order fixed: y first, then the
+#: three noise columns, from a generator re-seeded per size. Drawing X first --
+#: which the committed test in test_scorecard.py did -- gives 0.0767 and
+#: 0.0111 instead, so the published figures were correct and nothing in the
+#: repo regenerated them.
+IV_FLOOR_NOISE = {2_000: "0.0889", 10_000: "0.0117", 50_000: "0.0034", 200_000: "0.0006"}
+
+
+def test_the_iv_floor_noise_figures_reproduce_exactly() -> None:
+    """Recompute the IV-floor caveat's numbers from the committed binning.
+
+    The claim decides where feature selection may happen: the 0.02 floor
+    screens noise against the full train rows and not against the 3 % local
+    sample, so screening is a full-data decision. It is synthetic, so CI can
+    settle it rather than trust it.
+    """
+    import sys as _sys
+
+    import numpy as np
+    import pandas as pd
+
+    _sys.path.insert(0, str(REPO / "src"))
+    from scorecard import ScorecardParams, iv_table
+
+    readme_text = _text("README.md")
+    params = ScorecardParams()
+    for n, quoted in IV_FLOOR_NOISE.items():
+        rng = np.random.default_rng(7)
+        y = rng.binomial(1, 0.08, n)
+        X = pd.DataFrame({f"noise{i}": rng.normal(size=n) for i in range(3)})
+        got = float(iv_table(X, y, params)["iv"].max())
+        assert f"{got:.4f}" == quoted, (
+            f"max IV on pure noise at n={n:,} recomputes to {got:.4f}, not the "
+            f"{quoted} this suite and the README record"
+        )
+    # The README quotes three of the four sizes; the floor itself must still
+    # sit between the smallest and the largest for the caveat to mean anything.
+    for n in (2_000, 10_000, 200_000):
+        assert IV_FLOOR_NOISE[n] in readme_text, f"README omits the n={n:,} figure"
+    assert float(IV_FLOOR_NOISE[200_000]) < params.min_iv < float(IV_FLOOR_NOISE[2_000]), (
+        f"the {params.min_iv} floor no longer sits between noise at n=2,000 and "
+        "n=200,000, which is the whole caveat"
+    )
+
+
 def test_the_synthetic_conformal_table_reproduces_exactly() -> None:
     """Recompute the README's marginal-vs-Mondrian table and match every cell.
 

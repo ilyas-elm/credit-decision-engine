@@ -285,7 +285,7 @@ illustration and not a measured result.
 
 ## 8. Reproducing
 
-`uv sync && uv run pytest`, 475 tests, of which 471 run on synthetic
+`uv sync && uv run pytest`, 476 tests, of which 472 run on synthetic
 fixtures alone and four skip without the local sample; no competition
 data is committed and none is needed. Full-data results come from re-running
 the kernels in `kaggle/` from committed code: `make-sample`, `env-probe`,

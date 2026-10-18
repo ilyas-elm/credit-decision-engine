@@ -149,11 +149,18 @@ def test_pure_noise_is_dropped_once_the_sample_is_large_enough() -> None:
 
 
 def test_the_iv_floor_does_not_screen_noise_on_a_small_sample() -> None:
-    """The flip side, pinned so the limitation above cannot quietly regress."""
+    """The flip side, pinned so the limitation above cannot quietly regress.
+
+    The draw order is part of the procedure, not an accident: y first, then the
+    three noise columns. Drawing X first gives 0.0767 here rather than the
+    0.0889 the docstring above and the README record, and this test only
+    asserted an inequality, so the two disagreed without failing.
+    ``test_docs_consistency`` recomputes all four sizes against the documents.
+    """
     rng = np.random.default_rng(7)
     n = 2_000
-    X = pd.DataFrame({f"noise{i}": rng.normal(size=n) for i in range(3)})
     y = rng.binomial(1, 0.08, n)
+    X = pd.DataFrame({f"noise{i}": rng.normal(size=n) for i in range(3)})
     ivs = iv_table(X, y, ScorecardParams())
     assert ivs["iv"].max() > 0.02, (
         "pure noise no longer clears the IV floor at n=2,000; the sample-size "
