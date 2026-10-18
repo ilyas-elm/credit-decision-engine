@@ -454,17 +454,18 @@ that column is n/a throughout rather than zero:
 | A6 exploration | n/a | -3.07 | -2.24 | -1.55 |
 
 A2, A3 and A5 have no randomness of their own, so those rows are single fits.
-That is not the same as a point estimate: the LightGBM underneath every arm
-bags by row position, and nothing here measures how much that alone moves a
-recovery share. The seeded arms bound it from above, since their spread
-contains the fit as well as the draw — A4's recovery share varies across seeds
-with an sd of 0.02 to 0.29 depending on the cell. So differences between arms
-of a few points are not resolved by this grid. The conclusions drawn below are
-the ones that clear it outright: A2's Brier at 6.6× the oracle's, and the
-0.05-0.16 Gini of evaluation bias, which is larger at every reject rate than
-any arm's recovery and runs in one direction throughout. A5's monotonicity
-survives as a direction, not as three separated points — its 0.13 to 0.52 step
-clears the bound and its 0.52 to 0.63 step does not. A4 and A6 are
+That is not a point estimate: the LightGBM underneath every arm bags by row
+position. The committed stage now fits every arm at all three seeds, and a
+re-run measured the noise directly: one fit's test Gini has an sd of 0.0024,
+up to a 0.013 range for A1 at 50 %. The re-run reproduced all 160 fits
+published here bit-identically, so these tables stand as single draws, but
+three readings change once the seeds are averaged. **A5 ties A2 at a 30 %
+reject rate** (0.58 each) rather than trailing it. **A5 recovers only
+0.04 ± 0.04 at 20 %**. And the 10 % gap lands at 0.009998, 2×10⁻⁶ under the
+0.01 floor, so whether that column has recoveries at all is decided by noise.
+Moving these tables to the seeded run is the next step. What does not change:
+A2's Brier at 6.6× the oracle's, and the 0.05-0.16 Gini of evaluation bias,
+both far outside the measured noise. A4 and A6 are
 means over their variants and seeds — A4 over two uplifts k and three seeds,
 A6 over three budgets p and three seeds — and the two pool very differently.
 A6 is negative in all 27 of its fits at every reject rate, so its row means
