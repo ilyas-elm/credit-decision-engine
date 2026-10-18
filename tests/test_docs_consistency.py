@@ -336,6 +336,45 @@ def test_every_doc_table_row_matches_the_fairness_artefact(summary, readme) -> N
 IV_FLOOR_NOISE = {2_000: "0.0889", 10_000: "0.0117", 50_000: "0.0034", 200_000: "0.0006"}
 
 
+#: The champion's published history, as three states and the two steps between
+#: them. The runs are gitignored, so this is the only place the chain is
+#: recorded; what CI can check is that it still composes to the live headline.
+CHAMPION_HISTORY = {
+    "before the income fix": (0.376, 0.340),
+    "after the income fix": (0.396, 0.360),
+    "cost of barring sign flips": (0.0012, 0.0010),
+}
+
+
+def test_the_champions_history_composes_to_its_headline(comparison, readme) -> None:
+    """Three numbers in the write-up, two of them historical, one of them live.
+
+    The section on missing values says the fix took the champion to 0.396,
+    while the headline table says 0.394. Both are right: barring sign flips
+    then gave 0.0012 back on purpose. Nothing said so, and a reader comparing
+    the two has no way to tell a deliberate trade from a stale number -- which
+    is the question this suite exists to answer.
+    """
+    collapsed = " ".join(readme.split())
+    after_gini, after_stability = CHAMPION_HISTORY["after the income fix"]
+    cost_gini, cost_stability = CHAMPION_HISTORY["cost of barring sign flips"]
+    live_gini = float(comparison["scorecard"]["gini"])
+    live_stability = float(comparison["scorecard"]["stability_metric"])
+
+    for name, (after, cost, live) in {
+        "Gini": (after_gini, cost_gini, live_gini),
+        "stability": (after_stability, cost_stability, live_stability),
+    }.items():
+        assert abs((after - cost) - live) < 0.0006, (
+            f"the champion's {name} history no longer composes: {after} after the "
+            f"income fix, less {cost} for barring sign flips, is "
+            f"{after - cost:.4f} against a live {live:.5f}. Either a step is "
+            "stale or a third change went unrecorded"
+        )
+    # And the write-up has to tell the reader the two figures differ on purpose.
+    assert "gave 0.0012 of it back, deliberately" in collapsed
+
+
 def test_the_iv_floor_noise_figures_reproduce_exactly() -> None:
     """Recompute the IV-floor caveat's numbers from the committed binning.
 

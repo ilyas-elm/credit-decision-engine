@@ -10,7 +10,7 @@ team evaluates models: out-of-time, on calibration, stability and profit.
 > artefact it came from committed under [`docs/`](docs). A few figures in the
 > closing sections are measured on the 3 % local sample or on synthetic data
 > instead, and say which. The badge is CI on a fresh clone: `uv sync --frozen`,
-> lint, and the 472 of its 476 tests that need no competition data, since none
+> lint, and the 473 of its 477 tests that need no competition data, since none
 > of that is committed. [MODEL.md](MODEL.md) is the model documentation.
 
 ## The three questions, answered
@@ -761,7 +761,7 @@ lazy with `collect(engine="streaming")` and the features land as Float32.
 | Feature screening + report | [`docs/feature_report.csv`](docs/feature_report.csv) | **done, full data** |
 | Sampling-bias experiment (arms A0-A6) | `src/sampling_bias.py` | **done, run on full data** |
 
-476 tests. The 472 CI runs need only generated fixtures; the other four check
+477 tests. The 473 CI runs need only generated fixtures; the other four check
 the feature build's column discovery against `data/sample` and skip without it.
 All six kernels have been run end to end on the real competition data.
 
@@ -832,7 +832,9 @@ pl.when(present).then(pl.sum_horizontal([pl.col(c).fill_null(0.0) for c in inc_c
 
 It lifted the champion from Gini 0.376 to 0.396 and stability 0.340 to 0.360,
 left the challenger unmoved, because a GBM splits on the missingness either
-way, and raised approval for the over-70s from 8.6 % to 11.8 %. The same
+way, and raised approval for the over-70s from 8.6 % to 11.8 %. The headline
+table reads 0.394 rather than 0.396 because the next fix below gave 0.0012 of
+it back, deliberately. The same
 conflation is the reason the group disparity above is a drift artefact rather
 than a risk judgement: once the absence is null it gets its own bin, and that
 bin is where the drift bites.
