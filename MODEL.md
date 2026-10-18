@@ -185,11 +185,10 @@ negative in all 27 of its fits, though the budget is correctly sized for
 measurement, which §7 returns to.
 
 This agrees in direction with Kozodoi et al. (2024, arXiv:2407.13009; EJOR
-324(2), 2025): reject inference has modest potential, fixing evaluation matters
-more, gains rise as acceptance falls. A5 reproduces the direction but turns
-positive far earlier than their 20 % threshold, because the selection here is
-simulated on an already-booked population, which is the easier problem, so
-**the recoveries are an upper bound**.
+324(2), 2025): modest potential, evaluation matters more, gains rise as
+acceptance falls. A5 turns positive far earlier than their 20 % threshold,
+because selection here is simulated on an already-booked population, the
+easier problem, so **the recoveries are an upper bound**.
 
 **EMP assumptions are assumptions**, and at the literature's values the profit
 analysis is degenerate (§4). Every profit number is reported across a grid.
@@ -204,24 +203,21 @@ while under-predicting men's (-0.0052). This is miscalibration by group, not a
 threshold artefact, and it runs against the lower-risk group. **Audit only, no
 mitigation**, as scoped.
 
-**By age the disparity is larger, and it is a drift artefact.** Applicants in
-their 60s are approved at 25.4 % and those 70+ at 11.8 %, against 61-67 % for
-everyone younger, while defaulting at 1.2-1.3 % against 4.5 % for the 20s. The
-model predicts them as the riskiest, a mean PD of 3.7-3.8 % against a realised
-1.2 %. Age is not an input: 96.3 % of the over-60s have no tax-registry income
-record against 8.2 % of everyone younger, so its absence is a 93.2 %-accurate
-test for being over 60, and the two income characteristics account for 21.1 of
-the 19.6 points they give up net. The scorecard does not treat that absence as
-risky, scoring it at the neutral middle, and it is not riskier anywhere in the
-data. The gap is that the bin is frozen at fit time while everyone with a value
-drifted into better ones. **That generalises**: a static Missing bin becomes a
-relative penalty whenever the scored population moves, which belongs in the
-monitoring plan below rather than in a threshold constraint. The durable fix is
-a pension and benefit income source. An earlier cause was an outright bug in
-the income column, fixed before these numbers: it lifted the champion from Gini
-0.376 to 0.396 and raised approval for the 70+ group from 8.6 % to 11.8 %.
-Attributed and partly reduced, not removed. The README works through the
-mechanism.
+**By age the disparity is larger, and it is a drift artefact.** The 60s are
+approved at 25.4 % and the 70+ at 11.8 %, against 61-67 % for everyone
+younger, while defaulting at 1.2-1.3 % against 4.5 % for the 20s; the model
+predicts them riskiest, mean PD 3.7-3.8 % against a realised 1.2 %. Age is not
+an input. 96.3 % of the over-60s have no tax-registry income record against
+8.2 % of the younger, so its absence is a 93.2 %-accurate test for being over
+60, and the two income characteristics carry the whole 19.6-point loss. The
+scorecard scores that absence at the neutral middle, which is what the data
+warrants; the gap is that the bin is frozen at fit time while everyone with a
+value drifted into better ones. **That generalises**: a static Missing bin
+becomes a relative penalty whenever the scored population moves, which is why
+it is a monitoring row below rather than a threshold constraint. The durable
+fix is a pension and benefit income source. Attributed and partly reduced, not
+removed; the README derives it, and an earlier income-column bug fixed before
+these numbers had already lifted 70+ approval from 8.6 %.
 
 ## 7. Monitoring plan
 
@@ -246,15 +242,13 @@ be worse than useless. And the default-class coverage threshold is set below
 its nominal target because the band already misses it, the monitor's job is to
 catch further deterioration, not to re-report a known shortfall every week.
 
-The last row is there because of what the fairness audit turned up in §6. A
-Missing bin's points are fixed when the scorecard is fitted, so as the
-population that *has* a value drifts into better bins, the cohort that does not
-is marked down relative to everyone else without anything about it changing. On
-`afford_annuity_to_taxincome` that gap has gone from +1.3 points at fit time to
-+16.5, which is most of the 19.6 points the over-60s give up. It is measured as
-the live non-missing population's mean points minus the Missing bin's fixed
-points, per characteristic, and `scripts/drift_recon.py` computes it. Its
-thresholds sit above the current level for the same reason the PSI ones do.
+The last row is the §6 drift artefact made measurable: a Missing bin's points
+are fixed at fit time, so a cohort that has no value is marked down as everyone
+who does drifts into better bins. It is the live non-missing population's mean
+points minus the Missing bin's fixed points, per characteristic, and on
+`afford_annuity_to_taxincome` it has gone from +1.3 at fit to +16.5. Its
+thresholds sit above the current level for the same reason the PSI ones do, and
+`scripts/drift_recon.py` computes it.
 
 Recalibration should be triggered by the calibration-in-the-large signal rather
 than by Gini: the model's ranking is more durable than its levels, which is
