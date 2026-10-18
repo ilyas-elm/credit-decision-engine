@@ -58,6 +58,9 @@ __all__ = [
     "evaluation_bias",
     "exploration_cost",
     "exploration_budget_for_detection",
+    "arm_specs",
+    "fit_plan",
+    "DRAWING_ARMS",
 ]
 
 
@@ -459,6 +462,81 @@ ARMS = {
     "A5_self_learning": arm_a5_self_learning,
     "A6_exploration": arm_a6_exploration,
 }
+
+
+#: Arms whose own construction consumes randomness. The rest build their
+#: training set deterministically.
+#:
+#: This is NOT the same as "produces the same result every time". Every arm is
+#: fitted with LightGBM, which bags a fraction of rows BY POSITION, so every
+#: arm's gradient-boosted result moves between seeds. The five deterministic
+#: arms were run once each for exactly this confusion, and their Ginis went
+#: into the documents as points rather than draws.
+#:
+#: What the flag decides is whether the SCORECARD needs refitting per seed.
+#: :func:`~scorecard.fit_scorecard` takes no seed and optbinning does not
+#: sample, so for a non-drawing arm its scorecard fit is identical at every
+#: seed and running it three times would only pad the output with copies.
+DRAWING_ARMS = frozenset({"A4_parcelling", "A6_exploration"})
+
+
+def arm_specs(params: SamplingBiasParams, **shared) -> list[tuple[str, dict, bool]]:
+    """Every (arm, kwargs, arm_draws) the experiment runs at one reject rate.
+
+    ``shared`` carries the per-rate inputs the arms need: ``reject_pd`` for the
+    arms that score rejects, ``accepted_pd`` for parcelling. Keys an arm does
+    not take are not passed to it.
+    """
+    reject_pd = shared.get("reject_pd")
+    accepted_pd = shared.get("accepted_pd")
+    specs: list[tuple[str, dict, bool]] = [
+        ("A0_oracle", {}, False),
+        ("A1_accepts_only", {}, False),
+        ("A2_hard_cutoff", {}, False),
+        ("A3_fuzzy", {"reject_pd": reject_pd}, False),
+    ]
+    for uplift in params.parcelling_uplift:
+        specs.append(
+            (
+                "A4_parcelling",
+                {"reject_pd": reject_pd, "accepted_pd": accepted_pd, "uplift": uplift},
+                True,
+            )
+        )
+    specs.append(
+        (
+            "A5_self_learning",
+            {
+                "reject_pd": reject_pd,
+                "confidence": params.self_learning_confidence,
+                "iterations": params.self_learning_iters,
+            },
+            False,
+        )
+    )
+    for pct in params.exploration_pct:
+        specs.append(("A6_exploration", {"explore_pct": pct}, True))
+    for name, _, draws in specs:
+        assert draws == (name in DRAWING_ARMS), f"{name} disagrees with DRAWING_ARMS"
+    return specs
+
+
+def fit_plan(
+    params: SamplingBiasParams, specs: list[tuple[str, dict, bool]]
+) -> list[tuple[str, dict, int, tuple[str, ...]]]:
+    """Expand the specs into one entry per (arm, seed), with the models to fit.
+
+    Every arm runs at every seed for LightGBM. The scorecard runs at every seed
+    only for an arm that draws; otherwise once, at the first seed.
+    """
+    plan: list[tuple[str, dict, int, tuple[str, ...]]] = []
+    for name, kwargs, draws in specs:
+        for seed in params.seeds:
+            models = ("lightgbm", "scorecard")
+            if not draws and seed != params.seeds[0]:
+                models = ("lightgbm",)
+            plan.append((name, kwargs, seed, models))
+    return plan
 
 
 def build_arm(name: str, scenario: Scenario, **kwargs) -> TrainingSet:

@@ -11,11 +11,15 @@ import pytest
 from config import load_config
 from profit import ProfitAssumptions, expected_loss_fraction
 from sampling_bias import (
+    ARMS,
+    DRAWING_ARMS,
     SamplingBiasParams,
+    arm_specs,
     build_arm,
     evaluation_bias,
     exploration_budget_for_detection,
     exploration_cost,
+    fit_plan,
     make_scenario,
     recovery_share,
     select_features,
@@ -464,3 +468,102 @@ def test_budget_sizing_validates_its_rates() -> None:
         exploration_budget_for_detection(0.0, 0.3, 0.02, 0.01)
     with pytest.raises(ValueError, match="rejected_share"):
         exploration_budget_for_detection(0.07, 0.0, 0.02, 0.01)
+
+
+# --- the fit plan ---------------------------------------------------------
+#
+# This lived inside the Kaggle stage script, where nothing ran it, and it was
+# wrong for the whole project: the five arms that build their training set
+# deterministically were fitted once each, as though that made their RESULT
+# deterministic. It does not. They are then fitted with LightGBM, which bags
+# rows by position, so their Ginis were single draws and every recovery share
+# built on them carried unmeasured noise.
+
+
+def _specs(params: SamplingBiasParams | None = None):
+    params = params or SamplingBiasParams()
+    return params, arm_specs(params, reject_pd=None, accepted_pd=None)
+
+
+def test_every_arm_in_the_registry_is_actually_run() -> None:
+    """An arm that exists and is never specced is an arm the write-up claims."""
+    _, specs = _specs()
+    assert {name for name, _, _ in specs} == set(ARMS)
+
+
+def test_the_drawing_flag_matches_the_arms_that_draw() -> None:
+    _, specs = _specs()
+    assert {name for name, _, draws in specs if draws} == set(DRAWING_ARMS)
+    # A4 and A6, and nothing else, take an rng-dependent decision.
+    assert set(DRAWING_ARMS) == {"A4_parcelling", "A6_exploration"}
+
+
+def test_every_arm_is_fitted_at_every_seed_with_lightgbm() -> None:
+    """The correction. No arm may be a single LightGBM draw again."""
+    params, specs = _specs()
+    plan = fit_plan(params, specs)
+    for name, _, _ in specs:
+        seeds = {
+            seed for arm, _, seed, models in plan if arm == name and "lightgbm" in models
+        }
+        assert seeds == set(params.seeds), (
+            f"{name} is fitted with LightGBM at {sorted(seeds)}, not every seed; "
+            "its Gini would be a single draw of a distribution nothing measures"
+        )
+
+
+def test_the_scorecard_is_not_refitted_where_it_cannot_change() -> None:
+    """fit_scorecard takes no seed, so repeats would only pad the output."""
+    from collections import Counter
+
+    params, specs = _specs()
+    plan = fit_plan(params, specs)
+    # A4 and A6 contribute several specs each, one per uplift and per budget.
+    variants = Counter(name for name, _, _ in specs)
+    draws_by_name = {name: draws for name, _, draws in specs}
+    for name, n_variants in variants.items():
+        fits = sum(1 for arm, _, _, models in plan if arm == name and "scorecard" in models)
+        per_variant = len(params.seeds) if draws_by_name[name] else 1
+        assert fits == n_variants * per_variant, (
+            f"{name} gets {fits} scorecard fits across {n_variants} variant(s), "
+            f"expected {n_variants * per_variant}"
+        )
+
+
+def test_the_plan_is_the_size_the_readme_reports() -> None:
+    """The run time and the row count in the documents follow from this."""
+    params, specs = _specs()
+    plan = fit_plan(params, specs)
+    per_rate = sum(len(models) for *_, models in plan)
+    assert per_rate == 50, f"{per_rate} fits per reject rate"
+    assert per_rate * len(params.reject_rates) == 200
+
+
+def test_every_spec_passes_kwargs_its_arm_accepts() -> None:
+    """A typo in a spec's kwargs only shows up as a failed arm on Kaggle.
+
+    The stage catches arm exceptions so one degenerate arm cannot kill the
+    grid, which also means a misspelled keyword would be reported as a FAILED
+    line in a log and the arm would silently vanish from the results.
+    """
+    import inspect
+
+    _, specs = _specs()
+    for name, kwargs, _ in specs:
+        signature = inspect.signature(ARMS[name])
+        takes_kwargs = any(
+            p.kind is inspect.Parameter.VAR_KEYWORD for p in signature.parameters.values()
+        )
+        for key in kwargs:
+            assert key in signature.parameters or takes_kwargs, (
+                f"{name} is specced with {key!r}, which {ARMS[name].__name__} "
+                "does not accept"
+            )
+
+
+def test_a_shorter_seed_tuple_still_plans_one_scorecard_fit() -> None:
+    """Config may cut seeds first if a kernel runs long, per the brief."""
+    params = SamplingBiasParams(seeds=(7,))
+    plan = fit_plan(params, arm_specs(params, reject_pd=None, accepted_pd=None))
+    assert {seed for _, _, seed, _ in plan} == {7}
+    assert sum(len(models) for *_, models in plan) == 20

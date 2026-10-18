@@ -94,9 +94,11 @@ def main() -> None:
     from profit import ProfitAssumptions, strategy_curve
     from sampling_bias import (
         SamplingBiasParams,
+        arm_specs,
         build_arm,
         evaluation_bias,
         exploration_cost,
+        fit_plan,
         make_scenario,
         recovery_share,
         select_features,
@@ -252,103 +254,82 @@ def main() -> None:
         accepted_te = np.ones(len(X_te), dtype=bool)
         accepted_te[order[:n_rej_te]] = False
 
-        specs = [
-            ("A0_oracle", {}, [params.seeds[0]]),
-            ("A1_accepts_only", {}, [params.seeds[0]]),
-            ("A2_hard_cutoff", {}, [params.seeds[0]]),
-        ]
-        specs.append(("A3_fuzzy", {"reject_pd": reject_pd}, [params.seeds[0]]))
-        for k in params.parcelling_uplift:
-            specs.append(
-                (
-                    "A4_parcelling",
-                    {"reject_pd": reject_pd, "accepted_pd": accepted_pd, "uplift": k},
-                    list(params.seeds),
+        # Built in src/sampling_bias.py so the control flow is testable: it
+        # lives in a kernel script otherwise, where nothing exercises it, and
+        # the seeds-per-arm decision was wrong there for the whole project.
+        specs = arm_specs(params, reject_pd=reject_pd, accepted_pd=accepted_pd)
+
+        baseline: dict[tuple[str, str], list[float]] = {}
+        for arm_name, kwargs, seed, models in fit_plan(params, specs):
+            training = build_arm(arm_name, scen, rng=np.random.default_rng(seed), **kwargs)
+            for model_type in models:
+                t = time.time()
+                try:
+                    pd_te = fit_and_score(training, model_type, seed)
+                except Exception as exc:  # a degenerate arm must not kill the grid
+                    print(f"[sb]   {training.arm:24} {model_type:9} FAILED: {exc}", flush=True)
+                    continue
+                g_full = gini(y_te, pd_te)
+                g_acc = gini(y_te[accepted_te], pd_te[accepted_te])
+                cal = assess_calibration(y_te, pd_te)
+                cal_acc = assess_calibration(y_te[accepted_te], pd_te[accepted_te])
+                # Profit on the FULL test population at a FIXED acceptance
+                # rate, not at each arm's own optimum.
+                #
+                # The optimum is useless here: at these assumptions the book
+                # is profitable at every cutoff, so every arm's optimum is
+                # 100% approval and the profit there is identical for every
+                # model (61,715 for the oracle and for pure noise alike).
+                # Comparing arms needs a cutoff that BINDS, where a better
+                # ranking approves fewer bads and earns more. PROFIT_ACCEPTANCE
+                # is the binding operating point the decision layer uses.
+                curve = strategy_curve(y_te, pd_te, assumptions, n_points=201)
+                at = int(np.argmin(np.abs(curve["approval_rate"] - PROFIT_ACCEPTANCE)))
+                profit_full = float(curve["profit"][at])
+                rows.append(
+                    {
+                        "reject_rate": reject_rate,
+                        "arm": training.arm,
+                        "base_arm": arm_name,
+                        "model": model_type,
+                        "seed": seed,
+                        "n_train": int(training.y.size),
+                        "gini_full": g_full,
+                        "gini_accepted_only": g_acc,
+                        "brier_full": cal.brier,
+                        "citl_gap_full": cal.gap,
+                        "citl_gap_accepted_only": cal_acc.gap,
+                        "profit_full": profit_full,
+                        "seconds": round(time.time() - t, 1),
+                        "note": training.note,
+                    }
                 )
-            )
-        specs.append(
-            (
-                "A5_self_learning",
-                {
-                    "reject_pd": reject_pd,
-                    "confidence": params.self_learning_confidence,
-                    "iterations": params.self_learning_iters,
-                },
-                [params.seeds[0]],
-            )
-        )
-        for p in params.exploration_pct:
-            specs.append(("A6_exploration", {"explore_pct": p}, list(params.seeds)))
+                if arm_name in ("A0_oracle", "A1_accepts_only"):
+                    # Every seed, averaged below. A single value here meant
+                    # the recovery denominator was whichever seed happened
+                    # to run last.
+                    baseline.setdefault((arm_name, model_type), []).append(g_full)
+                print(
+                    f"[sb]   {training.arm:24} {model_type:9} seed={seed} "
+                    f"gini_full={g_full:+.4f} gini_acc={g_acc:+.4f} "
+                    f"({time.time() - t:.0f}s)",
+                    flush=True,
+                )
 
-        baseline = {}
-        for arm_name, kwargs, seeds in specs:
-            for seed in seeds:
-                training = build_arm(arm_name, scen, rng=np.random.default_rng(seed), **kwargs)
-                for model_type in ("lightgbm", "scorecard"):
-                    t = time.time()
-                    try:
-                        pd_te = fit_and_score(training, model_type, seed)
-                    except Exception as exc:  # a degenerate arm must not kill the grid
-                        print(f"[sb]   {training.arm:24} {model_type:9} FAILED: {exc}", flush=True)
-                        continue
-                    g_full = gini(y_te, pd_te)
-                    g_acc = gini(y_te[accepted_te], pd_te[accepted_te])
-                    cal = assess_calibration(y_te, pd_te)
-                    cal_acc = assess_calibration(y_te[accepted_te], pd_te[accepted_te])
-                    # Profit on the FULL test population at a FIXED acceptance
-                    # rate, not at each arm's own optimum.
-                    #
-                    # The optimum is useless here: at these assumptions the book
-                    # is profitable at every cutoff, so every arm's optimum is
-                    # 100% approval and the profit there is identical for every
-                    # model (61,715 for the oracle and for pure noise alike).
-                    # Comparing arms needs a cutoff that BINDS, where a better
-                    # ranking approves fewer bads and earns more. PROFIT_ACCEPTANCE
-                    # is the binding operating point the decision layer uses.
-                    curve = strategy_curve(y_te, pd_te, assumptions, n_points=201)
-                    at = int(np.argmin(np.abs(curve["approval_rate"] - PROFIT_ACCEPTANCE)))
-                    profit_full = float(curve["profit"][at])
-                    rows.append(
-                        {
-                            "reject_rate": reject_rate,
-                            "arm": training.arm,
-                            "base_arm": arm_name,
-                            "model": model_type,
-                            "seed": seed,
-                            "n_train": int(training.y.size),
-                            "gini_full": g_full,
-                            "gini_accepted_only": g_acc,
-                            "brier_full": cal.brier,
-                            "citl_gap_full": cal.gap,
-                            "citl_gap_accepted_only": cal_acc.gap,
-                            "profit_full": profit_full,
-                            "seconds": round(time.time() - t, 1),
-                            "note": training.note,
-                        }
-                    )
-                    if arm_name in ("A0_oracle", "A1_accepts_only"):
-                        baseline[(arm_name, model_type)] = g_full
-                    print(
-                        f"[sb]   {training.arm:24} {model_type:9} seed={seed} "
-                        f"gini_full={g_full:+.4f} gini_acc={g_acc:+.4f} "
-                        f"({time.time() - t:.0f}s)",
-                        flush=True,
-                    )
-
-                # A6 buys its information; price it.
-                if arm_name == "A6_exploration":
-                    explored = training.weight > 1.0
-                    cost = exploration_cost(training.y[explored], assumptions)
-                    exploration_rows.append(
-                        {
-                            "reject_rate": reject_rate,
-                            "explore_pct": kwargs["explore_pct"],
-                            "seed": seed,
-                            "n_explored": int(explored.sum()),
-                            "realised_loss_cost": cost,
-                            "cost_per_dev_case": cost / max(n_sub, 1),
-                        }
-                    )
+            # A6 buys its information; price it.
+            if arm_name == "A6_exploration":
+                explored = training.weight > 1.0
+                cost = exploration_cost(training.y[explored], assumptions)
+                exploration_rows.append(
+                    {
+                        "reject_rate": reject_rate,
+                        "explore_pct": kwargs["explore_pct"],
+                        "seed": seed,
+                        "n_explored": int(explored.sum()),
+                        "realised_loss_cost": cost,
+                        "cost_per_dev_case": cost / max(n_sub, 1),
+                    }
+                )
 
         for row in rows:
             if row["reject_rate"] != reject_rate:
@@ -356,9 +337,12 @@ def main() -> None:
             key = row["model"]
             o = baseline.get(("A0_oracle", key))
             a1 = baseline.get(("A1_accepts_only", key))
+            # The denominator is the mean over seeds, shared by every arm at
+            # this rate, so each arm's own seed spread shows in its recovery
+            # share rather than being cancelled by a matched denominator.
             row["recovery_share"] = (
-                recovery_share(o, a1, row["gini_full"])
-                if o is not None and a1 is not None
+                recovery_share(sum(o) / len(o), sum(a1) / len(a1), row["gini_full"])
+                if o and a1
                 else float("nan")
             )
             row["evaluation_bias"] = evaluation_bias(row["gini_accepted_only"], row["gini_full"])[
