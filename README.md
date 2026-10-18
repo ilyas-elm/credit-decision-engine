@@ -10,7 +10,7 @@ team evaluates models: out-of-time, on calibration, stability and profit.
 > artefact it came from committed under [`docs/`](docs). A few figures in the
 > closing sections are measured on the 3 % local sample or on synthetic data
 > instead, and say which. The badge is CI on a fresh clone: `uv sync --frozen`,
-> lint, and the 399 of its 404 tests that need no competition data, since none
+> lint, and the 399 of its 417 tests that need no competition data, since none
 > of that is committed. [MODEL.md](MODEL.md) is the model documentation.
 
 ## The three questions, answered
@@ -133,6 +133,38 @@ It is still worth doing. A marginal threshold on the same data covers the
 default class **0.000** of the time; it is the majority class's threshold
 wearing a guarantee. Mondrian takes that from 0 % to 75 %. Short of its
 promise, and vastly better than the alternative.
+
+### What α would buy, since α is the only lever
+
+A 44 % referral rate is unstaffable, and α is the one thing that moves it:
+recalibrating split conformal is re-taking a quantile, not refitting anything.
+So it is worth knowing what the curve looks like rather than asserting that the
+lever exists ([`conformal_alpha_sweep.csv`](docs/conformal_alpha_sweep.csv)).
+
+| α | referred | default coverage | target |
+|---|---|---|---|
+| 0.10 (configured) | 44.4 % | 0.747 | 0.90 |
+| 0.22 | 19.8 % | 0.555 | 0.78 |
+| **0.28** | **9.5 %** | **0.481** | 0.72 |
+| 0.34-0.38 | **0 %** | 0.417 | 0.66 |
+| 0.50 | 22.6 % | 0.265 | 0.50 |
+
+**A staffable desk is reachable, and it costs the guarantee.** A 10 % referral
+rate needs α ≥ 0.28, where the band catches 48 % of defaulters instead of 75 %.
+There is no setting that is both affordable and trustworthy: the whole curve
+sits far below its own target, because the exchangeability the guarantee rests
+on does not hold here.
+
+**The curve is not monotone, which is a trap.** A case is referred when its
+prediction set is not a singleton, and that happens two ways. Below α ≈ 0.32
+both labels qualify, so referrals are genuine ambiguity. Above α ≈ 0.40
+*neither* label qualifies, and an empty set is referred rather than quietly
+approved. Between them the band refers nobody at all. So 11.1 % at α = 0.26 and
+11.9 % at α = 0.42 are the same referral rate meaning opposite things, and a
+desk sized on referral volume alone could pick the second, where the coverage
+it was buying has fallen to 0.329.
+
+![What α buys](docs/figures/alpha_sweep.png)
 
 ### Where the cutoff sits
 
@@ -458,6 +490,7 @@ not. Every number quoted above is committed:
 | [`scorecard_table.csv`](docs/scorecard_table.csv) | the scorecard: characteristic, bin, WoE, points |
 | [`decision_summary.json`](docs/decision_summary.json) | cutoff, band shares, conformal thresholds, recourse reach, sign-flip check, fairness audit |
 | [`conformal_coverage_by_week.csv`](docs/conformal_coverage_by_week.csv) | realised coverage per class per test week |
+| [`conformal_alpha_sweep.csv`](docs/conformal_alpha_sweep.csv) | referral rate and per-class coverage across 35 values of α |
 | [`cutoff_sensitivity.csv`](docs/cutoff_sensitivity.csv) | the cutoff across the profit-assumption grid |
 | [`referral_economics.csv`](docs/referral_economics.csv) | share referred against loss avoided, by review cost |
 | [`decide_examples.json`](docs/decide_examples.json) | `decide()` output on real applicants, no identifiers |
@@ -492,7 +525,7 @@ lazy with `collect(engine="streaming")` and the features land as Float32.
 | Feature screening + report | [`docs/feature_report.csv`](docs/feature_report.csv) | **done, full data** |
 | Sampling-bias experiment (arms A0-A6) | `src/sampling_bias.py` | **done, run on full data** |
 
-404 tests. The 399 CI runs need only generated fixtures; the other four check
+417 tests. The 399 CI runs need only generated fixtures; the other four check
 the feature build's column discovery against `data/sample` and skip without it.
 All six kernels have been run end to end on the real competition data.
 

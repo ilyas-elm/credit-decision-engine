@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import math
 import warnings
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 import numpy as np
@@ -48,6 +49,7 @@ __all__ = [
     "marginal_thresholds",
     "Band",
     "coverage_report",
+    "alpha_sweep",
 ]
 
 # Label convention, same as `target` throughout this repo.
@@ -269,3 +271,60 @@ def coverage_report(
         "mean_set_size": np.array([r[4] for r in rows], dtype=float),
         "target_coverage": np.full(len(rows), 1.0 - model.alpha),
     }
+
+
+def alpha_sweep(
+    proba_cal: np.ndarray,
+    y_cal: np.ndarray,
+    proba_test: np.ndarray,
+    y_test: np.ndarray,
+    alphas: Sequence[float],
+) -> list[dict[str, float]]:
+    """Referral rate and per-class coverage as a function of alpha.
+
+    alpha is the only lever on the size of the review band: it costs nothing
+    to move, because recalibrating split conformal is re-taking a quantile
+    rather than refitting anything. Saying "alpha is the lever" without
+    showing the curve leaves the reader to guess what a workable desk would
+    cost, so this computes it.
+
+    The curve is NOT monotone, and the reason matters operationally. A case is
+    referred when its prediction set is not a singleton, which happens two
+    ways. At small alpha the thresholds are loose and both labels qualify, so
+    referrals are ambiguity. At large alpha they are tight enough that
+    NEITHER label qualifies, and an empty set is referred rather than silently
+    approved. Between those regimes the band can vanish entirely. A desk
+    sizing itself off the referral rate alone could therefore pick an alpha on
+    the far side, where the band refers a similar number of cases for the
+    opposite reason and the coverage it was bought for is long gone.
+
+    ``both`` and ``empty`` are reported separately so the two are
+    distinguishable, which the referral rate alone does not allow.
+    """
+    proba_cal = _as_two_column_proba(proba_cal)
+    proba_test = _as_two_column_proba(proba_test)
+    y_test = np.asarray(y_test).ravel().astype(int)
+    if proba_test.shape[0] != y_test.size:
+        raise ValueError(f"proba_test has {proba_test.shape[0]} rows but y_test has {y_test.size}.")
+
+    rows = []
+    for alpha in alphas:
+        model = MondrianConformal.fit(proba_cal, y_cal, alpha)
+        sizes = model.set_sizes(proba_test)
+        report = coverage_report(model, proba_test, y_test)
+        coverage = {
+            int(label): float(value)
+            for label, value in zip(report["label"], report["coverage"], strict=True)
+        }
+        rows.append(
+            {
+                "alpha": float(alpha),
+                "refer_rate": float((sizes != 1).mean()),
+                "both_labels": float((sizes == 2).mean()),
+                "empty_set": float((sizes == 0).mean()),
+                "coverage_non_default": coverage.get(NON_DEFAULT, float("nan")),
+                "coverage_default": coverage.get(DEFAULT, float("nan")),
+                "target_coverage": 1.0 - float(alpha),
+            }
+        )
+    return rows

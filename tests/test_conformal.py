@@ -19,6 +19,7 @@ from conformal import (
     Band,
     InsufficientCalibrationWarning,
     MondrianConformal,
+    alpha_sweep,
     bands,
     conformal_quantile,
     coverage_report,
@@ -252,3 +253,61 @@ def test_shape_and_label_validation() -> None:
         MondrianConformal.fit(pd_cal, np.full(pd_cal.size, 2), ALPHA)
     with pytest.raises(ValueError, match="Expected a 1-D PD vector"):
         MondrianConformal.fit(np.zeros((10, 3)), np.zeros(10, dtype=int), ALPHA)
+
+
+# --- The alpha sweep -----------------------------------------------------
+
+
+def _sweep_inputs(rng, n=8_000, base_rate=0.03):
+    pd_cal, y_cal = _exchangeable_draw(rng, n, base_rate=base_rate)
+    pd_test, y_test = _exchangeable_draw(rng, n, base_rate=base_rate)
+    return pd_cal, y_cal, pd_test, y_test
+
+
+def test_alpha_sweep_reports_each_alpha_once_with_its_target() -> None:
+    rng = np.random.default_rng(3)
+    alphas = [0.05, 0.10, 0.25]
+    rows = alpha_sweep(*_sweep_inputs(rng), alphas)
+    assert [r["alpha"] for r in rows] == alphas
+    for row in rows:
+        assert row["target_coverage"] == pytest.approx(1.0 - row["alpha"])
+
+
+def test_referrals_are_exactly_the_non_singletons() -> None:
+    """refer_rate must be both_labels + empty_set, or the decomposition lies."""
+    rng = np.random.default_rng(4)
+    for row in alpha_sweep(*_sweep_inputs(rng), [0.02, 0.1, 0.3, 0.5, 0.7]):
+        assert row["refer_rate"] == pytest.approx(row["both_labels"] + row["empty_set"])
+        assert 0.0 <= row["refer_rate"] <= 1.0
+
+
+def test_coverage_falls_as_alpha_rises() -> None:
+    """The guarantee weakens monotonically even where the band size does not."""
+    rng = np.random.default_rng(5)
+    rows = alpha_sweep(*_sweep_inputs(rng), [0.05, 0.15, 0.30, 0.50])
+    for key in ("coverage_non_default", "coverage_default"):
+        values = [r[key] for r in rows]
+        assert all(a >= b - 1e-9 for a, b in zip(values, values[1:], strict=False)), (
+            f"{key} is not non-increasing in alpha: {values}"
+        )
+
+
+def test_the_two_referral_regimes_are_distinguishable() -> None:
+    """Small alpha refers ambiguity, large alpha refers empty sets.
+
+    This is the point of reporting the two separately: the referral rate alone
+    cannot tell a desk which side of the curve it is on, and the far side has
+    a similar rate with the coverage long gone.
+    """
+    rng = np.random.default_rng(6)
+    low, high = alpha_sweep(*_sweep_inputs(rng), [0.02, 0.80])
+    assert low["both_labels"] > 0 and low["empty_set"] == 0
+    assert high["empty_set"] > 0 and high["both_labels"] == 0
+    assert high["coverage_default"] < low["coverage_default"]
+
+
+def test_alpha_sweep_validates_its_inputs() -> None:
+    rng = np.random.default_rng(7)
+    pd_cal, y_cal, pd_test, _ = _sweep_inputs(rng, n=500)
+    with pytest.raises(ValueError, match="rows but y_test has"):
+        alpha_sweep(pd_cal, y_cal, pd_test, np.zeros(3), [0.1])

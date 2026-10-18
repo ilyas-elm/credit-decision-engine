@@ -83,6 +83,7 @@ def main() -> None:
     from conformal import (
         Band,
         MondrianConformal,
+        alpha_sweep,
         coverage_report,
         marginal_thresholds,
         one_minus_prob,
@@ -93,6 +94,7 @@ def main() -> None:
         choose_cutoff,
         referral_economics,
     )
+    from evaluation import plot_alpha_sweep
     from features import find_data_dir, kept_features, table_paths
     from profit import ProfitAssumptions, expected_loss_fraction
     from scorecard import ScorecardParams, fit_scorecard, select_features
@@ -169,6 +171,45 @@ def main() -> None:
     cov = coverage_report(mondrian, pd_te, y_te, w_te)
     cov_df = pd.DataFrame(cov)
     cov_df.to_csv(OUTPUT / "conformal_coverage_by_week.csv", index=False)
+
+    # --- what alpha would buy ---------------------------------------------
+    # The band refers 44 % of applicants at alpha = 0.10, which no review desk
+    # could staff, and alpha is the only lever: recalibrating split conformal
+    # is re-taking a quantile, not refitting. The curve is swept rather than
+    # asserted because it is not monotone, and a desk sizing itself off the
+    # referral rate alone could land on the wrong side of it.
+    sweep = pd.DataFrame(
+        alpha_sweep(pd_vb, y_vb, pd_te, y_te, [round(0.02 * i, 2) for i in range(1, 36)])
+    )
+    sweep.to_csv(OUTPUT / "conformal_alpha_sweep.csv", index=False)
+    plot_alpha_sweep(
+        {c: sweep[c].to_numpy() for c in sweep.columns},
+        OUTPUT / "alpha_sweep.png",
+    )
+    # Not `singleton`: the band logic below binds that name to a mask.
+    no_referrals = sweep.loc[sweep["refer_rate"] < 1e-9, "alpha"]
+    workable = sweep.loc[sweep["refer_rate"] <= 0.10]
+    print("\n[dec] alpha sweep: referral rate against coverage", flush=True)
+    for _, r in sweep.iloc[::4].iterrows():
+        print(
+            f"[dec]   alpha {r['alpha']:.2f}  refer {r['refer_rate']:6.1%} "
+            f"(both {r['both_labels']:5.1%}, empty {r['empty_set']:5.1%})  "
+            f"cov {r['coverage_non_default']:.3f} / {r['coverage_default']:.3f}",
+            flush=True,
+        )
+    if not workable.empty:
+        first = workable.iloc[0]
+        print(
+            f"[dec]   a 10 % desk needs alpha >= {first['alpha']:.2f}, where the "
+            f"default class is covered {first['coverage_default']:.3f}",
+            flush=True,
+        )
+    if not no_referrals.empty:
+        print(
+            f"[dec]   the band refers nobody between alpha {no_referrals.min():.2f} "
+            f"and {no_referrals.max():.2f}, then returns as empty sets",
+            flush=True,
+        )
     overall = coverage_report(mondrian, pd_te, y_te)
     print(f"[dec] target coverage {1 - alpha:.2f}", flush=True)
     for label, name in ((0, "non-default"), (1, "DEFAULT")):

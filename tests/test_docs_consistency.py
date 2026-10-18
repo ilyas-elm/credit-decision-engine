@@ -715,3 +715,72 @@ def test_the_monitoring_plan_carries_the_signal_the_audit_asked_for(model_doc, r
         assert figure in readme, f"README does not quote {figure}"
     # And the README no longer claims neither remedy is implemented.
     assert "Neither is implemented here" not in readme
+
+
+# --- The alpha sweep -----------------------------------------------------
+
+
+@pytest.fixture(scope="module")
+def sweep() -> list[dict[str, float]]:
+    with (DOCS / "conformal_alpha_sweep.csv").open() as fh:
+        return [{k: float(v) for k, v in row.items()} for row in csv.DictReader(fh)]
+
+
+def _at(sweep: list[dict[str, float]], alpha: float) -> dict[str, float]:
+    return next(r for r in sweep if abs(r["alpha"] - alpha) < 1e-9)
+
+
+@pytest.mark.parametrize("alpha", [0.10, 0.22, 0.28, 0.50])
+def test_each_quoted_alpha_row_matches_the_artefact(sweep, readme, alpha) -> None:
+    row = _at(sweep, alpha)
+    collapsed = " ".join(readme.split())
+    assert f"{row['refer_rate'] * 100:.1f} %" in collapsed, (
+        f"README does not quote the referral rate at alpha={alpha}"
+    )
+    assert f"{row['coverage_default']:.3f}" in collapsed, (
+        f"README does not quote the default coverage at alpha={alpha}"
+    )
+
+
+def test_the_configured_alpha_agrees_with_the_decision_summary(sweep, summary) -> None:
+    """The sweep's own row for the configured alpha must match the run."""
+    row = _at(sweep, summary["alpha"])
+    assert row["coverage_default"] == pytest.approx(summary["coverage_overall"]["1"], abs=5e-4)
+    bands = summary["band_counts"]
+    assert row["refer_rate"] == pytest.approx(bands["refer"] / sum(bands.values()), abs=5e-4)
+
+
+def test_the_curve_really_is_non_monotone(sweep, readme) -> None:
+    """The README calls this a trap, so the data has to still show it."""
+    rates = [r["refer_rate"] for r in sweep]
+    assert min(rates) == 0.0, "the README says the band refers nobody somewhere"
+    assert rates[-1] > min(rates), "the referral rate must rise again after its minimum"
+    # and the two regimes are the two causes, never mixed
+    for row in sweep:
+        assert not (row["both_labels"] > 0 and row["empty_set"] > 0), (
+            f"alpha={row['alpha']} mixes both-label and empty referrals; the "
+            "README describes them as separate regimes"
+        )
+
+
+def test_the_staffable_desk_claim_holds(sweep, readme) -> None:
+    """A 10 % desk needs alpha >= 0.28 and gives up most of the guarantee."""
+    affordable = [r for r in sweep if r["refer_rate"] <= 0.10]
+    assert affordable, "no alpha reaches a 10 % referral rate"
+    first = affordable[0]
+    collapsed = " ".join(readme.split())
+    assert f"needs α ≥ {first['alpha']:.2f}" in collapsed, (
+        f"README must say a 10 % desk needs alpha >= {first['alpha']:.2f}"
+    )
+    assert first["coverage_default"] < 0.5, (
+        "the README's point is that affordability costs the guarantee"
+    )
+
+
+def test_coverage_never_reaches_its_target_anywhere_on_the_curve(sweep) -> None:
+    """The sharpest version of the section's claim, over every alpha tried."""
+    missed = [r for r in sweep if r["coverage_default"] >= r["target_coverage"]]
+    assert not missed, (
+        f"the default class meets its target at alpha="
+        f"{[r['alpha'] for r in missed]}, which the README says never happens"
+    )

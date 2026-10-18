@@ -330,6 +330,49 @@ def plot_referral_economics(
     return _finish(fig, path)
 
 
+def plot_alpha_sweep(sweep: dict[str, np.ndarray], path: str | Path) -> Path:
+    """What alpha buys: the size of the review band against the coverage.
+
+    Two axes because the trade-off is between two different things, and one
+    curve that is not monotone. Referrals are split into their two causes,
+    stacked, because the referral rate alone cannot tell a desk which side of
+    the curve it is sizing itself from: at small alpha the band refers cases
+    whose label is ambiguous, at large alpha cases where NEITHER label
+    qualifies, and those are opposite failures at similar rates.
+    """
+    alpha = np.asarray(sweep["alpha"], dtype=float)
+    both = np.asarray(sweep["both_labels"], dtype=float)
+    empty = np.asarray(sweep["empty_set"], dtype=float)
+    cov_default = np.asarray(sweep["coverage_default"], dtype=float)
+    target = 1.0 - alpha
+
+    fig, ax = plt.subplots(figsize=(8.4, 4.8))
+    ax.stackplot(
+        alpha, both, empty,
+        labels=["referred: both labels plausible", "referred: neither label plausible"],
+        colors=["tab:blue", "tab:red"], alpha=0.55,
+    )
+    ax.set_xlabel("α")
+    ax.set_ylabel("share referred")
+    ax.set_ylim(0, 1)
+    ax.grid(alpha=0.3)
+
+    right = ax.twinx()
+    right.plot(alpha, cov_default, color="k", lw=1.8, label="default-class coverage")
+    right.plot(alpha, target, color="k", lw=1.0, ls=":", label="target (1 − α)")
+    right.set_ylabel("coverage of the default class")
+    right.set_ylim(0, 1)
+
+    handles, labels = ax.get_legend_handles_labels()
+    h2, l2 = right.get_legend_handles_labels()
+    ax.legend(handles + h2, labels + l2, fontsize=8, loc="upper center")
+    ax.set_title(
+        "α is the only lever on the review band, and the curve is not monotone\n"
+        "between the two regimes the band refers almost nobody"
+    )
+    return _finish(fig, path)
+
+
 def write_figures(
     evaluations: list[ModelEvaluation],
     directory: str | Path,
