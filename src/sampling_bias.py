@@ -57,6 +57,7 @@ __all__ = [
     "recovery_share",
     "evaluation_bias",
     "exploration_cost",
+    "exploration_budget_for_detection",
 ]
 
 
@@ -583,3 +584,58 @@ def exploration_cost(
     if exposure.size != labels.size:
         raise ValueError(f"exposure has {exposure.size} entries, expected {labels.size}.")
     return float(np.sum(labels * expected_loss_fraction(assumptions) * exposure))
+
+
+def exploration_budget_for_detection(
+    bad_rate_rejected: float,
+    rejected_share: float,
+    gap_to_detect: float,
+    threshold: float,
+    assumptions: ProfitAssumptions | None = None,
+    *,
+    n_rejected: int | None = None,
+) -> dict[str, float]:
+    """How many random approvals it takes to SEE a calibration gap, and its cost.
+
+    A lender observes outcomes only for loans it approved, so a
+    calibration-in-the-large check runs on the accepted book, where the gap is
+    flattered. Approving a random slice of rejects restores the measurement,
+    and this sizes that slice.
+
+    The rejects' outcomes are a binomial sample, so their mean is estimated
+    with standard error ``sqrt(p(1-p)/n)``, and it enters the population mean
+    weighted by ``rejected_share``. Resolving the population gap to within
+    half the margin between it and the alert threshold is enough to tell them
+    apart, which is what ``n`` is solved for.
+
+    This is a sizing calculation, not a simulation: it assumes the explored
+    slice is drawn at random from the rejects, which is what arm A6 does, and
+    it prices only the realised losses on those loans, which is what
+    :func:`exploration_cost` prices. The point of it is that the same budget
+    the experiment found harmful as a TRAINING intervention is roughly the
+    budget that buys the measurement.
+    """
+    assumptions = assumptions or ProfitAssumptions()
+    if not 0.0 < bad_rate_rejected < 1.0:
+        raise ValueError(f"bad_rate_rejected must lie in (0, 1), got {bad_rate_rejected}.")
+    if not 0.0 < rejected_share <= 1.0:
+        raise ValueError(f"rejected_share must lie in (0, 1], got {rejected_share}.")
+    margin = abs(gap_to_detect) - abs(threshold)
+    if margin <= 0:
+        raise ValueError(
+            f"gap_to_detect ({gap_to_detect}) must exceed the threshold ({threshold}); "
+            "there is nothing to tell apart otherwise."
+        )
+
+    tolerance = margin / 2.0
+    standard_error = tolerance / rejected_share
+    n_needed = bad_rate_rejected * (1.0 - bad_rate_rejected) / standard_error**2
+    cost = n_needed * bad_rate_rejected * expected_loss_fraction(assumptions)
+    out = {
+        "n_explored": float(n_needed),
+        "tolerance": float(tolerance),
+        "expected_cost": float(cost),
+    }
+    if n_rejected:
+        out["share_of_rejects"] = float(n_needed / n_rejected)
+    return out

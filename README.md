@@ -10,7 +10,7 @@ team evaluates models: out-of-time, on calibration, stability and profit.
 > artefact it came from committed under [`docs/`](docs). A few figures in the
 > closing sections are measured on the 3 % local sample or on synthetic data
 > instead, and say which. The badge is CI on a fresh clone: `uv sync --frozen`,
-> lint, and the 399 of its 443 tests that need no competition data, since none
+> lint, and the 399 of its 451 tests that need no competition data, since none
 > of that is committed. [MODEL.md](MODEL.md) is the model documentation.
 
 ## The three questions, answered
@@ -514,6 +514,34 @@ Four things come out of this:
    so recovery is undefined and reported as such. Binned logistic regression is
    markedly more robust to this selection than the GBM.
 
+**The same budget succeeds at a different job.** Exploration is priced above as
+a way to improve *training*, and it loses badly. Priced as a way to improve
+*measurement* it is cheap. The monitoring plan in [MODEL.md](MODEL.md) triggers
+recalibration on a calibration-in-the-large gap, and in production that is
+computed on approved loans, where the gap is flattered: at a 50 % rejection
+rate the true +0.0176 would breach its 0.010 threshold while the observable
+-0.0009 stays quiet. A random slice of rejects restores the measurement, and
+the slice is small.
+
+| reject rate | explored loans needed | share of rejects | cost |
+|---|---|---|---|
+| 30 % | 424 | 0.94 % | 8.6 |
+| 50 % | 930 | 1.24 % | 14.6 |
+
+Those are the same budgets A6 already spends. Its p = 1 % buys 450 loans for a
+realised 7.2 at a 30 % reject rate, which is enough; at 50 % its 750 fall short
+and p = 2 % covers it. **So the experiment's smallest exploration budget is
+roughly the right size to buy the measurement, while being an expensive mistake
+as a training set.** That is this project's own data arriving at the paper's
+conclusion by a different route: the budget is worth spending on knowing where
+you stand, not on teaching the model.
+
+The sizing is analytic rather than another arm. It treats the explored slice as
+a binomial sample of the rejects, which is what A6 draws, resolves the
+population gap to half the margin between it and the threshold, and prices only
+the realised losses, which is what the experiment prices.
+`sampling_bias.exploration_budget_for_detection` computes it.
+
 **Against the literature.** Kozodoi, Lessmann, Alamgir, Moreira-Matias and
 Papakonstantinou, *Fighting Sampling Bias: A Framework for Training and
 Evaluating Credit Scoring Models*
@@ -630,7 +658,7 @@ lazy with `collect(engine="streaming")` and the features land as Float32.
 | Feature screening + report | [`docs/feature_report.csv`](docs/feature_report.csv) | **done, full data** |
 | Sampling-bias experiment (arms A0-A6) | `src/sampling_bias.py` | **done, run on full data** |
 
-443 tests. The 399 CI runs need only generated fixtures; the other four check
+451 tests. The 399 CI runs need only generated fixtures; the other four check
 the feature build's column discovery against `data/sample` and skip without it.
 All six kernels have been run end to end on the real competition data.
 

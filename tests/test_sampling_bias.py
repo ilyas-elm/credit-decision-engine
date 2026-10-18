@@ -14,6 +14,7 @@ from sampling_bias import (
     SamplingBiasParams,
     build_arm,
     evaluation_bias,
+    exploration_budget_for_detection,
     exploration_cost,
     make_scenario,
     recovery_share,
@@ -408,3 +409,58 @@ def test_feature_selection_caps_at_the_requested_count() -> None:
     iv = {f"f{i}": float(100 - i) for i in range(60)}
     gain = {f"f{i}": float(i) for i in range(60)}
     assert len(select_features(iv, gain, n_features=40)) == 40
+
+
+# --- Sizing an exploration budget for measurement -------------------------
+
+
+def test_budget_scales_with_the_square_of_the_precision_wanted() -> None:
+    """Binomial sampling: halving the tolerance costs four times the loans."""
+    # tolerance is half the margin, so halving it needs half the margin:
+    # (0.0176 - 0.010) / 2 = 0.0038 against (0.0138 - 0.010) / 2 = 0.0019.
+    coarse = exploration_budget_for_detection(0.07, 0.3, 0.0176, 0.010)
+    fine = exploration_budget_for_detection(0.07, 0.3, 0.0138, 0.010)
+    assert fine["tolerance"] == pytest.approx(coarse["tolerance"] / 2, rel=1e-6)
+    assert fine["n_explored"] == pytest.approx(4 * coarse["n_explored"], rel=1e-6)
+
+
+def test_a_smaller_rejected_share_needs_a_smaller_budget() -> None:
+    """The rejects enter the population mean weighted by their share.
+
+    A policy that rejects little has a slice that barely moves the population
+    number, so a looser estimate of it suffices and fewer loans are needed.
+    Which is the right way round: the measurement problem is worst exactly
+    where the policy rejects most, and that is where the gap is largest too.
+    """
+    big = exploration_budget_for_detection(0.07, 0.50, 0.0176, 0.010)
+    small = exploration_budget_for_detection(0.07, 0.10, 0.0176, 0.010)
+    assert small["n_explored"] < big["n_explored"]
+    # Quadratic in the share, for the same reason it is quadratic in tolerance.
+    assert big["n_explored"] == pytest.approx(25 * small["n_explored"], rel=1e-6)
+
+
+def test_cost_is_the_realised_loss_on_the_explored_slice() -> None:
+    a = ProfitAssumptions(success_rate=0.5, default_rate=0.2, roi=0.3)
+    out = exploration_budget_for_detection(0.08, 0.4, 0.02, 0.01, a)
+    assert out["expected_cost"] == pytest.approx(
+        out["n_explored"] * 0.08 * expected_loss_fraction(a)
+    )
+
+
+def test_the_share_of_rejects_is_only_reported_when_the_count_is_known() -> None:
+    assert "share_of_rejects" not in exploration_budget_for_detection(0.07, 0.3, 0.02, 0.01)
+    sized = exploration_budget_for_detection(0.07, 0.3, 0.02, 0.01, n_rejected=10_000)
+    assert sized["share_of_rejects"] == pytest.approx(sized["n_explored"] / 10_000)
+
+
+def test_a_gap_inside_the_threshold_is_rejected() -> None:
+    """Nothing to size for: the monitor would not fire on it either way."""
+    with pytest.raises(ValueError, match="must exceed the threshold"):
+        exploration_budget_for_detection(0.07, 0.3, 0.005, 0.010)
+
+
+def test_budget_sizing_validates_its_rates() -> None:
+    with pytest.raises(ValueError, match="bad_rate_rejected"):
+        exploration_budget_for_detection(0.0, 0.3, 0.02, 0.01)
+    with pytest.raises(ValueError, match="rejected_share"):
+        exploration_budget_for_detection(0.07, 0.0, 0.02, 0.01)

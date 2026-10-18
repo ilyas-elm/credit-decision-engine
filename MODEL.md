@@ -283,11 +283,13 @@ So this trigger is informative while the policy rejects little and becomes
 decorative as it rejects more, which is the opposite of when it is needed. Two
 things help and neither is free. The **approved bad rate** row is defined on
 the observable population, so it does not suffer this, though it moves for
-population reasons as well as model ones. And a random-approval sample would
-restore the measurement directly, which is the one use for an exploration
-budget this project's own question 3 did not find net-negative: there it was
-priced as a way to improve *training*, and it lost; here it would be buying
-*measurement*, which is the thing that experiment concluded was worth more.
+population reasons as well as model ones. And a random-approval sample restores
+the measurement directly. That is the one use for an exploration budget this
+project's own question 3 did not find net-negative: there it was priced as a
+way to improve *training* and it lost, while here it buys *measurement*. Sized
+against this threshold it is small, 424 explored loans at a 30 % rejection rate
+and 930 at 50 %, under 1.3 % of the rejects either way, for a realised loss of
+9 to 15 units. The README works it through.
 
 ## 8. Reproducing
 

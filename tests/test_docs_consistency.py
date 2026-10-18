@@ -1072,3 +1072,64 @@ def test_asserting_arms_wreck_calibration_and_weighting_arms_do_not(arms, readme
     assert max(keepers, key=keepers.get) == "A3_fuzzy", (
         f"the README names A3 as the deployable arm that recovers most; got {keepers}"
     )
+
+
+def test_the_exploration_sizing_in_the_documents_is_what_the_code_computes(
+    reject_truth, readme, model_doc
+) -> None:
+    """Both documents quote this sizing, so neither may drift from the function.
+
+    It is the one number in question 3 that is analytic rather than measured
+    by an arm, which makes it the easiest to leave behind when the inputs
+    change.
+    """
+    import sys
+
+    sys.path.insert(0, str(REPO / "src"))
+    from config import load_config
+    from profit import ProfitAssumptions
+    from sampling_bias import exploration_budget_for_detection
+
+    assumptions = ProfitAssumptions.from_config(load_config()["profit"])
+    collapsed_readme = " ".join(readme.split())
+    collapsed_model = " ".join(model_doc.split())
+    for reject_rate in (30, 50):
+        row = next(r for r in reject_truth if r["reject_rate"] == reject_rate)
+        sized = exploration_budget_for_detection(
+            row["bad_rate_rejected"],
+            reject_rate / 100.0,
+            0.0176,
+            0.010,
+            assumptions,
+            n_rejected=int(row["n_rejected"]),
+        )
+        loans = f"{sized['n_explored']:.0f}"
+        assert loans in collapsed_readme, f"README omits {loans} explored loans"
+        assert loans in collapsed_model, f"MODEL omits {loans} explored loans"
+        assert f"{sized['share_of_rejects']:.2%}".replace("%", " %") in collapsed_readme
+        assert f"{sized['expected_cost']:.1f}" in collapsed_readme
+
+
+def test_the_smallest_arm_budget_is_the_right_order_for_measurement(
+    reject_truth, readme
+) -> None:
+    """The point of the section: A6's p=1 % is about the size needed.
+
+    If a rerun moved the reject bad rates enough that p=1 % stopped being
+    close, the claim that the same budget does both jobs stops holding.
+    """
+    import sys
+
+    sys.path.insert(0, str(REPO / "src"))
+    from sampling_bias import exploration_budget_for_detection
+
+    row = next(r for r in reject_truth if r["reject_rate"] == 30)
+    needed = exploration_budget_for_detection(
+        row["bad_rate_rejected"], 0.30, 0.0176, 0.010
+    )["n_explored"]
+    one_percent = 0.01 * row["n_rejected"]
+    assert 0.5 <= one_percent / needed <= 2.0, (
+        f"p=1 % buys {one_percent:.0f} loans against {needed:.0f} needed; the README "
+        "says it is roughly the right size"
+    )
+    assert "roughly the right size" in " ".join(readme.split())
