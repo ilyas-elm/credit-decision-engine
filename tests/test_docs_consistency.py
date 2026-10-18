@@ -784,3 +784,66 @@ def test_coverage_never_reaches_its_target_anywhere_on_the_curve(sweep) -> None:
         f"the default class meets its target at alpha="
         f"{[r['alpha'] for r in missed]}, which the README says never happens"
     )
+
+
+# --- What the challenger's ranking is worth ------------------------------
+
+
+@pytest.fixture(scope="module")
+def ranking() -> list[dict[str, float]]:
+    with (DOCS / "ranking_value.csv").open() as fh:
+        return [{k: float(v) for k, v in row.items()} for row in csv.DictReader(fh)]
+
+
+def test_the_comparison_holds_volume_equal(ranking) -> None:
+    """The premise of the whole section: same book size, so it is ranking."""
+    for row in ranking:
+        assert row["defaults_avoided"] == pytest.approx(
+            row["defaults_champion"] - row["defaults_challenger"]
+        )
+        assert row["bad_rate_champion"] == pytest.approx(
+            row["defaults_champion"] / row["n_approved"], abs=1e-9
+        )
+        assert row["bad_rate_challenger"] == pytest.approx(
+            row["defaults_challenger"] / row["n_approved"], abs=1e-9
+        )
+
+
+def test_the_tightest_binding_point_is_quoted(ranking, summary, readme) -> None:
+    row = min(ranking, key=lambda r: r["acceptance_rate"])
+    assert row["acceptance_rate"] == pytest.approx(
+        summary["operating_point"]["acceptance_rate"], abs=1e-6
+    ), "the quoted row must be the operating point the decision layer uses"
+    collapsed = " ".join(readme.split())
+    for value in (
+        f"{int(row['defaults_champion']):,}",
+        f"{int(row['defaults_challenger']):,}",
+        f"{row['bad_rate_champion']:.3%}".replace("%", " %"),
+        f"{row['bad_rate_challenger']:.3%}".replace("%", " %"),
+        f"{int(row['n_approved']):,}",
+    ):
+        assert value in collapsed, f"README does not quote {value}"
+
+
+def test_the_challenger_wins_at_every_binding_point(ranking, readme) -> None:
+    """The README says every. If a rerun breaks it, the claim must break too."""
+    losing = [r["acceptance_rate"] for r in ranking if r["defaults_avoided"] <= 0]
+    assert not losing, f"the challenger approves no fewer defaults at acceptance {losing}"
+    assert "every** binding point" in readme or "at **every** binding point" in readme
+
+
+def test_the_advantage_shrinks_as_the_cutoff_loosens(ranking, readme) -> None:
+    """The degeneracy, from the decision side. The README leans on this."""
+    ordered = sorted(ranking, key=lambda r: r["acceptance_rate"])
+    tightest, loosest = ordered[0], ordered[-1]
+    assert tightest["defaults_avoided"] > loosest["defaults_avoided"], (
+        "the README says the advantage shrinks as acceptance rises"
+    )
+    lift = [
+        (r["profit_challenger"] / r["profit_champion"] - 1) * 100
+        for r in (tightest, loosest)
+        if r["profit_champion"]
+    ]
+    collapsed = " ".join(readme.split())
+    assert f"{lift[0]:.1f} %" in collapsed or f"{lift[0]:.1f}%" in collapsed
+    assert f"{lift[-1]:.1f} %" in collapsed or f"{lift[-1]:.1f}%" in collapsed

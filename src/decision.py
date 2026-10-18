@@ -47,6 +47,7 @@ __all__ = [
     "DecisionEngine",
     "referral_economics",
     "age_gap_attribution",
+    "compare_at_acceptance",
 ]
 
 
@@ -596,3 +597,70 @@ def age_gap_attribution(
             )
     out["default_rate_by_age_and_income_record"] = risk
     return out
+
+
+# --- What a better ranking is worth in decisions -------------------------
+
+
+def compare_at_acceptance(
+    y_true: np.ndarray,
+    pd_by_model: dict[str, np.ndarray],
+    acceptance_rate: float,
+    assumptions: ProfitAssumptions | None = None,
+    *,
+    exposure: np.ndarray | None = None,
+) -> list[dict[str, float | str]]:
+    """Approve the same NUMBER of applicants under each model, then compare.
+
+    Gini says one model ranks better. It does not say what that is worth,
+    and the gap between those two is where a model comparison usually stops
+    being useful to anyone deciding whether to adopt it.
+
+    Holding the approval volume fixed rather than the score threshold is what
+    makes the arms comparable: two models put their cutoffs at different
+    scores for the same acceptance rate, so equal thresholds would compare
+    different-sized books. With volume equal, every difference in the bad
+    rate is ranking, and it converts directly into defaults a lender did not
+    book.
+
+    The gain depends on where the cutoff sits, and shrinks towards nothing as
+    acceptance approaches 100 %: a model that ranks better cannot help a
+    lender who approves everyone. That is the same degeneracy the profit
+    analysis reports, seen from the decision side, which is why this is
+    reported per operating point rather than once.
+    """
+    assumptions = assumptions or ProfitAssumptions()
+    y_true = np.asarray(y_true).ravel()
+    if not 0.0 < acceptance_rate <= 1.0:
+        raise ValueError(f"acceptance_rate must lie in (0, 1], got {acceptance_rate}.")
+    if not pd_by_model:
+        raise ValueError("Pass at least one model's predicted PD.")
+
+    n = y_true.size
+    exposure = np.ones(n) if exposure is None else np.asarray(exposure, dtype=float).ravel()
+    if exposure.size != n:
+        raise ValueError(f"exposure has {exposure.size} rows, expected {n}.")
+    loss = expected_loss_fraction(assumptions)
+    n_approved = int(round(n * acceptance_rate))
+
+    rows: list[dict[str, float | str]] = []
+    for name, pd_values in pd_by_model.items():
+        pd_values = np.asarray(pd_values, dtype=float).ravel()
+        if pd_values.size != n:
+            raise ValueError(f"{name} has {pd_values.size} predictions for {n} cases.")
+        approved = np.argsort(pd_values, kind="stable")[:n_approved]
+        bad = y_true[approved]
+        booked = exposure[approved]
+        rows.append(
+            {
+                "model": name,
+                "acceptance_rate": float(acceptance_rate),
+                "n_approved": int(n_approved),
+                "defaults_approved": int(bad.sum()),
+                "bad_rate_approved": float(bad.mean()) if bad.size else float("nan"),
+                "profit": float(
+                    np.sum(np.where(bad > 0.5, -loss * booked, assumptions.roi * booked))
+                ),
+            }
+        )
+    return rows

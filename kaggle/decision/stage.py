@@ -92,6 +92,7 @@ def main() -> None:
         DecisionEngine,
         age_gap_attribution,
         choose_cutoff,
+        compare_at_acceptance,
         referral_economics,
     )
     from evaluation import plot_alpha_sweep
@@ -286,6 +287,59 @@ def main() -> None:
 
     op_assumptions = ProfitAssumptions(op.success_rate, op.default_rate, op.roi)
     cutoff = choose_cutoff(y_te, pd_te, scores_te, op_assumptions)
+
+    # --- what the challenger's ranking would be worth here -----------------
+    # The decision layer runs on the champion, so the 3 Gini points the
+    # challenger adds are reported and then not taken. This prices them in the
+    # terms the decision is made in: hold the approval VOLUME equal, so the
+    # books are the same size and every difference is ranking, and count the
+    # defaults each model lets through. Done at every binding point, because
+    # the advantage shrinks to nothing as acceptance approaches 100 %, which
+    # is the profit degeneracy seen from the decision side.
+    ranking_rows = []
+    for _, point in binding.iterrows():
+        # Not `pair`: the birth-column check below binds that name.
+        compared = compare_at_acceptance(
+            y_te,
+            {"scorecard": pd_te, "lightgbm": te["pd_lightgbm"].to_numpy().astype(float)},
+            float(point.acceptance_rate),
+            ProfitAssumptions(point.success_rate, point.default_rate, point.roi),
+        )
+        by_model = {entry["model"]: entry for entry in compared}
+        champion_row, challenger_row = by_model["scorecard"], by_model["lightgbm"]
+        ranking_rows.append(
+            {
+                "acceptance_rate": float(point.acceptance_rate),
+                "success_rate": float(point.success_rate),
+                "default_rate": float(point.default_rate),
+                "roi": float(point.roi),
+                "n_approved": champion_row["n_approved"],
+                "defaults_champion": champion_row["defaults_approved"],
+                "defaults_challenger": challenger_row["defaults_approved"],
+                "defaults_avoided": champion_row["defaults_approved"]
+                - challenger_row["defaults_approved"],
+                "bad_rate_champion": champion_row["bad_rate_approved"],
+                "bad_rate_challenger": challenger_row["bad_rate_approved"],
+                "profit_champion": champion_row["profit"],
+                "profit_challenger": challenger_row["profit"],
+            }
+        )
+    ranking = pd.DataFrame(ranking_rows)
+    ranking.to_csv(OUTPUT / "ranking_value.csv", index=False)
+    print("\n[dec] what the challenger's ranking is worth, at equal volume:", flush=True)
+    for _, priced in ranking.iterrows():
+        lift = (
+            (priced.profit_challenger / priced.profit_champion - 1) * 100
+            if priced.profit_champion
+            else float("nan")
+        )
+        print(
+            f"[dec]   accept {priced.acceptance_rate:.1%}: "
+            f"{int(priced.defaults_avoided):>4,} fewer defaults "
+            f"({priced.bad_rate_champion:.3%} -> {priced.bad_rate_challenger:.3%}), "
+            f"profit {lift:+.1f}%",
+            flush=True,
+        )
 
     # --- bands and referral economics -------------------------------------
     engine = DecisionEngine(

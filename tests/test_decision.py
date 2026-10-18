@@ -13,6 +13,7 @@ from decision import (
     Recourse,
     age_gap_attribution,
     choose_cutoff,
+    compare_at_acceptance,
     referral_economics,
 )
 from profit import ProfitAssumptions, expected_loss_fraction
@@ -623,3 +624,61 @@ def test_income_absence_is_reported_per_decade() -> None:
     assert rows[20]["share_missing"] == 0.0
     assert rows[70]["share_missing"] == 1.0
     assert rows[70]["n"] == 2
+
+
+# --- What a better ranking is worth --------------------------------------
+
+
+def test_equal_volume_is_what_makes_the_comparison_fair() -> None:
+    """Both models approve the same count, whatever their score scales."""
+    y = np.zeros(100, dtype=int)
+    a = np.linspace(0.0, 1.0, 100)
+    rows = compare_at_acceptance(y, {"a": a, "b": a * 0.001}, 0.4)
+    assert {r["n_approved"] for r in rows} == {40}
+
+
+def test_a_better_ranking_approves_fewer_defaults_at_the_same_volume() -> None:
+    y = np.array([1] * 20 + [0] * 80)
+    perfect = np.concatenate([np.ones(20), np.zeros(80)])  # ranks every bad last
+    useless = np.zeros(100)  # no ranking at all; ties break stably, so bads first
+    compared = compare_at_acceptance(y, {"perfect": perfect, "useless": useless}, 0.5)
+    rows = {r["model"]: r for r in compared}
+    assert rows["perfect"]["defaults_approved"] == 0
+    assert rows["useless"]["defaults_approved"] == 20
+    assert rows["perfect"]["profit"] > rows["useless"]["profit"]
+
+
+def test_the_advantage_vanishes_when_everyone_is_approved() -> None:
+    """The degeneracy finding, from the decision side.
+
+    A model that ranks better cannot help a lender who approves everyone, so
+    at acceptance 1.0 the two must be identical. This is the same result the
+    profit analysis reports as EMPCS being zero for both models.
+    """
+    rng = np.random.default_rng(0)
+    y = rng.binomial(1, 0.1, 500)
+    good = y + rng.normal(0, 0.3, 500)
+    bad = rng.normal(0, 1, 500)
+    rows = {r["model"]: r for r in compare_at_acceptance(y, {"good": good, "bad": bad}, 1.0)}
+    assert rows["good"]["defaults_approved"] == rows["bad"]["defaults_approved"] == int(y.sum())
+    assert rows["good"]["profit"] == pytest.approx(rows["bad"]["profit"])
+
+
+def test_exposure_scales_profit_but_not_the_bad_rate() -> None:
+    rng = np.random.default_rng(1)
+    y = rng.binomial(1, 0.2, 200)
+    scores = rng.normal(size=200)
+    flat = compare_at_acceptance(y, {"m": scores}, 0.5)[0]
+    doubled = compare_at_acceptance(y, {"m": scores}, 0.5, exposure=np.full(200, 2.0))[0]
+    assert doubled["bad_rate_approved"] == pytest.approx(flat["bad_rate_approved"])
+    assert doubled["profit"] == pytest.approx(flat["profit"] * 2)
+
+
+def test_compare_at_acceptance_validates_its_inputs() -> None:
+    y = np.zeros(10, dtype=int)
+    with pytest.raises(ValueError, match="acceptance_rate must lie"):
+        compare_at_acceptance(y, {"m": np.zeros(10)}, 0.0)
+    with pytest.raises(ValueError, match="at least one model"):
+        compare_at_acceptance(y, {}, 0.5)
+    with pytest.raises(ValueError, match="predictions for 10 cases"):
+        compare_at_acceptance(y, {"m": np.zeros(3)}, 0.5)

@@ -10,7 +10,7 @@ team evaluates models: out-of-time, on calibration, stability and profit.
 > artefact it came from committed under [`docs/`](docs). A few figures in the
 > closing sections are measured on the 3 % local sample or on synthetic data
 > instead, and say which. The badge is CI on a fresh clone: `uv sync --frozen`,
-> lint, and the 399 of its 417 tests that need no competition data, since none
+> lint, and the 399 of its 426 tests that need no competition data, since none
 > of that is committed. [MODEL.md](MODEL.md) is the model documentation.
 
 ## The three questions, answered
@@ -99,6 +99,35 @@ A PD PSI above 0.25 for both models (0.50 and 0.42) is worth flagging: in
 production that is an alert threshold, and it reflects genuine drift over 92
 weeks rather than a modelling defect. Test-week PSI is reported here only; it
 is never used for any selection decision.
+
+### What three Gini points are worth in decisions
+
+The decision layer runs on the champion, so the challenger's advantage is
+measured and then not taken. Gini does not say what that costs, so this prices
+it in the terms the decision is made in
+([`ranking_value.csv`](docs/ranking_value.csv)).
+
+Both models approve the same *number* of applicants, so the books are the same
+size and every difference is ranking. At the tightest binding corner, 71.5 %
+acceptance:
+
+| | defaults approved | bad rate | profit |
+|---|---|---|---|
+| champion | 2,253 | 1.397 % | 1,208 |
+| **challenger** | **2,067** | **1.282 %** | **1,375** |
+
+**186 fewer defaults in the same 161,243 loans**, an 8.3 % relative cut in the
+bad rate and 13.8 % more profit. That is a more useful statement of what the
+challenger adds than three Gini points, and it is the number a credit committee
+would actually weigh against the opacity.
+
+The advantage holds at **every** binding point and shrinks as the cutoff
+loosens: 186 fewer defaults at 71.5 % acceptance, 150 at 89 %, 49 at 99 %, with
+the profit gain falling from 13.8 % to 0.3 %. That is the same degeneracy the
+profit analysis reports, seen from the decision side. A better ranking is worth
+nothing to a lender who approves everyone, which at the literature's
+assumptions is exactly what the optimum says to do.
+
 
 ![Weekly Gini, champion vs challenger](docs/figures/weekly_gini.png)
 
@@ -486,6 +515,7 @@ not. Every number quoted above is committed:
 | Artefact | What is in it |
 |---|---|
 | [`comparison.csv`](docs/comparison.csv) | the headline table, champion vs challenger |
+| [`ranking_value.csv`](docs/ranking_value.csv) | defaults each model approves at equal volume, per binding point |
 | [`feature_report.csv`](docs/feature_report.csv) | per feature: missing %, IV, PSI, univariate Gini, kept or dropped, and why |
 | [`scorecard_table.csv`](docs/scorecard_table.csv) | the scorecard: characteristic, bin, WoE, points |
 | [`decision_summary.json`](docs/decision_summary.json) | cutoff, band shares, conformal thresholds, recourse reach, sign-flip check, fairness audit |
@@ -525,7 +555,7 @@ lazy with `collect(engine="streaming")` and the features land as Float32.
 | Feature screening + report | [`docs/feature_report.csv`](docs/feature_report.csv) | **done, full data** |
 | Sampling-bias experiment (arms A0-A6) | `src/sampling_bias.py` | **done, run on full data** |
 
-417 tests. The 399 CI runs need only generated fixtures; the other four check
+426 tests. The 399 CI runs need only generated fixtures; the other four check
 the feature build's column discovery against `data/sample` and skip without it.
 All six kernels have been run end to end on the real competition data.
 
