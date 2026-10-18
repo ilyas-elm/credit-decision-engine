@@ -14,8 +14,10 @@ the same development weeks:
     accepts-only      the worst 10 % by the old policy removed
     random control    a random 10 % removed
 
-If the gain came from having fewer rows, the random control would show it. It
-does not, which leaves the identity of the removed rows as the cause.
+The control is run over several seeds, because one draw is not enough to say
+anything: across six it spans 0.415 to 0.431 of test Gini, which is wider than
+the effect being attributed. Reporting a single draw is how an earlier version
+of this overstated the case.
 
     uv run python scripts/selection_recon.py <features.parquet>
 
@@ -33,6 +35,8 @@ import polars as pl
 
 REPO = Path(__file__).resolve().parent.parent
 REJECT_RATE = 10
+#: One random draw is noise; six give a spread to compare the effect against.
+CONTROL_SEEDS = 6
 
 
 def main(argv: list[str]) -> int:
@@ -86,19 +90,20 @@ def main(argv: list[str]) -> int:
     )
     truth = scenario.oracle_labels()
     accepted = scenario.accepted
-    random_keep = rng.permutation(len(scenario.X))[: int(accepted.mean() * len(scenario.X))]
-
+    keep_n = int(accepted.mean() * len(scenario.X))
     arms = {
         "oracle, every case": (scenario.X, truth),
         f"accepts-only, worst {REJECT_RATE} % removed": (
             scenario.X[accepted].reset_index(drop=True),
             truth[accepted],
         ),
-        f"control, random {REJECT_RATE} % removed": (
-            scenario.X.iloc[random_keep].reset_index(drop=True),
-            truth[random_keep],
-        ),
     }
+    for seed in range(CONTROL_SEEDS):
+        keep = np.random.default_rng(100 + seed).permutation(len(scenario.X))[:keep_n]
+        arms[f"control {seed}, random {REJECT_RATE} % removed"] = (
+            scenario.X.iloc[keep].reset_index(drop=True),
+            truth[keep],
+        )
     print(
         f"development weeks {min(windows['dev'])}-{max(windows['dev'])}, "
         f"{len(scenario.X):,} subsampled; test weeks "
@@ -120,11 +125,12 @@ def main(argv: list[str]) -> int:
             f"{in_sample - out:>+8.4f} {bins:>6} {total_iv:>7.3f}"
         )
     print(
-        "\nThe control removes the same number of rows and reproduces the oracle, so"
-        "\nthe gain is the identity of the removed rows rather than their count. The"
-        "\nbin count and summed IV say where it comes from: the policy-rejected tail"
-        "\nis sparse and extreme, the binning carves it finely, and those bins do not"
-        "\nsurvive out of time."
+        "\nRead the GAP column, not the test column. Removing any 10 % lifts test"
+        "\nGini a little, and the random controls spread widely enough to cover most"
+        "\nof the difference. What only the policy removal does is collapse the"
+        "\ngeneralisation gap and the bin count: the rejected tail is sparse and"
+        "\nextreme, the binning carves it finely, and those bins do not survive out"
+        "\nof time."
     )
     return 0
 

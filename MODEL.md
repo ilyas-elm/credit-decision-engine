@@ -147,7 +147,7 @@ exchangeable with val_b. It is still worth having, a marginal threshold covers
 the default class **0.000** of the time, so Mondrian moves it from 0 % to 75 %,
 but the guarantee should not be quoted as holding.
 
-At the tightest binding cutoff (71.5 % acceptance) the bands separate risk
+At the tightest binding cutoff (56.3 % acceptance) the bands separate risk
 monotonically: approve 51.3 % at 1.1 % bad, refer 44.4 % at 2.9 %, decline 4.3
 % at 7.8 %. A **44 % referral rate is beyond any real review desk** and follows
 directly from α = 0.10 on a 3 % default book; α is the lever, and moving it is
@@ -165,15 +165,15 @@ its recoveries are bounded by that.
 A lender measuring on its own approved book **understates its Gini by
 0.05-0.16** at every reject rate, through range restriction rather than any
 modelling fault. Reject inference is a different story: at a 10 % reject rate
-almost nothing helps and the gap is only 0.011 Gini, while at 50 % it is 0.135
+almost nothing helps and the gap is only 0.0095 Gini, while at 50 % it is 0.113
 and three arms recover most of it. The best performer on Gini is **A2, the
-crudest arm**, which labels every reject bad and recovers 97 % at a 30 % reject
+crudest arm**, which labels every reject bad and recovers 59 % at a 30 % reject
 rate while being wrong about 93 % of them. It pays in calibration: Brier 6.6x
 the oracle's, over-predicting by 15 percentage points. **By this document's own
 standard that disqualifies it**, since those probabilities cannot feed a
 cutoff; A3 recovers less and stays calibrated. A random-exploration budget was
 harmful as a training set, net negative at every budget with the damage running
-2-53x the cost, though it is correctly sized for measurement, which §7 returns
+2-48x the cost, though it is correctly sized for measurement, which §7 returns
 to.
 
 This agrees in direction with Kozodoi et al. (2024, arXiv:2407.13009; EJOR
@@ -256,8 +256,8 @@ sustained gap there is a refit trigger rather than a recalibration one.
 
 **A caveat on that trigger, from §6.** In production, outcomes are observed
 only for approved loans, so this is computed on the accepted book, where it is
-flattered. At a 50 % rejection rate the model over-predicts by +0.0176 across
-the population while the gap visible on its own book is -0.0009: twenty times
+flattered. At a 50 % rejection rate the model over-predicts by +0.0183 across
+the population while the gap visible on its own book is -0.0006: 33 times
 smaller, the opposite sign, and against the threshold above the true gap fires
 while the observable one stays quiet. The trigger therefore goes decorative
 exactly as the policy rejects more.
@@ -265,14 +265,15 @@ exactly as the policy rejects more.
 Two things help. The **approved bad rate** row is defined on the observable
 population, so it does not suffer this, though it moves for population reasons
 as well as model ones. And a random-approval sample restores the measurement
-directly: sized against this threshold it takes 424 explored loans at a 30 %
-rejection rate and 930 at 50 %, under 1.3 % of the rejects, for 9 to 15 units
-of realised loss. That is the one use for an exploration budget question 3 did
+directly: sized against this threshold it takes 352 explored loans at a 30 %
+rejection rate and 778 at 50 %, about 1 % of the rejects, for 7 to 12 units of
+realised loss. That is the one use for an exploration budget question 3 did
 not find net-negative, and the README works it through.
 
 ## 8. Reproducing
 
-`uv sync && uv run pytest`, 463 tests on synthetic fixtures; no competition
+`uv sync && uv run pytest`, 463 tests, of which 459 run on synthetic
+fixtures alone and four skip without the local sample; no competition
 data is committed and none is needed. Full-data results come from re-running
 the kernels in `kaggle/` from committed code: `make-sample`, `env-probe`,
 `features`, `models`, `sampling-bias`, `decision`.

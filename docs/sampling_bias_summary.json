@@ -25,20 +25,20 @@
     "delq_n_payment_months",
     "afford_credit_to_taxincome",
     "delq_dpd_mean",
-    "delq_dpd_max",
     "inq_last360d",
+    "delq_dpd_max",
     "afford_annuity_to_taxincome",
-    "inq_share_last30d",
     "prev_n_rejected",
     "bureau_a_records",
-    "inq_share_last180d",
+    "inq_share_last30d",
     "afford_credit_amount",
+    "inq_share_last180d",
     "inq_share_last90d",
-    "prev_amount_total",
     "inq_last30d",
+    "prev_amount_total",
+    "prev_amount_mean",
     "prev_amount_max",
     "afford_annuity",
-    "prev_amount_mean",
     "prev_n_applications",
     "delq_dpd_gt30_last12m",
     "bureau_total_records",
@@ -65,5 +65,5 @@
     1,
     2
   ],
-  "total_seconds": 1127.6
+  "total_seconds": 1224.4
 }

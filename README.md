@@ -10,7 +10,7 @@ team evaluates models: out-of-time, on calibration, stability and profit.
 > artefact it came from committed under [`docs/`](docs). A few figures in the
 > closing sections are measured on the 3 % local sample or on synthetic data
 > instead, and say which. The badge is CI on a fresh clone: `uv sync --frozen`,
-> lint, and the 399 of its 463 tests that need no competition data, since none
+> lint, and the 459 of its 463 tests that need no competition data, since none
 > of that is committed. [MODEL.md](MODEL.md) is the model documentation.
 
 ## The three questions, answered
@@ -38,7 +38,7 @@ would its validation be, and which fix recovers the most per unit of cost:
 reject inference, or a small random-approval (exploration) budget?** Its own
 book understates Gini by 0.05 to 0.16, at every reject rate and always in the
 same direction. Of the fixes, the crudest reject-inference arm wins *on Gini*,
-labelling every reject bad recovers 97 % of the lost signal at a 30 % reject
+labelling every reject bad recovers 59 % of the lost signal at a 30 % reject
 rate, but it is wrong about 93 % of those rejects and wrecks calibration doing
 it, so by this project's own standard it is not the one to adopt. A
 random-approval budget is net negative at every setting tested, on variance
@@ -110,38 +110,28 @@ it in the terms the decision is made in
 ([`ranking_value.csv`](docs/ranking_value.csv)).
 
 Both models approve the same *number* of applicants, so the books are the same
-size and every difference is ranking. At the tightest binding corner, 71.5 %
-acceptance:
+size and every difference is ranking. At the tightest binding corner,
+56.3 % acceptance:
 
 | | defaults approved | bad rate | profit |
 |---|---|---|---|
-| champion | 2,253 | 1.397 % | 1,208 |
-| **challenger** | **2,067** | **1.282 %** | **1,375** |
+| champion | 1,487 | 1.172 % | 1,207 |
+| **challenger** | **1,402** | **1.105 %** | **1,283** |
 
-**186 fewer defaults in the same 161,243 loans**, an 8.3 % relative cut in the
-bad rate and 13.8 % more profit. That is a more useful statement of what the
-challenger adds than three Gini points, and it is the number a credit committee
-would actually weigh against the opacity.
+**85 fewer defaults in the same 126,886 loans**, a
+5.7 % relative cut in the bad rate and 6.3 % more profit.
+That is a more useful statement of what the challenger adds than
+2.7 Gini points, and it is the number a credit committee would
+weigh against the opacity.
 
-The advantage holds at **every** binding point and shrinks as the cutoff
-loosens: 186 fewer defaults at 71.5 % acceptance, 150 at 89 %, 49 at 99 %, with
-the profit gain falling from 13.8 % to 0.3 %. That is the same degeneracy the
-profit analysis reports, seen from the decision side. A better ranking is worth
-nothing to a lender who approves everyone, which at the literature's
-assumptions is exactly what the optimum says to do.
-
-
-![Weekly Gini, champion vs challenger](docs/figures/weekly_gini.png)
-
-Both curves rise over the test weeks, which is why the stability metric's 88×
-falling-slope penalty never engages for either model. Also: [calibration by
-bucket](docs/figures/calibration.png).
-
-## Question 2: the cutoff and the review band
-
-Kernel `ilyaselmaazouzi/hc-decision`. The conformal band is calibrated on the
-val_b weeks, which nothing else in this project is fitted on. That is what
-makes the coverage number meaningful rather than decorative.
+The challenger approves fewer defaults at **every** binding point, but the
+gain is not largest where the cutoff is tightest. It peaks at
+75.9 % acceptance with 145 fewer defaults, then falls away to
+21 at 99.9 %, with the profit gain running from 6.3 % down
+to 0.1 %. Both ends make sense: approve almost everyone and ranking cannot
+help you, approve very few and there are few defaults left to avoid. The
+value of a better model sits in between, and on this book it is worth a few
+per cent of profit rather than a transformation.
 
 ### The refer band does not keep its promise, and that is the result
 
@@ -202,9 +192,9 @@ it was buying has fallen to 0.329.
 The grid is three values each of success rate, default rate and ROI, which is
 27 combinations less the 6 where success and default rates sum above 1, so 21
 are evaluated. Swept across all of them, the profit-maximising acceptance rate
-runs from **71.5 % to 100 %**, and **only 8 of 21 points bind at all**. At the
+runs from **56.3 % to 100 %**, and **only 8 of 21 points bind at all**. At the
 literature's assumptions the answer remains "approve everyone". The layer is
-exercised at the tightest binding corner (roi 0.02, LGD-heavy), giving 71.5 %
+exercised at the tightest binding corner (roi 0.02, LGD-heavy), giving 56.3 %
 acceptance:
 
 | band | share | bad rate |
@@ -218,10 +208,10 @@ A 44 % referral rate is far beyond any real review desk, and that is a direct
 consequence of α = 0.10 on a 3 % default book.
 
 **The review band stops paying for itself at about 0.02 per review**
-([figure](docs/figures/referral_economics.png)): against 1,964 units of loss
+([figure](docs/figures/referral_economics.png)): against 1,931 units of loss
 avoided (assuming a *perfect* reviewer, an upper bound, not an estimate),
-100,034 reviews cost 1,000 at 0.01 and 2,001 at 0.02, which turns net benefit
-from +964 to -37.
+100,034 reviews cost 1,000 at 0.01 and 2,001 at 0.02, which turns net
+benefit from +931 to -70.
 
 ![Referral economics](docs/figures/referral_economics.png)
 
@@ -240,14 +230,14 @@ How far recourse is from clearing the cutoff, in scorecard points:
 
 | population | n | short by | actionable headroom | reachable |
 |---|---|---|---|---|
-| decline band | 9,701 | 43.4 | 22.2 | **3.9 %** |
-| refer band | 54,553 | 11.1 | 19.6 | **77.6 %** |
-| all below cutoff | 64,254 | 16.0 | 20.0 | **66.4 %** |
+| decline band | 9,701 | 53.2 | 22.2 | **0.2 %** |
+| refer band | 88,927 | 14.7 | 18.6 | **66.7 %** |
+| all below cutoff | 98,628 | 18.5 | 18.9 | **60.2 %** |
 
 Outright declines sit about 2 times further below the cutoff than everything an
 applicant could change is worth: for them recourse is genuinely infeasible, and
 saying so is more honest than inventing advice. The referred population is a
-different question, **78 % of them could reach the cutoff** by borrowing less
+different question, **67 % of them could reach the cutoff** by borrowing less
 or waiting out recent credit searches.
 
 ### Fairness audit (audit only, no mitigation)
@@ -378,7 +368,7 @@ recalibration moves levels and only a refit moves a bin's points.
 
 ## Question 3: sampling bias
 
-Kernel `ilyaselmaazouzi/hc-sampling-bias`: 160 fits, 18.8 min
+Kernel `ilyaselmaazouzi/hc-sampling-bias`: 160 fits, 20.4 min
 ([`sampling_bias_summary.json`](docs/sampling_bias_summary.json)). Policy weeks
 0-22, development 23-63 (labels hidden for the rejected), test 64-91 with every
 label. 150k development cases per arm, identical features and fixed
@@ -397,10 +387,10 @@ over everyone:
 
 | reject rate | 10 % | 20 % | 30 % | 50 % |
 |---|---|---|---|---|
-| LightGBM | -0.076 | -0.082 | -0.069 | -0.051 |
-| scorecard | -0.094 | -0.127 | -0.136 | -0.157 |
+| LightGBM | -0.063 | -0.072 | -0.077 | -0.069 |
+| scorecard | -0.095 | -0.120 | -0.132 | -0.151 |
 
-A lender measuring on its own approved book **understates its Gini by 5 to 16
+A lender measuring on its own approved book **understates its Gini by 6 to 15
 points**, range restriction, not a modelling fault. The scorecard is hurt
 roughly twice as badly as the challenger, and its bias grows steadily with the
 reject rate while the challenger's does not.
@@ -411,8 +401,8 @@ caution. Calibration measured on accepts is *flattering*:
 
 | scorecard, calibration-in-the-large | 10 % | 20 % | 30 % | 50 % |
 |---|---|---|---|---|
-| on everyone (the truth) | +0.0026 | +0.0047 | +0.0082 | **+0.0176** |
-| on its own approved book | -0.0012 | -0.0017 | -0.0018 | **-0.0009** |
+| on everyone (the truth) | +0.0030 | +0.0061 | +0.0104 | **+0.0183** |
+| on its own approved book | -0.0006 | -0.0010 | -0.0011 | **-0.0006** |
 
 At a 50 % reject rate the model over-predicts the default rate by 1.8
 percentage points across the population, and a lender checking its own book
@@ -437,11 +427,11 @@ Gini (it is, at every reject rate):
 
 | arm | r=10 % | r=20 % | r=30 % | r=50 % |
 |---|---|---|---|---|
-| A2 hard cutoff | 0.06 | 0.67 | **0.97** | **0.88** |
-| A3 fuzzy | 0.28 | 0.29 | 0.18 | 0.65 |
-| A4 parcelling | 1.05 | -0.20 | -0.18 | 0.16 |
-| A5 self-learning | -1.08 | -0.23 | 0.60 | 0.89 |
-| A6 exploration | -2.61 | -5.63 | -3.90 | -1.06 |
+| A2 hard cutoff | n/a | 0.41 | **0.59** | **0.67** |
+| A3 fuzzy | n/a | 0.22 | 0.40 | 0.48 |
+| A4 parcelling | n/a | 0.13 | -0.14 | -0.18 |
+| A5 self-learning | n/a | 0.13 | **0.52** | **0.63** |
+| A6 exploration | n/a | -3.07 | -2.24 | -1.55 |
 
 The recovery table above is measured in Gini, which is the metric that cannot
 see what A2 does. Here is the same run with calibration beside it, at a 30 %
@@ -449,13 +439,13 @@ reject rate:
 
 | arm | Gini | Brier | calibration-in-the-large |
 |---|---|---|---|
-| A0 oracle | 0.4405 | 0.02148 | -0.0006 |
-| A1 accepts-only | 0.3998 | 0.02169 | -0.0029 |
-| A2 hard cutoff | **0.4393** | **0.14201** | **+0.1493** |
-| **A3 fuzzy** | **0.4071** | **0.02158** | **-0.0028** |
-| A4 parcelling | 0.3925 | 0.02167 | -0.0010 |
-| A5 self-learning | 0.4241 | 0.06071 | +0.0529 |
-| A6 exploration | 0.2410 | 0.02202 | -0.0074 |
+| A0 oracle | 0.4585 | 0.02146 | +0.0005 |
+| A1 accepts-only | 0.4052 | 0.02168 | -0.0028 |
+| A2 hard cutoff | **0.4365** | **0.14188** | **+0.1491** |
+| **A3 fuzzy** | **0.4266** | **0.02153** | **-0.0024** |
+| A4 parcelling | 0.3979 | 0.02171 | -0.0002 |
+| A5 self-learning | 0.4328 | 0.06093 | +0.0537 |
+| A6 exploration | 0.2858 | 0.02202 | -0.0064 |
 
 Two things fall out of that column.
 
@@ -468,14 +458,14 @@ make it worst.
 **The split is between asserting and weighting.** A2 and A5 invent labels and
 assert them: they recover the most ranking and multiply Brier by 6.6 and 2.8.
 A3 and A4 carry the uncertainty as a weight or a draw instead: they recover
-less and stay within 1 % of the oracle's Brier. Among the arms that a lender
+less and stay within 1.2 % of the oracle's Brier. Among the arms that a lender
 could actually deploy, **A3 is the one that recovers anything at all**.
 
 Four things come out of this:
 
 1. **The crudest method wins on Gini, and only on Gini.** A2 simply labels
    every reject bad, no model, no weighting, no uncertainty, and it recovers
-   97 % of the lost signal at a 30 % reject rate. The more elaborate arms do
+   59 % of the lost signal at a 30 % reject rate. The more elaborate arms do
    not beat it. The obvious explanation would be that the label is roughly
    right, and it is not: at a 30 % reject rate the rejects default at 7.3 %
    against 1.9 % among accepts, so A2 is wrong about **93 % of them**
@@ -498,20 +488,23 @@ Four things come out of this:
    trade a lender would actually be making.
 
 2. **Severity matters more than method.** At a 10 % reject rate almost nothing
-   helps and the gap is only 0.011 Gini to begin with. By 50 % the gap is 0.135
+   helps and the gap is only 0.0095 Gini to begin with. By 50 % the gap is 0.113
    and three arms recover most of it.
 3. **The exploration budget fails everywhere, on variance rather than price.**
    Priced as profit at a fixed binding acceptance against realised loss on the
    loans bought to learn from, net is negative at every budget and reject rate,
-   with the damage running **2-53× the cost** (at r=30 %, p=1 %: cost 7.2,
-   profit -382). The 100/p inverse-propensity weight gives a few hundred cases
-   the same total weight as tens of thousands. The largest budget is the least
-   bad at every reject rate (p=5 % runs 1.5-4.9x against 2.6-53x at p=1 %),
-   which is the variance signature, though it is not monotone in p: at the 10 %
-   and 20 % reject rates p=2 % is worse than p=1 %.
+   with the damage running **2-48× the cost** (at r=30 %, p=1 %: cost 10.0,
+   profit -320). The 100/p inverse-propensity weight gives a few hundred
+   cases the same total weight as tens of thousands, and the damage falls
+   monotonically as the budget grows: 48x the cost at p = 1 % against
+   8x at p = 5 %, at every reject rate. That is the variance
+   signature. A bigger sample is a better estimate of the rejects, so the
+   weights do less violence, but it never becomes worth buying: net is
+   negative at all twelve combinations.
+
 4. **The scorecard mostly has no gap to recover, because the old policy was
    regularising it.** At 10 % and 20 % reject rates its accepts-only model is
-   *better* than its own oracle (0.438 against 0.411), so recovery is
+   *better* than its own oracle (0.430 against 0.420), so recovery is
    undefined and reported as such. That is the wrong way round for a
    sampling-bias experiment, and it is not robustness. Fitting the same
    scorecard three ways on the same development weeks says what it is
@@ -519,36 +512,51 @@ Four things come out of this:
 
    | fit on | n | in-sample | test | gap | bins | summed IV |
    |---|---|---|---|---|---|---|
-   | every case | 150,000 | 0.4965 | 0.4113 | **+0.085** | 154 | 3.310 |
-   | worst 10 % removed | 135,000 | 0.4363 | **0.4376** | **-0.001** | 127 | 1.419 |
-   | *random* 10 % removed | 135,000 | 0.4964 | 0.4152 | +0.081 | 159 | 3.341 |
+   | every case | 150,000 | 0.4901 | 0.4200 | **+0.070** | 150 | 3.18 |
+   | worst 10 % removed | 135,000 | 0.4366 | **0.4297** | **+0.007** | 127 | 1.43 |
+   | *random* 10 % removed, 6 seeds | 135,000 | 0.4913 ±0.0021 | 0.4236 ±0.0052 | +0.068 | 148-153 | 3.13-3.21 |
 
-   The control is the point. Removing the same number of rows at random
-   reproduces the oracle exactly, so this is not a sample-size effect: it is
-   *which* rows. The policy-rejected tail is sparse and extreme, optbinning
-   carves it into fine bins with violent event rates, and more than half the
-   apparent signal lives there, 3.31 of IV against 1.42. None of it survives
-   out of time. Trimming that tail takes the generalisation gap from +0.085
-   to zero.
+   The control is run six times because one draw cannot carry it. Random
+   removal moves test Gini from 0.4153 to 0.4311 between seeds, which is
+   wider than the effect being attributed to the policy — and an earlier
+   version of this section, written off a single draw, claimed the
+   attribution anyway.
 
-   So at low reject rates the old policy is doing the binned model a favour,
-   removing exactly the region it would otherwise overfit. By 30 % it has
-   taken too much and the gap reverses. The GBM, which is not binning
-   anything, never gets the favour and degrades monotonically from the start.
+   So read the gap column, not the test column. On test Gini the policy
+   removal (0.4297) sits 1.2 sd above the random mean and one of the six
+   random draws beat it: *which* rows were dropped is not separable here
+   from *how many*. In-sample the separation is total and every draw falls
+   on the same side. Random removal leaves the oracle's +0.068 gap, ~151
+   bins and ~3.18 of summed IV intact; policy removal takes them to +0.007,
+   127 and 1.43. That is the mechanism, and only the policy produces it.
+   The rejected tail is sparse and extreme, optbinning carves it into fine
+   bins with violent event rates, and more than half the apparent signal
+   lives in bins that do not survive out of time. Trimming the tail removes
+   the overfitting. Whether it also buys genuine out-of-time discrimination,
+   this experiment cannot say — the test column is too noisy to tell.
+
+   So at low reject rates the old policy removes exactly the region the
+   binned model would otherwise overfit, and the reversal above (0.430 and
+   0.424 against an oracle 0.420) is best read as that, plus noise of the
+   same size, rather than as bias helping. By 30 % the policy has taken too
+   much and the ordering reverses in earnest, to 0.414 and then 0.374 at
+   50 %, well outside the control spread. The GBM, which is not binning
+   anything, never gets the reprieve and degrades monotonically from the
+   start.
 
 **The same budget succeeds at a different job.** Exploration is priced above as
 a way to improve *training*, and it loses badly. Priced as a way to improve
 *measurement* it is cheap. The monitoring plan in [MODEL.md](MODEL.md) triggers
 recalibration on a calibration-in-the-large gap, and in production that is
 computed on approved loans, where the gap is flattered: at a 50 % rejection
-rate the true +0.0176 would breach its 0.010 threshold while the observable
--0.0009 stays quiet. A random slice of rejects restores the measurement, and
+rate the true +0.0183 would breach its 0.010 threshold while the
+observable -0.0006 stays quiet. A random slice of rejects restores the measurement, and
 the slice is small.
 
 | reject rate | explored loans needed | share of rejects | cost |
 |---|---|---|---|
-| 30 % | 424 | 0.94 % | 8.6 |
-| 50 % | 930 | 1.24 % | 14.6 |
+| 30 % | 352 | 0.78 % | 7.1 |
+| 50 % | 778 | 1.04 % | 12.3 |
 
 Those are the same budgets A6 already spends. Its p = 1 % buys 450 loans for a
 realised 7.2 at a 30 % reject rate, which is enough; at 50 % its 750 fall short
@@ -680,7 +688,7 @@ lazy with `collect(engine="streaming")` and the features land as Float32.
 | Feature screening + report | [`docs/feature_report.csv`](docs/feature_report.csv) | **done, full data** |
 | Sampling-bias experiment (arms A0-A6) | `src/sampling_bias.py` | **done, run on full data** |
 
-463 tests. The 399 CI runs need only generated fixtures; the other four check
+463 tests. The 459 CI runs need only generated fixtures; the other four check
 the feature build's column discovery against `data/sample` and skip without it.
 All six kernels have been run end to end on the real competition data.
 
