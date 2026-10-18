@@ -1295,6 +1295,51 @@ def test_the_thin_margins_are_quoted_against_the_noise_that_moves_them(
     assert "That is one perturbation and not a spread" in collapsed
 
 
+def test_the_a5_table_in_the_kozodoi_comparison_matches_the_run(arms, readme) -> None:
+    """The Kozodoi section quotes A5's recovery by acceptance rate in a second
+    table, and nothing tied it to the arms file.
+
+    It went stale: it read -1.08 / -0.23 / +0.60 / +0.89 against a run whose
+    A5 recovery was n/a / +0.13 / +0.52 / +0.63, and the paragraph beneath it
+    concluded that A5 "turns positive between 80 % and 70 %" from numbers no
+    run in the repo produced. The main recovery table was right the whole
+    time, which is what a check against the artefact would have shown.
+    """
+    sys.path.insert(0, str(REPO / "src"))
+    from sampling_bias import MIN_RECOVERY_GAP
+
+    collapsed = " ".join(readme.split())
+    rows = [r for r in arms if r["model"] == "lightgbm"]
+
+    def gini_of(arm: str, rate: str) -> float:
+        vals = [float(r["gini_full"]) for r in rows if r["arm"] == arm and r["reject_rate"] == rate]
+        return sum(vals) / len(vals)
+
+    # Acceptance 90/80/70/50 is reject rate 10/20/30/50.
+    for acceptance, rate in (("90", "10"), ("80", "20"), ("70", "30"), ("50", "50")):
+        gap = gini_of("A0_oracle", rate) - gini_of("A1_accepts_only", rate)
+        shares = [
+            r["recovery_share"]
+            for r in rows
+            if r["arm"] == "A5_self_learning" and r["reject_rate"] == rate
+        ]
+        assert len(shares) == 1, f"A5 is a single fit; found {len(shares)} at r={rate} %"
+        if gap < MIN_RECOVERY_GAP:
+            assert shares[0] in ("", "nan"), (
+                f"the gap at r={rate} % is {gap:.4f}, under the {MIN_RECOVERY_GAP} "
+                "floor, so recovery should not have been computed"
+            )
+            assert f"| {acceptance} %" in readme or "| n/a |" in readme
+            continue
+        quoted = f"+{float(shares[0]):.2f}"
+        assert quoted in collapsed, (
+            f"A5's recovery at {acceptance} % acceptance is {quoted} in the arms "
+            f"file; the README's acceptance-rate table must quote it"
+        )
+    # And the floor has to be named where the n/a comes from, not left blank.
+    assert "0.0095, just under" in collapsed and "too small to divide by" in collapsed
+
+
 def test_the_pooled_recovery_rows_disclose_what_they_pool(arms, readme, model_doc) -> None:
     """A4 and A6 are means over variants and seeds; the other rows are single
     fits. Pooling is only safe where the pooled fits agree, and these two do

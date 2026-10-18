@@ -10,7 +10,7 @@ team evaluates models: out-of-time, on calibration, stability and profit.
 > artefact it came from committed under [`docs/`](docs). A few figures in the
 > closing sections are measured on the 3 % local sample or on synthetic data
 > instead, and say which. The badge is CI on a fresh clone: `uv sync --frozen`,
-> lint, and the 462 of its 466 tests that need no competition data, since none
+> lint, and the 463 of its 467 tests that need no competition data, since none
 > of that is committed. [MODEL.md](MODEL.md) is the model documentation.
 
 ## The three questions, answered
@@ -435,8 +435,9 @@ rate the true gap breaches its threshold while the observable one stays quiet.
 
 ### Which fix recovers the most?
 
-Share of the A0 - A1 gap recovered, LightGBM, where that gap is at least 0.01
-Gini (it is, at every reject rate):
+Share of the A0 - A1 gap recovered, LightGBM, reported only where the A0 - A1
+gap is at least 0.01 Gini. At a 10 % reject rate it is 0.0095, just under, so
+that column is n/a throughout rather than zero:
 
 | arm | r=10 % | r=20 % | r=30 % | r=50 % |
 |---|---|---|---|---|
@@ -446,7 +447,18 @@ Gini (it is, at every reject rate):
 | A5 self-learning | n/a | 0.13 | **0.52** | **0.63** |
 | A6 exploration | n/a | -3.07 | -2.24 | -1.55 |
 
-A2, A3 and A5 are deterministic, so those rows are single fits. A4 and A6 are
+A2, A3 and A5 have no randomness of their own, so those rows are single fits.
+That is not the same as a point estimate: the LightGBM underneath every arm
+bags by row position, and nothing here measures how much that alone moves a
+recovery share. The seeded arms bound it from above, since their spread
+contains the fit as well as the draw — A4's recovery share varies across seeds
+with an sd of 0.02 to 0.29 depending on the cell. So differences between arms
+of a few points are not resolved by this grid. The conclusions drawn below are
+the ones that clear it outright: A2's Brier at 6.6× the oracle's, and the
+0.05-0.16 Gini of evaluation bias, which is larger at every reject rate than
+any arm's recovery and runs in one direction throughout. A5's monotonicity
+survives as a direction, not as three separated points — its 0.13 to 0.52 step
+clears the bound and its 0.52 to 0.63 step does not. A4 and A6 are
 means over their variants and seeds — A4 over two uplifts k and three seeds,
 A6 over three budgets p and three seeds — and the two pool very differently.
 A6 is negative in all 27 of its fits at every reject rate, so its row means
@@ -626,20 +638,23 @@ largest at a bad rate of **2-5 % among accepts**. The right arm to test that
 against is A5, which is loosely BASL-inspired, not A2, which is one of *their*
 benchmarks.
 
-**The direction reproduces cleanly.** A5's recovery is strictly monotone in
-acceptance rate:
+**The direction reproduces cleanly.** A5's recovery rises monotonically as
+acceptance falls:
 
 | acceptance | 90 % | 80 % | 70 % | 50 % |
 |---|---|---|---|---|
-| A5 recovery | -1.08 | -0.23 | **+0.60** | **+0.89** |
+| A5 recovery | n/a | +0.13 | **+0.52** | **+0.63** |
 
 That is their relationship, found independently on different data: the less a
-policy accepts, the more reject inference is worth.
+policy accepts, the more reject inference is worth. The 90 % column is the
+0.0095 gap again — too small to divide by, not a zero result.
 
-**The threshold does not.** They report BASL needing acceptance below 20 %; A5
-turns positive here between 80 % and 70 %, and this experiment never goes below
-50 % acceptance at all. Two things plausibly explain the gap, and they pull in
-opposite directions:
+**The threshold does not.** They report BASL needing acceptance below 20 %.
+Here A5's recovery is positive at every acceptance rate the gap is large
+enough to measure, 80 % included, and the experiment never goes below 50 %
+acceptance at all. So this is not a threshold slightly out of place: nothing
+in this grid reproduces a regime in which A5 fails to help. Two things
+plausibly explain it, and they pull in opposite directions:
 
 - This book defaults at **3.14 %**, inside the 2-5 % band they identify as
   producing the largest gains, so the imbalance condition here is *favourable*.
@@ -727,7 +742,7 @@ lazy with `collect(engine="streaming")` and the features land as Float32.
 | Feature screening + report | [`docs/feature_report.csv`](docs/feature_report.csv) | **done, full data** |
 | Sampling-bias experiment (arms A0-A6) | `src/sampling_bias.py` | **done, run on full data** |
 
-466 tests. The 462 CI runs need only generated fixtures; the other four check
+467 tests. The 463 CI runs need only generated fixtures; the other four check
 the feature build's column discovery against `data/sample` and skip without it.
 All six kernels have been run end to end on the real competition data.
 
