@@ -883,14 +883,16 @@ def test_a2_recovers_ranking_while_wrecking_calibration(arms, readme) -> None:
 
 
 def test_a2_over_predicts_by_the_quoted_margin(arms, readme) -> None:
+    """Both halves: the margin is what the artefact says, and the README says it."""
     collapsed = " ".join(readme.split())
-    for reject_rate, phrase in (("30", "15 percentage"), ("50", "29 points")):
+    for reject_rate, phrase in (("30", "15 percentage points"), ("50", "29 points")):
         citl = _arm_mean(arms, "A2_hard_cutoff", reject_rate, "citl_gap_full")
         assert citl > 0, f"A2 should over-predict at r={reject_rate}, got {citl}"
         assert round(citl * 100) == int(phrase.split()[0]), (
             f"A2 over-predicts by {citl * 100:.0f} points at r={reject_rate}, "
             f"README says {phrase}"
         )
+        assert phrase in collapsed, f"README does not say {phrase!r}"
 
 
 def test_a3_is_the_calibrated_alternative_the_readme_recommends(arms, readme) -> None:
