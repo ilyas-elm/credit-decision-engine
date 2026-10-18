@@ -10,7 +10,7 @@ team evaluates models: out-of-time, on calibration, stability and profit.
 > artefact it came from committed under [`docs/`](docs). A few figures in the
 > closing sections are measured on the 3 % local sample or on synthetic data
 > instead, and say which. The badge is CI on a fresh clone: `uv sync --frozen`,
-> lint, and the 399 of its 451 tests that need no competition data, since none
+> lint, and the 399 of its 454 tests that need no competition data, since none
 > of that is committed. [MODEL.md](MODEL.md) is the model documentation.
 
 ## The three questions, answered
@@ -509,10 +509,32 @@ Four things come out of this:
    bad at every reject rate (p=5 % runs 1.5-4.9x against 2.6-53x at p=1 %),
    which is the variance signature, though it is not monotone in p: at the 10 %
    and 20 % reject rates p=2 % is worse than p=1 %.
-4. **The scorecard mostly has no gap to recover.** At 10 % and 20 % reject rates
-   its accepts-only model is *better* than its own oracle (0.438 against 0.411),
-   so recovery is undefined and reported as such. Binned logistic regression is
-   markedly more robust to this selection than the GBM.
+4. **The scorecard mostly has no gap to recover, because the old policy was
+   regularising it.** At 10 % and 20 % reject rates its accepts-only model is
+   *better* than its own oracle (0.438 against 0.411), so recovery is
+   undefined and reported as such. That is the wrong way round for a
+   sampling-bias experiment, and it is not robustness. Fitting the same
+   scorecard three ways on the same development weeks says what it is
+   (`scripts/selection_recon.py`):
+
+   | fit on | n | in-sample | test | gap | bins | summed IV |
+   |---|---|---|---|---|---|---|
+   | every case | 150,000 | 0.4965 | 0.4113 | **+0.085** | 154 | 3.310 |
+   | worst 10 % removed | 135,000 | 0.4363 | **0.4376** | **-0.001** | 127 | 1.419 |
+   | *random* 10 % removed | 135,000 | 0.4964 | 0.4152 | +0.081 | 159 | 3.341 |
+
+   The control is the point. Removing the same number of rows at random
+   reproduces the oracle exactly, so this is not a sample-size effect: it is
+   *which* rows. The policy-rejected tail is sparse and extreme, optbinning
+   carves it into fine bins with violent event rates, and more than half the
+   apparent signal lives there, 3.31 of IV against 1.42. None of it survives
+   out of time. Trimming that tail takes the generalisation gap from +0.085
+   to zero.
+
+   So at low reject rates the old policy is doing the binned model a favour,
+   removing exactly the region it would otherwise overfit. By 30 % it has
+   taken too much and the gap reverses. The GBM, which is not binning
+   anything, never gets the favour and degrades monotonically from the start.
 
 **The same budget succeeds at a different job.** Exploration is priced above as
 a way to improve *training*, and it loses badly. Priced as a way to improve
@@ -658,7 +680,7 @@ lazy with `collect(engine="streaming")` and the features land as Float32.
 | Feature screening + report | [`docs/feature_report.csv`](docs/feature_report.csv) | **done, full data** |
 | Sampling-bias experiment (arms A0-A6) | `src/sampling_bias.py` | **done, run on full data** |
 
-451 tests. The 399 CI runs need only generated fixtures; the other four check
+454 tests. The 399 CI runs need only generated fixtures; the other four check
 the feature build's column discovery against `data/sample` and skip without it.
 All six kernels have been run end to end on the real competition data.
 

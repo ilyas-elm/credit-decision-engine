@@ -1133,3 +1133,48 @@ def test_the_smallest_arm_budget_is_the_right_order_for_measurement(
         "says it is roughly the right size"
     )
     assert "roughly the right size" in " ".join(readme.split())
+
+
+def test_the_scorecard_anomaly_is_explained_with_its_control(arms, readme) -> None:
+    """The accepts-only scorecard beating its oracle needs the control to mean
+    anything. Without it the table is three numbers and no argument.
+    """
+    collapsed = " ".join(readme.split())
+    a0 = _arm_mean(arms, "A0_oracle", "10", "gini_full", model="scorecard")
+    a1 = _arm_mean(arms, "A1_accepts_only", "10", "gini_full", model="scorecard")
+    assert a1 > a0, (
+        f"the anomaly has gone: accepts-only {a1:.4f} no longer beats the oracle "
+        f"{a0:.4f}, so the explanation in the README describes nothing"
+    )
+    # The control, and the conclusion drawn from it.
+    assert "random* 10 % removed" in collapsed or "random 10 % removed" in collapsed
+    assert "not a sample-size effect" in collapsed
+    # The mechanism, in the two numbers that carry it.
+    assert "3.310" in collapsed and "1.419" in collapsed, (
+        "the README explains this by where the in-sample IV lives; both totals "
+        "must be quoted"
+    )
+
+
+def test_the_anomaly_reverses_at_higher_reject_rates(arms, readme) -> None:
+    """The README says the favour runs out by 30 %. It has to still run out."""
+    pairs = {
+        rate: (
+            _arm_mean(arms, "A1_accepts_only", rate, "gini_full", model="scorecard")
+            - _arm_mean(arms, "A0_oracle", rate, "gini_full", model="scorecard")
+        )
+        for rate in ("10", "20", "30", "50")
+    }
+    assert pairs["10"] > 0 and pairs["20"] > 0, "the favour should hold at low rates"
+    assert pairs["30"] < 0 and pairs["50"] < 0, "and should have reversed by 30 %"
+    assert "By 30 % it has" in " ".join(readme.split())
+
+
+def test_the_gbm_never_gets_the_favour(arms, readme) -> None:
+    """The contrast the explanation rests on: no binning, no regularisation."""
+    for rate in ("10", "20", "30", "50"):
+        gap = _arm_mean(arms, "A1_accepts_only", rate, "gini_full") - _arm_mean(
+            arms, "A0_oracle", rate, "gini_full"
+        )
+        assert gap < 0, f"the GBM's accepts-only model beats its oracle at r={rate}"
+    assert "degrades monotonically" in " ".join(readme.split())
