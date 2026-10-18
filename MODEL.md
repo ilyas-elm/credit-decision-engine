@@ -120,6 +120,13 @@ measured. Note *why*: neither model decays, both slopes are positive, so the
 stability metric's 88× falling-slope penalty never engages and the gap is
 level, not trend. The champion wins only on week-to-week smoothness.
 
+The last three rows are won narrowly and should be read that way. The
+challenger bags by row position, so the feature frame's order changes its fit:
+between two full-data runs on identical features it moved 0.00446 Gini,
+0.0000188 Brier and 0.00020 of worst-week gap, making those margins 6.2x, 6.8x
+and 6.6x one such perturbation. The Gini and stability conclusions are safe at
+that scale; the calibration ones are a few times the noise, not decisive.
+
 **Profit cannot separate them.** A loan is profitable while `p(default) < roi /
 (roi + E[loss])`. At the literature's assumptions that break-even is **49.0 %**
 against a book defaulting at **3.1 %**, so approving everyone is optimal, EMPCS
@@ -172,9 +179,10 @@ rate while being wrong about 93 % of them. It pays in calibration: Brier 6.6x
 the oracle's, over-predicting by 15 percentage points. **By this document's own
 standard that disqualifies it**, since those probabilities cannot feed a
 cutoff; A3 recovers less and stays calibrated. A random-exploration budget was
-harmful as a training set, net negative at every budget with the damage running
-2-48x the cost, though it is correctly sized for measurement, which §7 returns
-to.
+harmful as a training set, net negative on the 3-seed mean of every
+rate-budget combination, with the GBM's damage running 3-49x the cost and
+negative in all 27 of its fits, though the budget is correctly sized for
+measurement, which §7 returns to.
 
 This agrees in direction with Kozodoi et al. (2024, arXiv:2407.13009; EJOR
 324(2), 2025): reject inference has modest potential, fixing evaluation matters

@@ -1247,8 +1247,22 @@ ROW_ORDER_PERTURBATION = {
 }
 
 
+def _quotes_ratios(text: str, ratios: list[float]) -> bool:
+    """The ordered triple, in either multiplication glyph.
+
+    Checked as one phrase rather than number by number: MODEL.md says "Brier
+    6.6x the oracle's" about an unrelated arm, and a bare "6.6x" search passed
+    on that sentence while the margin ratio it was meant to find was absent.
+    """
+    collapsed = " ".join(text.split())
+    a, b, c = ratios
+    return any(
+        f"{a}{g}, {b}{g} and {c}{g}" in collapsed for g in ("\u00d7", "x")
+    )
+
+
 def test_the_thin_margins_are_quoted_against_the_noise_that_moves_them(
-    comparison, readme
+    comparison, readme, model_doc
 ) -> None:
     """Brier is awarded to the challenger on 0.00013 and worst-week calibration
     on 0.0013. Margins that small mean nothing without a scale, and the
@@ -1268,12 +1282,20 @@ def test_the_thin_margins_are_quoted_against_the_noise_that_moves_them(
             f"{metric}: margin {margin:.6f} is now {ratio:.1f}x the row-order "
             f"perturbation {perturbation}, not the {published}x the README quotes"
         )
-        assert f"{published}\u00d7" in collapsed, f"the README must quote {published}x"
+    # Both published documents carry the table, so both carry the scale.
+    # MODEL.md kept a superseded version of the exploration claim for one
+    # commit because only the README was checked for it.
+    ratios = [ROW_ORDER_PERTURBATION[m][1] for m in ("gini", "brier", "citl_max_abs_gap")]
+    for name, text in (("README.md", readme), ("MODEL.md", model_doc)):
+        assert _quotes_ratios(text, ratios), (
+            f"{name} must quote the margins as {ratios[0]}x, {ratios[1]}x and "
+            f"{ratios[2]}x of one row-order perturbation"
+        )
     # And the caveat that keeps one perturbation from reading as a spread.
     assert "That is one perturbation and not a spread" in collapsed
 
 
-def test_the_pooled_recovery_rows_disclose_what_they_pool(arms, readme) -> None:
+def test_the_pooled_recovery_rows_disclose_what_they_pool(arms, readme, model_doc) -> None:
     """A4 and A6 are means over variants and seeds; the other rows are single
     fits. Pooling is only safe where the pooled fits agree, and these two do
     not agree equally: A6 is unanimous, A4 changes sign.
@@ -1298,7 +1320,10 @@ def test_the_pooled_recovery_rows_disclose_what_they_pool(arms, readme) -> None:
         f"the README says all 27 A6 fits are negative; got {len(a6)} fits, "
         f"{sum(v >= 0 for v in a6)} of them non-negative"
     )
-    assert "negative in all 27 of its fits" in collapsed
+    for name, text in (("README.md", readme), ("MODEL.md", model_doc)):
+        assert "negative in all 27 of its fits" in " ".join(text.split()), (
+            f"{name} must report A6's unanimity rather than only its mean"
+        )
 
     # A4 is not, and the README has to say so rather than quote the mean.
     for rate, positives in (("20", 4), ("30", 2)):
@@ -1335,7 +1360,7 @@ def exploration() -> list[dict[str, str]]:
 
 
 def test_the_exploration_verdict_is_scoped_to_the_model_that_survives_its_seeds(
-    exploration, readme
+    exploration, readme, model_doc
 ) -> None:
     """The A6 claims were published unscoped and two of them were wrong.
 
@@ -1399,7 +1424,12 @@ def test_the_exploration_verdict_is_scoped_to_the_model_that_survives_its_seeds(
         f"the README quotes 3-49x; the grid now spans "
         f"{min(everything):.1f}-{max(everything):.1f}x"
     )
-    assert "3-49× the cost" in collapsed
+    for name, text in (("README.md", readme), ("MODEL.md", model_doc)):
+        flat = " ".join(text.split())
+        assert "3-49× the cost" in flat or "3-49x the cost" in flat, (
+            f"{name} must quote the GBM's damage range; the 2-48x it used to "
+            "quote was neither model's"
+        )
 
 
 def test_the_gbm_never_gets_the_favour(arms, readme) -> None:
