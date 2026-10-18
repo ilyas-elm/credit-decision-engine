@@ -406,8 +406,19 @@ def main() -> None:
         .round(3)
     )
     print(piv.to_string(), flush=True)
-    print("\n=== EVALUATION BIAS: Gini on accepted-only minus Gini on everyone ===", flush=True)
-    bias = arms.groupby(["model", "reject_rate"])["evaluation_bias"].mean().unstack().round(4)
+    print(
+        "\n=== EVALUATION BIAS: A1's Gini on accepted-only minus on everyone ===", flush=True
+    )
+    # A1 only: the lender's model. Averaging every arm folds in A6, whose
+    # near-noise Ginis have little range to lose, and was the published
+    # table's error until it was caught.
+    bias = (
+        arms[arms["base_arm"] == "A1_accepts_only"]
+        .groupby(["model", "reject_rate"])["evaluation_bias"]
+        .mean()
+        .unstack()
+        .round(4)
+    )
     print(bias.to_string(), flush=True)
 
     summary = {
