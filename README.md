@@ -233,8 +233,9 @@ avoided (assuming a *perfect* reviewer, an upper bound, not an estimate),
 benefit from +931 to -70.
 
 
-Also: [the strategy curve](docs/figures/strategy_curve.png), approval rate
-against bad rate and profit.
+The strategy curve, approval rate against bad rate and profit, for both models:
+
+![Strategy curve](docs/figures/strategy_curve.png)
 
 ### Reasons and recourse
 
