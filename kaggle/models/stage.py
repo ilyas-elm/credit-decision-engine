@@ -235,6 +235,12 @@ def main() -> None:
         pl.Series("pd_lightgbm", challenger.predict_pd(all_X)).cast(pl.Float32),
         pl.Series("pd_lightgbm_raw", challenger.predict_pd_raw(all_X)).cast(pl.Float32),
     )
+    # Sorted for the same reason the feature frame is: this is a chained
+    # artefact whose provenance fingerprint is a content hash, so an unstable
+    # row order would make every models re-run look like a change to the
+    # decision stage. The order is inherited from the features frame, which is
+    # now sorted, but inheriting a guarantee is not the same as making one.
+    predictions = predictions.sort("case_id")
     predictions.write_parquet(OUTPUT / "predictions.parquet")
 
     gains = challenger.gain_importance()
