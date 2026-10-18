@@ -275,3 +275,32 @@ def test_calibration_leaves_gini_untouched_on_these_fixtures(blocks, params) -> 
     # The mechanism, stated so the zero above is understood rather than assumed:
     # calibration here introduces no ties that were not already present.
     assert len(np.unique(calibrated)) == len(np.unique(raw))
+
+
+def test_the_challenger_is_sensitive_to_row_order(blocks, params) -> None:
+    """Why the features stage sorts, stated where the dependency lives.
+
+    `bagging_fraction` resamples rows every iteration. The seed fixes which
+    INDICES are drawn, not which rows they point at, so the same seed on the
+    same data in a different order fits a different model. That is what made
+    the features frame's unstable row order a reproducibility problem and not
+    merely an untidy one: until it was sorted, the challenger's published
+    numbers could not be reproduced by re-running the kernels.
+
+    This asserts the sensitivity rather than the absence of it. If LightGBM
+    ever became order-invariant the test would fail, and the comment above
+    the sort in features.py would need revisiting rather than silently
+    becoming folklore.
+    """
+    (X_tr, y_tr), (X_va, y_va), (X_te, _) = blocks["train"], blocks["val"], blocks["test"]
+    assert params.bagging_fraction < 1.0, "the sensitivity comes from bagging"
+
+    straight = fit_challenger(X_tr, y_tr, X_va, y_va, params=params)
+    order = np.random.default_rng(0).permutation(len(X_tr))
+    shuffled = fit_challenger(
+        X_tr.iloc[order].reset_index(drop=True), y_tr[order], X_va, y_va, params=params
+    )
+    assert not np.array_equal(straight.predict_pd(X_te), shuffled.predict_pd(X_te)), (
+        "row order no longer changes the fit; the features sort may no longer be "
+        "load-bearing and features.py says that it is"
+    )
