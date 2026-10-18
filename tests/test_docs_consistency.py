@@ -1178,10 +1178,11 @@ def test_the_scorecard_anomaly_is_explained_with_its_control(arms, readme) -> No
     anything. Without it the table is three numbers and no argument.
 
     And the control needs more than one draw. It had exactly one, once, and
-    the conclusion published off it did not survive five more seeds: the
-    policy removal lands 1.2 sd above the random mean, with one of the six
-    random draws above it. What survived was the in-sample half, so that is
-    what this guards.
+    the conclusion published off it did not survive five more seeds: against
+    its control the policy removal is worth +1.2 sd of test Gini at a 10 %
+    reject rate, +0.1 sd at 20 % and -0.7 sd at 30 %, so it never clears the
+    control's own noise. What survived was the in-sample half, where 18 of 18
+    control draws land on the far side, so that is what this guards.
     """
     collapsed = " ".join(readme.split())
     a0 = _arm_mean(arms, "A0_oracle", "10", "gini_full", model="scorecard")
@@ -1201,14 +1202,16 @@ def test_the_scorecard_anomaly_is_explained_with_its_control(arms, readme) -> No
         "the README explains this by where the in-sample IV lives; both totals "
         "must be quoted"
     )
-    assert "+0.007" in collapsed and "+0.068" in collapsed, (
+    assert "+0.007" in collapsed and "+0.07" in collapsed, (
         "the generalisation gap carries the argument now that the test column "
         "cannot; both sides of it must be quoted"
     )
-    # And the limit. The test column is not separable from the control.
-    assert "too noisy to tell" in collapsed, (
+    # And the limit. The test column is not separable from the control, and
+    # the one rate where it looks closest is also the only favourable one.
+    assert "-0.7 sd" in collapsed and "never clears noise" in collapsed, (
         "the README must not re-acquire the claim that the test-Gini gain is "
-        "attributable to which rows were removed"
+        "attributable to which rows were removed; the sd against the control "
+        "at each rate is what stops it"
     )
 
 
@@ -1223,7 +1226,89 @@ def test_the_anomaly_reverses_at_higher_reject_rates(arms, readme) -> None:
     }
     assert pairs["10"] > 0 and pairs["20"] > 0, "the favour should hold at low rates"
     assert pairs["30"] < 0 and pairs["50"] < 0, "and should have reversed by 30 %"
-    assert "By 30 % the policy has taken too much" in " ".join(readme.split())
+    # Not "the trimming ran out of overfit to remove" -- it ran out at 10 %,
+    # where the gap hits zero, and the rates past that cut into signal. The
+    # recon at 10/20/30 is what distinguishes those two readings.
+    collapsed = " ".join(readme.split())
+    assert "it ran out at 10 %, and everything after that is cutting into signal" in collapsed
+    assert "1.43 \u2192 1.05 \u2192 0.84" in collapsed, (
+        "the IV decay across the three rates is the evidence that the later "
+        "trimming removes signal rather than overfit"
+    )
+
+
+@pytest.fixture(scope="module")
+def exploration() -> list[dict[str, str]]:
+    with (DOCS / "sampling_bias_exploration.csv").open() as fh:
+        return list(csv.DictReader(fh))
+
+
+def test_the_exploration_verdict_is_scoped_to_the_model_that_survives_its_seeds(
+    exploration, readme
+) -> None:
+    """The A6 claims were published unscoped and two of them were wrong.
+
+    "net is negative at every budget and reject rate" is true of the 3-seed
+    means and false of one scorecard cell; "the damage falls monotonically,
+    at every reject rate" holds for the GBM and fails for the scorecard at
+    three of its four rates. Both are the single-draw mistake in another
+    costume: a verdict quoted tighter than the spread underneath it.
+    """
+    collapsed = " ".join(readme.split())
+    cells: dict[tuple[str, str], dict[str, list[float]]] = {}
+    for row in exploration:
+        key = (row["reject_rate"], row["explore_pct"])
+        bucket = cells.setdefault(key, {"gbm": [], "sc": [], "cost": []})
+        bucket["gbm"].append(float(row["net_vs_A1_lightgbm"]))
+        bucket["sc"].append(float(row["net_vs_A1_scorecard"]))
+        bucket["cost"].append(float(row["realised_loss_cost"]))
+    assert len(cells) == 12, f"expected 4 rates x 3 budgets, got {len(cells)}"
+
+    def mean(xs: list[float]) -> float:
+        return sum(xs) / len(xs)
+
+    # Negative on the mean everywhere, for both models. That part was right.
+    for key, bucket in cells.items():
+        assert mean(bucket["gbm"]) < 0 and mean(bucket["sc"]) < 0, (
+            f"exploration turned a mean profit at {key}, so the README's "
+            "'negative on the 3-seed mean of all twelve' no longer holds"
+        )
+    # The GBM holds per seed; the scorecard does not, and the README says so.
+    assert all(v < 0 for b in cells.values() for v in b["gbm"]), (
+        "the README claims every one of the GBM's 36 seed-level cells is "
+        "negative"
+    )
+    positives = [(k, v) for k, b in cells.items() for v in b["sc"] if v > 0]
+    assert len(positives) == 1 and positives[0][0] == ("50", "5"), (
+        f"the README discloses exactly one positive scorecard cell at "
+        f"r=50 %, p=5 %; found {positives}"
+    )
+    assert "one of its 36 cells comes out *positive*" in collapsed
+
+    # Monotone damage in the budget: the GBM's, at every rate.
+    def ratios(model: str, rate: str) -> list[float]:
+        return [
+            -mean(cells[(rate, p)][model]) / mean(cells[(rate, p)]["cost"])
+            for p in ("1", "2", "5")
+        ]
+
+    for rate in ("10", "20", "30", "50"):
+        r = ratios("gbm", rate)
+        assert r[0] > r[1] > r[2], (
+            f"the GBM's damage ratio is no longer monotone in the budget at "
+            f"r={rate} %: {[round(x, 1) for x in r]}"
+        )
+    assert "the GBM's damage falls monotonically" in collapsed, (
+        "the monotonicity claim must stay scoped to the GBM; the scorecard's "
+        "ratio is not monotone"
+    )
+    # And the range quoted for it.
+    everything = [x for rate in ("10", "20", "30", "50") for x in ratios("gbm", rate)]
+    assert 3 <= min(everything) < 4 and 48 <= max(everything) < 50, (
+        f"the README quotes 3-49x; the grid now spans "
+        f"{min(everything):.1f}-{max(everything):.1f}x"
+    )
+    assert "3-49× the cost" in collapsed
 
 
 def test_the_gbm_never_gets_the_favour(arms, readme) -> None:

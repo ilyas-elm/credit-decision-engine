@@ -19,10 +19,15 @@ anything: across six it spans 0.415 to 0.431 of test Gini, which is wider than
 the effect being attributed. Reporting a single draw is how an earlier version
 of this overstated the case.
 
-    uv run python scripts/selection_recon.py <features.parquet>
+    uv run python scripts/selection_recon.py <features.parquet> [reject-rate]
 
 `features.parquet` is the features kernel's output, pulled with
 `kaggle kernels output`. The full-data one reproduces the documented numbers.
+
+The reject rate defaults to 10, the rate the anomaly is largest at. Pass 20 or
+30 to ask the follow-on question: the anomaly reverses by 30 %, and the rates
+either side say whether that is the trimming running out of overfitting to
+remove or starting to cut into signal.
 """
 
 from __future__ import annotations
@@ -34,15 +39,16 @@ import numpy as np
 import polars as pl
 
 REPO = Path(__file__).resolve().parent.parent
-REJECT_RATE = 10
+DEFAULT_REJECT_RATE = 10
 #: One random draw is noise; six give a spread to compare the effect against.
 CONTROL_SEEDS = 6
 
 
 def main(argv: list[str]) -> int:
-    if len(argv) != 1:
+    if not 1 <= len(argv) <= 2:
         print(__doc__, file=sys.stderr)
         return 2
+    reject_rate = int(argv[1]) if len(argv) == 2 else DEFAULT_REJECT_RATE
     features = Path(argv[0])
     if not features.is_file():
         print(f"No features parquet at {features}", file=sys.stderr)
@@ -78,7 +84,7 @@ def main(argv: list[str]) -> int:
     policy_pd = policy.predict_pd(X_dev)
 
     rng = np.random.default_rng(params.seeds[0])
-    whole = make_scenario(X_dev, y_dev, policy_pd, REJECT_RATE)
+    whole = make_scenario(X_dev, y_dev, policy_pd, reject_rate)
     subsample = rng.choice(
         len(whole.X), size=min(params.dev_subsample, len(whole.X)), replace=False
     )
@@ -86,21 +92,21 @@ def main(argv: list[str]) -> int:
         whole.X.iloc[subsample].reset_index(drop=True),
         y_dev[subsample],
         policy_pd[subsample],
-        REJECT_RATE,
+        reject_rate,
     )
     truth = scenario.oracle_labels()
     accepted = scenario.accepted
     keep_n = int(accepted.mean() * len(scenario.X))
     arms = {
         "oracle, every case": (scenario.X, truth),
-        f"accepts-only, worst {REJECT_RATE} % removed": (
+        f"accepts-only, worst {reject_rate} % removed": (
             scenario.X[accepted].reset_index(drop=True),
             truth[accepted],
         ),
     }
     for seed in range(CONTROL_SEEDS):
         keep = np.random.default_rng(100 + seed).permutation(len(scenario.X))[:keep_n]
-        arms[f"control {seed}, random {REJECT_RATE} % removed"] = (
+        arms[f"control {seed}, random {reject_rate} % removed"] = (
             scenario.X.iloc[keep].reset_index(drop=True),
             truth[keep],
         )
@@ -125,9 +131,9 @@ def main(argv: list[str]) -> int:
             f"{in_sample - out:>+8.4f} {bins:>6} {total_iv:>7.3f}"
         )
     print(
-        "\nRead the GAP column, not the test column. Removing any 10 % lifts test"
-        "\nGini a little, and the random controls spread widely enough to cover most"
-        "\nof the difference. What only the policy removal does is collapse the"
+        f"\nRead the GAP column, not the test column. Removing any {reject_rate} % lifts"
+        "\ntest Gini a little, and the random controls spread widely enough to cover"
+        "\nmost of the difference. What only the policy removal does is collapse the"
         "\ngeneralisation gap and the bin count: the rejected tail is sparse and"
         "\nextreme, the binning carves it finely, and those bins do not survive out"
         "\nof time."

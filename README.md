@@ -10,7 +10,7 @@ team evaluates models: out-of-time, on calibration, stability and profit.
 > artefact it came from committed under [`docs/`](docs). A few figures in the
 > closing sections are measured on the 3 % local sample or on synthetic data
 > instead, and say which. The badge is CI on a fresh clone: `uv sync --frozen`,
-> lint, and the 459 of its 463 tests that need no competition data, since none
+> lint, and the 460 of its 464 tests that need no competition data, since none
 > of that is committed. [MODEL.md](MODEL.md) is the model documentation.
 
 ## The three questions, answered
@@ -492,15 +492,23 @@ Four things come out of this:
    and three arms recover most of it.
 3. **The exploration budget fails everywhere, on variance rather than price.**
    Priced as profit at a fixed binding acceptance against realised loss on the
-   loans bought to learn from, net is negative at every budget and reject rate,
-   with the damage running **2-48× the cost** (at r=30 %, p=1 %: cost 10.0,
-   profit -320). The 100/p inverse-propensity weight gives a few hundred
-   cases the same total weight as tens of thousands, and the damage falls
-   monotonically as the budget grows: 48x the cost at p = 1 % against
-   8x at p = 5 %, at every reject rate. That is the variance
+   loans bought to learn from, net is negative on the 3-seed mean of all
+   twelve rate-budget combinations, for both models. For the GBM the damage
+   runs **3-49× the cost** (at r=30 %, p=1 %: cost 10.0, profit -320) and
+   every one of its 36 seed-level cells is negative too.
+
+   The 100/p inverse-propensity weight gives a few hundred cases the same
+   total weight as tens of thousands, and the GBM's damage falls
+   monotonically as the budget grows, at every reject rate: at r=20 %, 49× the
+   cost at p = 1 %, 23× at p = 2 %, 5× at p = 5 %. That is the variance
    signature. A bigger sample is a better estimate of the rejects, so the
-   weights do less violence, but it never becomes worth buying: net is
-   negative at all twelve combinations.
+   weights do less violence, but it never becomes worth buying.
+
+   The scorecard agrees on direction and cannot be trusted on size. Its
+   per-cell seed spread reaches 2.8× its own mean, its damage ratio is not
+   monotone in the budget, and one of its 36 cells comes out *positive*
+   (r=50 %, p=5 %, seed 0: net +102, against a cell mean of -48 with an sd of
+   133). Only the GBM's verdict here survives its own seeds.
 
 4. **The scorecard mostly has no gap to recover, because the old policy was
    regularising it.** At 10 % and 20 % reject rates its accepts-only model is
@@ -513,36 +521,42 @@ Four things come out of this:
    | fit on | n | in-sample | test | gap | bins | summed IV |
    |---|---|---|---|---|---|---|
    | every case | 150,000 | 0.4901 | 0.4200 | **+0.070** | 150 | 3.18 |
-   | worst 10 % removed | 135,000 | 0.4366 | **0.4297** | **+0.007** | 127 | 1.43 |
+   | worst 10 % removed | 135,000 | 0.4366 | 0.4297 | **+0.007** | 127 | 1.43 |
+   | worst 20 % removed | 120,000 | 0.4133 | 0.4244 | **-0.011** | 111 | 1.05 |
+   | worst 30 % removed | 105,000 | 0.3969 | 0.4142 | **-0.017** | 112 | 0.84 |
    | *random* 10 % removed, 6 seeds | 135,000 | 0.4913 ±0.0021 | 0.4236 ±0.0052 | +0.068 | 148-153 | 3.13-3.21 |
+   | *random* 20 % removed, 6 seeds | 120,000 | 0.4914 ±0.0040 | 0.4238 ±0.0063 | +0.068 | 147-152 | 3.06-3.26 |
+   | *random* 30 % removed, 6 seeds | 105,000 | 0.4926 ±0.0062 | 0.4208 ±0.0099 | +0.072 | 148-155 | 3.00-3.29 |
 
-   The control is run six times because one draw cannot carry it. Random
-   removal moves test Gini from 0.4153 to 0.4311 between seeds, which is
-   wider than the effect being attributed to the policy — and an earlier
+   The control is run six times at each rate, because one draw cannot carry
+   it. Random removal moves test Gini by 0.016 to 0.027 between seeds, which
+   is wider than the effect being attributed to the policy — and an earlier
    version of this section, written off a single draw, claimed the
    attribution anyway.
 
-   So read the gap column, not the test column. On test Gini the policy
-   removal (0.4297) sits 1.2 sd above the random mean and one of the six
-   random draws beat it: *which* rows were dropped is not separable here
-   from *how many*. In-sample the separation is total and every draw falls
-   on the same side. Random removal leaves the oracle's +0.068 gap, ~151
-   bins and ~3.18 of summed IV intact; policy removal takes them to +0.007,
-   127 and 1.43. That is the mechanism, and only the policy produces it.
-   The rejected tail is sparse and extreme, optbinning carves it into fine
-   bins with violent event rates, and more than half the apparent signal
-   lives in bins that do not survive out of time. Trimming the tail removes
-   the overfitting. Whether it also buys genuine out-of-time discrimination,
-   this experiment cannot say — the test column is too noisy to tell.
+   So read the gap column, not the test column. Against its own control the
+   policy removal is worth +1.2 sd of test Gini at 10 %, +0.1 sd at 20 % and
+   **-0.7 sd** at 30 %: it never clears noise, and it erodes smoothly into a
+   penalty. In-sample the separation is total, and 18 of 18 control draws
+   fall on the same side of it. Every random draw keeps the oracle's +0.07
+   gap, ~150 bins and ~3.2 of summed IV however many rows it takes out;
+   every policy removal collapses all three. That is the mechanism, and only
+   the policy produces it. The rejected tail is sparse and extreme,
+   optbinning carves it into fine bins with violent event rates, and more
+   than half the apparent signal lives in bins that do not survive out of
+   time.
 
-   So at low reject rates the old policy removes exactly the region the
-   binned model would otherwise overfit, and the reversal above (0.430 and
-   0.424 against an oracle 0.420) is best read as that, plus noise of the
-   same size, rather than as bias helping. By 30 % the policy has taken too
-   much and the ordering reverses in earnest, to 0.414 and then 0.374 at
-   50 %, well outside the control spread. The GBM, which is not binning
-   anything, never gets the reprieve and degrades monotonically from the
-   start.
+   The three rates say where the favour stops. The overfitting is *exhausted*
+   at 10 %, where the gap reaches +0.007 and there is nothing left to trim.
+   Past that the gap goes negative — the model now scores the retained
+   population worse than the test population, which is underfitting — while
+   in-sample Gini falls 0.437 → 0.413 → 0.397 and summed IV falls 1.43 →
+   1.05 → 0.84. So the reversal by 30 % is not the trimming running out of
+   overfit to remove; it ran out at 10 %, and everything after that is cutting
+   into signal. The anomaly in the arms table (0.430 and 0.424 against an
+   oracle 0.420) is the narrow window where removal has taken the overfit and
+   not yet much else. The GBM, which is not binning anything, has no overfit
+   tail to lose and degrades monotonically from the start.
 
 **The same budget succeeds at a different job.** Exploration is priced above as
 a way to improve *training*, and it loses badly. Priced as a way to improve
@@ -688,7 +702,7 @@ lazy with `collect(engine="streaming")` and the features land as Float32.
 | Feature screening + report | [`docs/feature_report.csv`](docs/feature_report.csv) | **done, full data** |
 | Sampling-bias experiment (arms A0-A6) | `src/sampling_bias.py` | **done, run on full data** |
 
-463 tests. The 459 CI runs need only generated fixtures; the other four check
+464 tests. The 460 CI runs need only generated fixtures; the other four check
 the feature build's column discovery against `data/sample` and skip without it.
 All six kernels have been run end to end on the real competition data.
 
