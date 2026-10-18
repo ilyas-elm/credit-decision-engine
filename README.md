@@ -17,8 +17,8 @@ team evaluates models: out-of-time, on calibration, stability and profit.
 
 **1. What does a gradient-boosted challenger add over a classic scorecard once
 stability, calibration and profit are measured, not just AUC?** About 3 Gini
-points (0.394 to 0.426), and it keeps them under the competition's stability
-metric (0.359 to 0.391). It is also better calibrated and its score
+points (0.394 to 0.422), and it keeps them under the competition's stability
+metric (0.359 to 0.386). It is also better calibrated and its score
 distribution drifts less. But profit cannot separate the two at all: on this
 book no approval cutoff binds and EMPCS is ≈0 for both, so the gain is real,
 modest, and not where the money is.
@@ -54,14 +54,14 @@ Full data, 1,526,659 cases, evaluated out-of-time on the last 23 weeks
 
 | | scorecard | LightGBM | better |
 |---|---|---|---|
-| Gini | 0.3944 | **0.4264** | challenger |
-| mean weekly Gini | 0.3854 | **0.4205** | challenger |
-| Gini slope / week | +0.0026 | +0.0019 | (both rising) |
-| Gini residual sd | **0.0521** | 0.0592 | champion |
-| **stability metric** | 0.3594 | **0.3909** | challenger |
-| Brier | 0.02131 | **0.02117** | challenger |
-| calibration-in-the-large, worst week | 0.0095 | **0.0084** | challenger |
-| PSI of predicted PD vs train | 0.5028 | **0.4202** | challenger |
+| Gini | 0.3944 | **0.4219** | challenger |
+| mean weekly Gini | 0.3854 | **0.4162** | challenger |
+| Gini slope / week | +0.0026 | +0.0020 | (both rising) |
+| Gini residual sd | **0.0521** | 0.0595 | champion |
+| **stability metric** | 0.3594 | **0.3864** | challenger |
+| Brier | 0.02131 | **0.02119** | challenger |
+| calibration-in-the-large, worst week | 0.0095 | **0.0082** | challenger |
+| PSI of predicted PD vs train | 0.5028 | **0.4365** | challenger |
 | EMPCS | ≈0 | ≈0 | (see below) |
 
 The champion is a **13-characteristic** scorecard with no sign flips: every
@@ -70,15 +70,15 @@ correctly end to end.
 
 ## Question 1: what the challenger adds
 
-About **3 Gini points** (0.394 → 0.426), and it keeps them once stability is
-measured: the stability metric moves 0.359 → 0.391. The margin narrowed from 5
-points after an income-encoding fix that helped the scorecard and left the
-challenger unmoved (below). Neither model's Gini decays over the test weeks:
-both slopes are positive, so the metric's 88× falling-slope penalty never
-engages and the gap is driven by level, not trend. The challenger is also
+About **2.7 Gini points** (0.394 to 0.422), and it keeps them once stability is
+measured: the stability metric moves 0.359 to 0.386. The margin narrowed from
+4.6 points after an income-encoding fix that lifted the scorecard from 0.376
+and left the challenger unmoved (below). Neither model's Gini decays over the
+test weeks: both slopes are positive, so the metric's 88× falling-slope penalty
+never engages and the gap is driven by level, not trend. The challenger is also
 *slightly* better calibrated and noticeably more stable in its score
-distribution (PSI 0.42 vs 0.50). The one thing the champion wins is
-week-to-week smoothness (residual sd 0.052 vs 0.059).
+distribution (PSI 0.44 vs 0.50). The one thing the champion wins is
+week-to-week smoothness (residual sd 0.052 vs 0.060).
 
 It is a real but unspectacular gain, bought with hundreds of trees against a
 13-characteristic scorecard, under monotone constraints taken from the
@@ -97,7 +97,7 @@ degeneracy there is a result about the assumptions rather than something to
 tune away. Under this portfolio's economics, the model's value is not in
 choosing an approval cutoff.
 
-A PD PSI above 0.25 for both models (0.50 and 0.42) is worth flagging: in
+A PD PSI above 0.25 for both models (0.50 and 0.44) is worth flagging: in
 production that is an alert threshold, and it reflects genuine drift over 92
 weeks rather than a modelling defect. Test-week PSI is reported here only; it
 is never used for any selection decision.

@@ -106,16 +106,16 @@ Test weeks 69-91, 225,514 cases, fitted on by nothing.
 
 | | scorecard | LightGBM |
 |---|---|---|
-| Gini | 0.3944 | **0.4264** |
-| mean weekly Gini | 0.3854 | **0.4205** |
-| Gini slope / week | +0.0026 | +0.0019 |
-| Gini residual sd | **0.0521** | 0.0592 |
-| **stability metric** | 0.3594 | **0.3909** |
-| Brier | 0.02131 | **0.02117** |
-| worst-week calibration gap | 0.0095 | **0.0084** |
-| PSI of predicted PD vs train | 0.5028 | **0.4202** |
+| Gini | 0.3944 | **0.4219** |
+| mean weekly Gini | 0.3854 | **0.4162** |
+| Gini slope / week | +0.0026 | +0.0020 |
+| Gini residual sd | **0.0521** | 0.0595 |
+| **stability metric** | 0.3594 | **0.3864** |
+| Brier | 0.02131 | **0.02119** |
+| worst-week calibration gap | 0.0095 | **0.0082** |
+| PSI of predicted PD vs train | 0.5028 | **0.4365** |
 
-The challenger adds about **3 Gini points** and keeps them once stability is
+The challenger adds about **2.7 Gini points** and keeps them once stability is
 measured. Note *why*: neither model decays, both slopes are positive, so the
 stability metric's 88× falling-slope penalty never engages and the gap is
 level, not trend. The champion wins only on week-to-week smoothness.
@@ -186,7 +186,7 @@ simulated on an already-booked population, which is the easier problem, so
 **EMP assumptions are assumptions**, and at the literature's values the profit
 analysis is degenerate (§4). Every profit number is reported across a grid.
 
-**Drift is real and unaddressed.** The PD PSI is 0.42-0.50 train-to-test, above
+**Drift is real and unaddressed.** The PD PSI is 0.44-0.50 train-to-test, above
 any conventional alert threshold, and it is the direct cause of the conformal
 coverage failure.
 
@@ -222,8 +222,8 @@ not from convention.
 
 | signal | observed | investigate | escalate |
 |---|---|---|---|
-| **weekly Gini** (challenger) | mean 0.421, sd 0.059, min ~0.31 | any week < 0.30 (mean - 2 sd) | 2 consecutive weeks < 0.30, or 4-week mean < 0.35 |
-| **Gini trend** | slope +0.0017 /wk | 8-week slope < 0 | 8-week slope < -0.003 (the metric penalises this 88×) |
+| **weekly Gini** (challenger) | mean 0.416, sd 0.061, min 0.301 | any week < 0.29 (mean - 2 sd) | 2 consecutive weeks < 0.29, or 4-week mean < 0.35 |
+| **Gini trend** | slope +0.0020 /wk | 8-week slope < 0 | 8-week slope < -0.003 (the metric penalises this 88×) |
 | **calibration in the large** | worst week 0.008, range -0.003 to +0.009 | any week \|gap\| > 0.010 | 2 consecutive weeks \|gap\| > 0.015 |
 | **PSI of predicted PD vs train** | median 0.42, range 0.30-0.71 | weekly PSI > 0.60 | weekly PSI > 0.75, or 4-week median > 0.60 |
 | **conformal coverage, default class** | 0.747, target 0.90 | any week < 0.70 | 4-week mean < 0.65 |
