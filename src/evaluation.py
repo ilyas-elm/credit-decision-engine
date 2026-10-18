@@ -59,6 +59,8 @@ __all__ = [
     "plot_calibration",
     "plot_strategy_curve",
     "plot_referral_economics",
+    "plot_evaluation_bias",
+    "plot_recovery",
     "write_figures",
 ]
 
@@ -370,6 +372,69 @@ def plot_alpha_sweep(sweep: dict[str, np.ndarray], path: str | Path) -> Path:
         "α is the only lever on the review band, and the curve is not monotone\n"
         "between the two regimes the band refers almost nobody"
     )
+    return _finish(fig, path)
+
+
+def plot_evaluation_bias(arms: pd.DataFrame, path: str | Path) -> Path:
+    """The lender's validation error: A1's Gini on its accepts minus the truth.
+
+    A1 only. The earlier figure averaged the column over every arm, with error
+    bars spanning the arms rather than the seeds, so it showed a GBM bias
+    shrinking with the reject rate that A1 does not have. Error bars here are
+    the sd over seeds, which is the run-to-run noise of the one model a lender
+    would actually hold; the scorecard has no seed, so it has no bar.
+    """
+    a1 = arms[arms["base_arm"] == "A1_accepts_only"]
+    fig, ax = plt.subplots(figsize=(8, 4.5))
+    for model, colour in (("lightgbm", "tab:green"), ("scorecard", "tab:blue")):
+        stats = a1[a1["model"] == model].groupby("reject_rate")["evaluation_bias"]
+        mean, sd = stats.mean(), stats.std().fillna(0.0)
+        ax.errorbar(mean.index, mean.values, yerr=sd.values, marker="o", capsize=3,
+                    lw=1.8, color=colour, label=model)
+    ax.axhline(0.0, color="black", lw=0.8)
+    ax.set_xlabel("reject rate applied to the test weeks (%)")
+    ax.set_ylabel("A1 Gini on accepted-only − true Gini")
+    ax.set_title("Evaluation bias: what a lender measures on its own approved book")
+    ax.text(0.02, 0.04, "negative = the lender UNDERSTATES its own model",
+            transform=ax.transAxes, fontsize=8, alpha=0.75)
+    ax.grid(alpha=0.3)
+    ax.legend(fontsize=8)
+    return _finish(fig, path)
+
+
+def plot_recovery(arms: pd.DataFrame, path: str | Path, *, model: str = "lightgbm") -> Path:
+    """Share of the A0 - A1 Gini gap each reject-inference arm recovers.
+
+    Mean over seeds with the sd as a bar. A reject rate whose gap falls under
+    the recovery floor has no share at all and is left out rather than plotted
+    as a point: the earlier figure drew r=10 % values for every arm while the
+    table beside it, correctly, reported them as n/a.
+    """
+    mine = arms[arms["model"] == model]
+    labels = {
+        "A2_hard_cutoff": "A2 hard cutoff",
+        "A3_fuzzy": "A3 fuzzy",
+        "A4_parcelling": "A4 parcelling",
+        "A5_self_learning": "A5 self-learning",
+        "A6_exploration": "A6 exploration",
+    }
+    fig, ax = plt.subplots(figsize=(9, 4.8))
+    for base_arm, label in labels.items():
+        stats = mine[mine["base_arm"] == base_arm].groupby("reject_rate")["recovery_share"]
+        mean, sd = stats.mean().dropna(), stats.std()
+        if mean.empty:
+            continue
+        ax.errorbar(mean.index, mean.values, yerr=sd.reindex(mean.index).fillna(0.0).values,
+                    marker="o", capsize=3, lw=1.5, label=label)
+    ax.axhline(0.0, color="black", lw=0.8)
+    ax.axhline(1.0, color="grey", lw=0.8, ls=":", label="oracle (A0)")
+    ax.set_xlabel("reject rate applied to the development weeks (%)")
+    ax.set_ylabel("share of the A0 − A1 Gini gap recovered")
+    ax.set_title(f"Reject inference: share of the lost signal recovered ({model})")
+    ax.text(0.02, 0.96, "above 0 = better than discarding rejects; 1 = the oracle",
+            transform=ax.transAxes, fontsize=8, alpha=0.75, va="top")
+    ax.grid(alpha=0.3)
+    ax.legend(fontsize=8, loc="lower right")
     return _finish(fig, path)
 
 

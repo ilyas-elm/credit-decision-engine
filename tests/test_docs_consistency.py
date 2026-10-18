@@ -205,11 +205,20 @@ REJECT_RATES = ("10", "20", "30", "50")
 def test_evaluation_bias_table_matches_the_arms_csv(arms, readme, model, reject_rate) -> None:
     """Every cell of the evaluation-bias table, to the 3 places it is quoted.
 
-    One cell said -0.070 where the mean over the run's rows is -0.069476. No
-    aggregation of that column reaches -0.070, so it was a transcription slip
-    rather than a different definition.
+    The table is the LENDER's validation error, so it is A1's: the model fitted
+    on accepts, scored on the accepts a lender could observe, against the truth
+    on everyone. It used to average the column over every arm in the file,
+    which folds in A6, whose near-noise Ginis have little range to lose, and
+    turned a bias that grows with the reject rate for both models into a flat
+    one for the GBM and a "twice as bad" one for the scorecard.
     """
-    selected = [r for r in arms if r["model"] == model and r["reject_rate"] == reject_rate]
+    selected = [
+        r
+        for r in arms
+        if r["model"] == model
+        and r["reject_rate"] == reject_rate
+        and r["base_arm"] == "A1_accepts_only"
+    ]
     assert selected, f"no {model} rows at reject rate {reject_rate}"
     quoted = f"{_mean(_numeric(selected, 'evaluation_bias')):.3f}"
     assert quoted in readme, (
@@ -1037,6 +1046,50 @@ def test_accept_only_calibration_looks_better_than_it_is(arms, readme) -> None:
     assert "not yet large enough to change a decision" in collapsed
 
 
+def test_the_evaluation_bias_range_and_comparison_are_the_lenders(
+    arms, readme, model_doc
+) -> None:
+    """The headline range and the model comparison, from A1 alone.
+
+    Both documents lead question 3 with this range, and the README compares the
+    two models on it. Neither was checked, and both came from the cross-arm
+    average: 0.05-0.16 and "the scorecard is hurt roughly twice as badly",
+    where A1 gives 0.08-0.14 and a ratio of about 1.1 at every rate.
+    """
+    bias: dict[tuple[str, str], float] = {}
+    for model in ("lightgbm", "scorecard"):
+        for rate in REJECT_RATES:
+            rows = [
+                float(r["evaluation_bias"])
+                for r in arms
+                if r["model"] == model
+                and r["reject_rate"] == rate
+                and r["base_arm"] == "A1_accepts_only"
+            ]
+            assert rows, f"no A1 {model} rows at r={rate} %"
+            bias[(model, rate)] = sum(rows) / len(rows)
+    low = min(abs(v) for v in bias.values())
+    high = max(abs(v) for v in bias.values())
+    quoted = f"{low:.2f} to {high:.2f}"
+    for name, text in (("README.md", readme), ("MODEL.md", model_doc)):
+        flat = " ".join(text.split())
+        assert quoted in flat or quoted.replace(" to ", "-") in flat, (
+            f"{name} must quote the lender's evaluation bias as {quoted}"
+        )
+        assert "0.05-0.16" not in flat and "0.05 to 0.16" not in flat, (
+            f"{name} still quotes the cross-arm range"
+        )
+    # Both models' bias grows with the reject rate.
+    for model in ("lightgbm", "scorecard"):
+        series = [abs(bias[(model, r)]) for r in REJECT_RATES]
+        assert series == sorted(series), f"{model}'s bias no longer grows with the rate"
+    ratios = [bias[("scorecard", r)] / bias[("lightgbm", r)] for r in REJECT_RATES]
+    assert all(1.0 < x < 1.25 for x in ratios), f"scorecard/GBM ratios are {ratios}"
+    flat = " ".join(readme.split())
+    assert "twice as badly" not in flat
+    assert "about 10 % more" in flat
+
+
 def test_the_two_evaluation_biases_point_opposite_ways(arms, readme) -> None:
     """Gini understated, calibration overstated. The README leans on the contrast."""
     rows = [
@@ -1474,21 +1527,21 @@ def test_the_a5_table_in_the_kozodoi_comparison_matches_the_run(arms, readme) ->
             for r in rows
             if r["arm"] == "A5_self_learning" and r["reject_rate"] == rate
         ]
-        assert len(shares) == 1, f"A5 is a single fit; found {len(shares)} at r={rate} %"
+        assert len(shares) == 3, f"A5 runs at three seeds; found {len(shares)} at r={rate} %"
         if gap < MIN_RECOVERY_GAP:
-            assert shares[0] in ("", "nan"), (
+            assert all(s in ("", "nan") for s in shares), (
                 f"the gap at r={rate} % is {gap:.4f}, under the {MIN_RECOVERY_GAP} "
                 "floor, so recovery should not have been computed"
             )
             assert f"| {acceptance} %" in readme or "| n/a |" in readme
             continue
-        quoted = f"+{float(shares[0]):.2f}"
+        quoted = f"+{sum(float(s) for s in shares) / len(shares):.2f}"
         assert quoted in collapsed, (
             f"A5's recovery at {acceptance} % acceptance is {quoted} in the arms "
             f"file; the README's acceptance-rate table must quote it"
         )
     # And the floor has to be named where the n/a comes from, not left blank.
-    assert "0.0095, just under" in collapsed and "too small to divide by" in collapsed
+    assert "0.009998, under by" in collapsed and "too small to divide by" in collapsed
 
 
 def test_the_pooled_recovery_rows_disclose_what_they_pool(arms, readme, model_doc) -> None:
@@ -1522,7 +1575,7 @@ def test_the_pooled_recovery_rows_disclose_what_they_pool(arms, readme, model_do
         )
 
     # A4 is not, and the README has to say so rather than quote the mean.
-    for rate, positives in (("20", 4), ("30", 2)):
+    for rate, positives in (("20", 4), ("30", 1)):
         a4 = shares("A4_parcelling", rate)
         assert len(a4) == 6, f"expected 2 uplifts x 3 seeds at r={rate} %, got {len(a4)}"
         assert sum(v > 0 for v in a4) == positives, (
@@ -1533,9 +1586,10 @@ def test_the_pooled_recovery_rows_disclose_what_they_pool(arms, readme, model_do
 
     # The deployable-arm conclusion, only at the rates where A3 clears A4
     # outright rather than on the mean.
-    a3 = {r["reject_rate"]: float(r["recovery_share"]) for r in rows if r["arm"] == "A3_fuzzy"}
+    a3_low = {rate: min(shares("A3_fuzzy", rate)) for rate in ("20", "30", "50")}
+    a3 = {rate: max(shares("A3_fuzzy", rate)) for rate in ("20", "30", "50")}
     for rate in ("30", "50"):
-        assert a3[rate] > max(shares("A4_parcelling", rate)), (
+        assert a3_low[rate] > max(shares("A4_parcelling", rate)), (
             f"A3 no longer clears A4's whole spread at r={rate} %, which is the "
             "claim the README makes for 30 % and 50 %"
         )
@@ -1616,15 +1670,15 @@ def test_the_exploration_verdict_is_scoped_to_the_model_that_survives_its_seeds(
     )
     # And the range quoted for it.
     everything = [x for rate in ("10", "20", "30", "50") for x in ratios("gbm", rate)]
-    assert 3 <= min(everything) < 4 and 48 <= max(everything) < 50, (
-        f"the README quotes 3-49x; the grid now spans "
+    assert round(min(everything)) == 3 and round(max(everything)) == 46, (
+        f"the README quotes 3-46x; the grid now spans "
         f"{min(everything):.1f}-{max(everything):.1f}x"
     )
     for name, text in (("README.md", readme), ("MODEL.md", model_doc)):
         flat = " ".join(text.split())
-        assert "3-49× the cost" in flat or "3-49x the cost" in flat, (
-            f"{name} must quote the GBM's damage range; the 2-48x it used to "
-            "quote was neither model's"
+        assert "3-46× the cost" in flat or "3-46x the cost" in flat, (
+            f"{name} must quote the GBM's damage range; the 2-48x it once "
+            "quoted was neither model's"
         )
 
 
@@ -1636,3 +1690,20 @@ def test_the_gbm_never_gets_the_favour(arms, readme) -> None:
         )
         assert gap < 0, f"the GBM's accepts-only model beats its oracle at r={rate}"
     assert "degrades monotonically" in " ".join(readme.split())
+
+
+def test_question_3s_figures_are_drawn_by_committed_code(tmp_path) -> None:
+    """Both figures were once drawn by hand from a run two re-runs stale, and no
+    code in the repo could redraw them. They now come from the arms table."""
+    import pandas as pd
+
+    sys.path.insert(0, str(REPO / "src"))
+    from evaluation import plot_evaluation_bias, plot_recovery
+
+    arms = pd.read_csv(DOCS / "sampling_bias_arms.csv")
+    for path in (
+        plot_evaluation_bias(arms, tmp_path / "evaluation_bias.png"),
+        plot_recovery(arms, tmp_path / "sampling_bias_recovery.png"),
+    ):
+        assert path.stat().st_size > 10_000, f"{path.name} came out empty"
+    assert "scripts/sampling_bias_figures.py" in _text("README.md")

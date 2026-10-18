@@ -10,7 +10,7 @@ team evaluates models: out-of-time, on calibration, stability and profit.
 > artefact it came from committed under [`docs/`](docs). A few figures in the
 > closing sections are measured on the 3 % local sample or on synthetic data
 > instead, and say which. The badge is CI on a fresh clone: `uv sync --frozen`,
-> lint, and the 486 of its 490 tests that need no competition data, since none
+> lint, and the 488 of its 492 tests that need no competition data, since none
 > of that is committed. [MODEL.md](MODEL.md) is the model documentation.
 
 ## The three questions, answered
@@ -37,10 +37,10 @@ default class 0.747 against a 0.90 target, misses in all 23 test weeks, refers
 **3. If the lender only observed outcomes for loans it approved, how wrong
 would its validation be, and which fix recovers the most per unit of cost:
 reject inference, or a small random-approval (exploration) budget?** Its own
-book understates Gini by 0.05 to 0.16, at every reject rate and always in the
+book understates Gini by 0.08 to 0.14, at every reject rate and always in the
 same direction. Of the fixes, the crudest reject-inference arm wins *on Gini*,
-labelling every reject bad recovers 59 % of the lost signal at a 30 % reject
-rate, but it is wrong about 93 % of those rejects and wrecks calibration doing
+labelling every reject bad recovers 58 % of the lost signal at a 30 % reject
+rate, level with self-learning and ahead of it elsewhere, but it is wrong about 93 % of those rejects and wrecks calibration doing
 it, so by this project's own standard it is not the one to adopt. A
 random-approval budget is net negative at every setting tested, on variance
 rather than price. Fixing the evaluation matters more than fixing the training,
@@ -382,7 +382,7 @@ recalibration moves levels and only a refit moves a bin's points.
 
 ## Question 3: sampling bias
 
-Kernel `ilyaselmaazouzi/hc-sampling-bias`: 160 fits, 20.4 min
+Kernel `ilyaselmaazouzi/hc-sampling-bias`: 200 fits, 27.4 min
 ([`sampling_bias_summary.json`](docs/sampling_bias_summary.json)). Policy weeks
 0-22, development 23-63 (labels hidden for the rejected), test 64-91 with every
 label. 150k development cases per arm, identical features and fixed
@@ -396,18 +396,21 @@ contains booked loans only. The real rejects are gone. This simulates a
 
 ### How wrong is the lender's own validation?
 
-Measured on the test weeks its policy would have approved, against the truth
-over everyone:
+The lender's model is A1, fitted on the loans it approved. Its Gini measured
+on the test weeks its policy would have approved, minus the truth over
+everyone, LightGBM averaged over three seeds:
 
 | reject rate | 10 % | 20 % | 30 % | 50 % |
 |---|---|---|---|---|
-| LightGBM | -0.063 | -0.072 | -0.077 | -0.069 |
-| scorecard | -0.095 | -0.120 | -0.132 | -0.151 |
+| LightGBM | -0.079 | -0.106 | -0.119 | -0.130 |
+| scorecard | -0.086 | -0.117 | -0.131 | -0.141 |
 
-A lender measuring on its own approved book **understates its Gini by 6 to 15
-points**, range restriction, not a modelling fault. The scorecard is hurt
-roughly twice as badly as the challenger, and its bias grows steadily with the
-reject rate while the challenger's does not.
+A lender measuring on its own approved book **understates its Gini by 8 to 14
+points**, range restriction, not a modelling fault. The bias grows with the
+reject rate for both models, and the scorecard's runs about 10 % more than the
+challenger's at every rate. An earlier version of this table averaged every
+arm in the experiment rather than the lender's, which flattened the GBM's row
+and made the scorecard look twice as exposed; neither is true of A1.
 
 **Calibration is distorted too, in the opposite direction, which is worse.**
 Gini measured on accepts is pessimistic, so a lender at least errs towards
@@ -442,36 +445,33 @@ rate the true gap breaches its threshold while the observable one stays quiet.
 ### Which fix recovers the most?
 
 Share of the A0 - A1 gap recovered, LightGBM, reported only where the A0 - A1
-gap is at least 0.01 Gini. At a 10 % reject rate it is 0.0095, just under, so
-that column is n/a throughout rather than zero:
+gap is at least 0.01 Gini. At a 10 % reject rate it is 0.009998, under by
+2×10⁻⁶ — a margin the seed noise could flip either way — so that column is
+n/a throughout rather than zero. Every cell is a mean over three seeds:
 
 | arm | r=10 % | r=20 % | r=30 % | r=50 % |
 |---|---|---|---|---|
-| A2 hard cutoff | n/a | 0.41 | **0.59** | **0.67** |
-| A3 fuzzy | n/a | 0.22 | 0.40 | 0.48 |
-| A4 parcelling | n/a | 0.13 | -0.14 | -0.18 |
-| A5 self-learning | n/a | 0.13 | **0.52** | **0.63** |
-| A6 exploration | n/a | -3.07 | -2.24 | -1.55 |
+| A2 hard cutoff | n/a | **0.49** | **0.58** | **0.68** |
+| A3 fuzzy | n/a | 0.28 | 0.40 | 0.46 |
+| A4 parcelling | n/a | 0.08 | -0.22 | -0.21 |
+| A5 self-learning | n/a | 0.04 | **0.58** | 0.64 |
+| A6 exploration | n/a | -3.48 | -2.51 | -1.64 |
 
-A2, A3 and A5 have no randomness of their own, so those rows are single fits.
-That is not a point estimate: the LightGBM underneath every arm bags by row
-position. The committed stage now fits every arm at all three seeds, and a
-re-run measured the noise directly: one fit's test Gini has an sd of 0.0024,
-up to a 0.013 range for A1 at 50 %. The re-run reproduced all 160 fits
-published here bit-identically, so these tables stand as single draws, but
-three readings change once the seeds are averaged. **A5 ties A2 at a 30 %
-reject rate** (0.58 each) rather than trailing it. **A5 recovers only
-0.04 ± 0.04 at 20 %**. And the 10 % gap lands at 0.009998, 2×10⁻⁶ under the
-0.01 floor, so whether that column has recoveries at all is decided by noise.
-Moving these tables to the seeded run is the next step. What does not change:
-A2's Brier at 6.6× the oracle's, and the 0.05-0.16 Gini of evaluation bias,
-both far outside the measured noise. A4 and A6 are
+Every arm is fitted at all three seeds, including the ones whose training set
+is deterministic, because the LightGBM underneath bags by row position. That
+noise is measured rather than bounded: one fit's test Gini has an sd of
+0.0024, up to a 0.013 range for A1 at 50 %. It moves three readings an earlier
+single-draw version of this table got wrong. **A5 ties A2 at a 30 % reject
+rate** (0.58 each) rather than trailing it; **A5 recovers only 0.04 ± 0.04 at
+20 %**, nothing distinguishable from zero; and the 10 % column's existence is
+decided by 2×10⁻⁶. The re-run reproduced every earlier fit bit-identically, so
+nothing else moved but the averaging. A4 and A6 are
 means over their variants and seeds — A4 over two uplifts k and three seeds,
 A6 over three budgets p and three seeds — and the two pool very differently.
 A6 is negative in all 27 of its fits at every reject rate, so its row means
 what it says. **A4's sign is not determined below r=50 %**: its six fits span
--0.33 to +0.62 at 20 % (four positive) and -0.33 to +0.09 at 30 % (two
-positive), against means of +0.13 and -0.14. Read A4 as "no reliable
+-0.43 to +0.62 at 20 % (four positive) and -0.43 to +0.04 at 30 % (one
+positive), against means of +0.08 and -0.22. Read A4 as "no reliable
 recovery", not as the number in the cell.
 
 The recovery table above is measured in Gini, which is the metric that cannot
@@ -480,18 +480,18 @@ reject rate:
 
 | arm | Gini | Brier | calibration-in-the-large |
 |---|---|---|---|
-| A0 oracle | 0.4585 | 0.02146 | +0.0005 |
-| A1 accepts-only | 0.4052 | 0.02168 | -0.0028 |
-| A2 hard cutoff | **0.4365** | **0.14188** | **+0.1491** |
-| **A3 fuzzy** | **0.4266** | **0.02153** | **-0.0024** |
+| A0 oracle | 0.4573 | 0.02146 | +0.0003 |
+| A1 accepts-only | 0.4084 | 0.02168 | -0.0028 |
+| A2 hard cutoff | **0.4368** | **0.14191** | **+0.1491** |
+| **A3 fuzzy** | **0.4278** | **0.02153** | **-0.0022** |
 | A4 parcelling | 0.3979 | 0.02171 | -0.0002 |
-| A5 self-learning | 0.4328 | 0.06093 | +0.0537 |
+| A5 self-learning | 0.4368 | 0.06103 | +0.0540 |
 | A6 exploration | 0.2858 | 0.02202 | -0.0064 |
 
 Two things fall out of that column.
 
 **Sampling bias damages ranking, not calibration.** Hiding the rejects' labels
-costs 0.041 Gini, a tenth of the oracle's, but only 0.0002 Brier, a hundredth.
+costs 0.049 Gini, a tenth of the oracle's, but only 0.0002 Brier, a hundredth.
 There is almost no calibration to recover, so every arm can only leave it alone
 or make it worse, and the ones that recover the most Gini are the ones that
 make it worst.
@@ -509,8 +509,9 @@ Four things come out of this:
 
 1. **The crudest method wins on Gini, and only on Gini.** A2 simply labels
    every reject bad, no model, no weighting, no uncertainty, and it recovers
-   59 % of the lost signal at a 30 % reject rate. The more elaborate arms do
-   not beat it. The obvious explanation would be that the label is roughly
+   58 % of the lost signal at a 30 % reject rate and 68 % at 50 %. The more
+   elaborate arms do not beat it: self-learning draws level at 30 % and falls
+   behind on either side. The obvious explanation would be that the label is roughly
    right, and it is not: at a 30 % reject rate the rejects default at 7.3 %
    against 1.9 % among accepts, so A2 is wrong about **93 % of them**
    ([`reject_truth.csv`](docs/reject_truth.csv)).
@@ -520,7 +521,7 @@ Four things come out of this:
    ranking. It pays for it in calibration, which the recovery metric cannot
    see: at that same reject rate A2's Brier is **6.6× the oracle's** (0.142
    against 0.0215) and it **over-predicts the default rate by 15 percentage
-   points**. At a 50 % reject rate it is 12.6× and 29 points. The arm that
+   points**. At a 50 % reject rate it is 12.7× and 29 points. The arm that
    wins question 3 produces probabilities this project's own cutoff and
    profit machinery could not use at all.
 
@@ -528,23 +529,23 @@ Four things come out of this:
    headline is measured in Gini, and by the standard the rest of the repo
    argues for, stability and calibration and profit rather than AUC alone, A2
    is not the arm to adopt. **A3 fuzzy recovers less signal and stays
-   calibrated** (Brier 0.02158, within 0.5 % of the oracle), which is the
+   calibrated** (Brier 0.02153, within 0.4 % of the oracle), which is the
    trade a lender would actually be making.
 
 2. **Severity matters more than method.** At a 10 % reject rate almost nothing
-   helps and the gap is only 0.0095 Gini to begin with. By 50 % the gap is 0.113
+   helps and the gap is only 0.010 Gini to begin with. By 50 % the gap is 0.108
    and three arms recover most of it.
 3. **The exploration budget fails everywhere, on variance rather than price.**
    Priced as profit at a fixed binding acceptance against realised loss on the
    loans bought to learn from, net is negative on the 3-seed mean of all
    twelve rate-budget combinations, for both models. For the GBM the damage
-   runs **3-49× the cost** (at r=30 %, p=1 %: cost 10.0, profit -320) and
+   runs **3-46× the cost** (at r=30 %, p=1 %: cost 10.0, profit -308) and
    every one of its 36 seed-level cells is negative too.
 
    The 100/p inverse-propensity weight gives a few hundred cases the same
    total weight as tens of thousands, and the GBM's damage falls
-   monotonically as the budget grows, at every reject rate: at r=20 %, 49× the
-   cost at p = 1 %, 23× at p = 2 %, 5× at p = 5 %. That is the variance
+   monotonically as the budget grows, at every reject rate: at r=20 %, 46× the
+   cost at p = 1 %, 21× at p = 2 %, 4.5× at p = 5 %. That is the variance
    signature. A bigger sample is a better estimate of the rejects, so the
    weights do less violence, but it never becomes worth buying.
 
@@ -663,17 +664,17 @@ acceptance falls:
 
 | acceptance | 90 % | 80 % | 70 % | 50 % |
 |---|---|---|---|---|
-| A5 recovery | n/a | +0.13 | **+0.52** | **+0.63** |
+| A5 recovery | n/a | +0.04 | **+0.58** | **+0.64** |
 
 That is their relationship, found independently on different data: the less a
 policy accepts, the more reject inference is worth. The 90 % column is the
-0.0095 gap again — too small to divide by, not a zero result.
+0.010 gap again — too small to divide by, not a zero result.
 
 **The threshold does not.** They report BASL needing acceptance below 20 %.
-Here A5's recovery is positive at every acceptance rate the gap is large
-enough to measure, 80 % included, and the experiment never goes below 50 %
-acceptance at all. So this is not a threshold slightly out of place: nothing
-in this grid reproduces a regime in which A5 fails to help. Two things
+Here A5 turns useful between 80 % and 70 % acceptance: +0.04 ± 0.04 at 80 %,
+which is nothing, then +0.58 at 70 %. The experiment never goes below 50 %
+acceptance at all, so A5 starts helping at more than three times the
+acceptance rate they found. Two things
 plausibly explain it, and they pull in opposite directions:
 
 - This book defaults at **3.14 %**, inside the 2-5 % band they identify as
@@ -685,8 +686,11 @@ plausibly explain it, and they pull in opposite directions:
   contradiction of their result.
 
 The evaluation finding, by contrast, agrees without qualification: bias of
-0.05-0.16 Gini, present at every reject rate, in the same direction throughout,
+0.08-0.14 Gini, present at every reject rate, in the same direction throughout,
 larger and far more consistent than anything the inference arms deliver.
+
+Both figures are drawn from the arms table by
+`scripts/sampling_bias_figures.py`.
 
 ![Evaluation bias](docs/figures/evaluation_bias.png)
 
@@ -764,7 +768,7 @@ and exits non-zero if either property stops holding.
 | Feature screening + report | [`docs/feature_report.csv`](docs/feature_report.csv) | **done, full data** |
 | Sampling-bias experiment (arms A0-A6) | `src/sampling_bias.py` | **done, run on full data** |
 
-490 tests. The 486 CI runs need only generated fixtures; the other four check
+492 tests. The 488 CI runs need only generated fixtures; the other four check
 the feature build's column discovery against `data/sample` and skip without it.
 All six kernels have been run end to end on the real competition data.
 

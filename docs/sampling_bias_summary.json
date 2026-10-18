@@ -53,7 +53,7 @@
     "util_mean"
   ],
   "dev_subsample": 150000,
-  "n_fits": 160,
+  "n_fits": 200,
   "reject_rates": [
     10,
     20,
@@ -65,5 +65,5 @@
     1,
     2
   ],
-  "total_seconds": 1224.4
+  "total_seconds": 1641.1
 }

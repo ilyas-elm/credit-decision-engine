@@ -170,17 +170,17 @@ its recoveries are bounded by that.
 
 **Sampling bias is large; reject inference helps only under severe selection.**
 A lender measuring on its own approved book **understates its Gini by
-0.05-0.16** at every reject rate, through range restriction rather than any
+0.08-0.14** at every reject rate, through range restriction rather than any
 modelling fault. Reject inference is a different story: at a 10 % reject rate
-almost nothing helps and the gap is only 0.0095 Gini, while at 50 % it is 0.113
+almost nothing helps and the gap is only 0.010 Gini, while at 50 % it is 0.108
 and three arms recover most of it. The best performer on Gini is **A2, the
-crudest arm**, which labels every reject bad and recovers 59 % at a 30 % reject
-rate while being wrong about 93 % of them. It pays in calibration: Brier 6.6x
+crudest arm**, which labels every reject bad and recovers 58 % at a 30 % reject
+rate, level with A5 and ahead of it at 20 % and 50 %, while being wrong about 93 % of them. It pays in calibration: Brier 6.6x
 the oracle's, over-predicting by 15 percentage points. **By this document's own
 standard that disqualifies it**, since those probabilities cannot feed a
 cutoff; A3 recovers less and stays calibrated. A random-exploration budget was
 harmful as a training set, net negative on the 3-seed mean of every
-rate-budget combination, with the GBM's damage running 3-49x the cost and
+rate-budget combination, with the GBM's damage running 3-46x the cost and
 negative in all 27 of its fits, though the budget is correctly sized for
 measurement, which §7 returns to.
 
@@ -279,7 +279,7 @@ illustration and not a measured result.
 
 ## 8. Reproducing
 
-`uv sync && uv run pytest`, 490 tests, of which 486 run on synthetic
+`uv sync && uv run pytest`, 492 tests, of which 488 run on synthetic
 fixtures alone and four skip without the local sample; no competition
 data is committed and none is needed. Full-data results come from re-running
 the kernels in `kaggle/` from committed code: `make-sample`, `env-probe`,
