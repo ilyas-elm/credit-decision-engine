@@ -10,7 +10,7 @@ team evaluates models: out-of-time, on calibration, stability and profit.
 > artefact it came from committed under [`docs/`](docs). A few figures in the
 > closing sections are measured on the 3 % local sample or on synthetic data
 > instead, and say which. The badge is CI on a fresh clone: `uv sync --frozen`,
-> lint, and the 473 of its 477 tests that need no competition data, since none
+> lint, and the 481 of its 485 tests that need no competition data, since none
 > of that is committed. [MODEL.md](MODEL.md) is the model documentation.
 
 ## The three questions, answered
@@ -761,7 +761,7 @@ lazy with `collect(engine="streaming")` and the features land as Float32.
 | Feature screening + report | [`docs/feature_report.csv`](docs/feature_report.csv) | **done, full data** |
 | Sampling-bias experiment (arms A0-A6) | `src/sampling_bias.py` | **done, run on full data** |
 
-477 tests. The 473 CI runs need only generated fixtures; the other four check
+485 tests. The 481 CI runs need only generated fixtures; the other four check
 the feature build's column discovery against `data/sample` and skip without it.
 All six kernels have been run end to end on the real competition data.
 
@@ -844,8 +844,10 @@ characteristics came out with negative multivariate coefficients, so they
 scored *more* points as their event rate rose and the table read "the more you
 previously borrowed, the safer you are". The cause was joint collinearity
 across the whole previous-applications family, not any one pair: pruning every
-pair above 0.80 still left a cluster correlated 0.60-0.78, condition number
-15.1, so excluding one flip simply moved it to the next characteristic. Barring
+pair above 0.80 still left the three correlated 0.60-0.78 on their WoE values,
+a condition number of 13.5 on that correlation matrix, so excluding one flip
+simply moved it to the next characteristic.
+`scripts/collinearity_recon.py` recomputes all of it. Barring
 sign flips outright in config was the fix, and it cost 0.0012 Gini and 0.0010
 stability, about 0.3 % relative, for 16 characteristics down to 13. A readable
 scorecard is worth that, and `FittedScorecard.sign_flips()` keeps it readable.
