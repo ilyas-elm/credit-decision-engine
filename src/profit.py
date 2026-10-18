@@ -223,8 +223,31 @@ def strategy_curve(
     cum_bad = np.cumsum(bad)
     cum_profit = np.cumsum(per_loan)
 
-    # Approval counts from 1..n on an even grid; rate 0 approves nobody.
-    counts = np.unique(np.clip(np.round(np.linspace(0, n, n_points)).astype(int), 0, n))
+    # Only acceptance rates a score cutoff can actually produce.
+    #
+    # A cutoff is a threshold on the score, so applicants with the SAME score
+    # are approved together or not at all. A binned scorecard has very few
+    # distinct scores, 113 across 225,514 test cases here, with the largest
+    # tie group covering 11.8 % of the book, so the achievable acceptance
+    # rates are a short list of widely spaced steps rather than a continuum.
+    #
+    # An even count grid cuts through those groups and reports optima that no
+    # threshold implements: 71.5 % was reported here when the achievable rates
+    # either side are 70.1 % and 75.9 %, with 12,941 identically-scored
+    # applicants in between. It also made the result depend on the order of
+    # tied rows, because the stable argsort breaks ties by position, so
+    # re-running the pipeline on a reordered frame moved the reported optimum
+    # from 71.5 % to 56.5 % for a profit difference of 0.4 %.
+    #
+    # Restricting the grid to tie-group boundaries fixes both: every point is
+    # implementable, and the answer no longer depends on row order.
+    boundaries = np.flatnonzero(np.diff(np.sort(y_pred_proba))) + 1
+    counts = np.unique(np.concatenate([[0], boundaries, [n]]))
+    if counts.size > n_points:
+        # Too many distinct scores to plot them all: thin evenly, keeping the
+        # ends, and keep every point a real boundary.
+        picks = np.unique(np.round(np.linspace(0, counts.size - 1, n_points)).astype(int))
+        counts = counts[picks]
     approval_rate = counts / n
     bad_rate = np.where(counts > 0, cum_bad[np.maximum(counts, 1) - 1] / np.maximum(counts, 1), 0.0)
     profit = np.where(counts > 0, cum_profit[np.maximum(counts, 1) - 1], 0.0)

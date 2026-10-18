@@ -164,3 +164,68 @@ def test_assumptions_load_from_config_ignoring_the_sensitivity_subtable() -> Non
     assert assumptions.success_rate == section["success_rate"]
     assert assumptions.default_rate == section["default_rate"]
     assert assumptions.roi == section["roi"]
+
+
+# --- The curve may only offer cutoffs a threshold can implement -----------
+
+
+def test_every_point_on_the_curve_is_a_tie_group_boundary() -> None:
+    """A cutoff is a threshold, so equally-scored applicants go together.
+
+    A binned scorecard has very few distinct scores. Evaluating an even count
+    grid cuts through tie groups and reports optima no threshold implements:
+    on the real test weeks it gave 71.5 % when the achievable rates either
+    side were 70.1 % and 75.9 %, with 12,941 identically-scored applicants in
+    between.
+    """
+    rng = np.random.default_rng(0)
+    # 8 distinct scores over 2,000 cases: heavy ties, as a scorecard produces.
+    pd_values = rng.choice(np.linspace(0.01, 0.4, 8), size=2_000)
+    y = rng.binomial(1, pd_values)
+    curve = strategy_curve(y, pd_values, ProfitAssumptions(), n_points=201)
+
+    _, counts = np.unique(np.sort(pd_values), return_counts=True)
+    achievable = {0.0, *np.round(np.cumsum(counts) / pd_values.size, 10)}
+    for rate in curve["approval_rate"]:
+        assert round(float(rate), 10) in achievable, (
+            f"acceptance {rate:.4f} splits a tie group, so no score cutoff produces it"
+        )
+
+
+def test_the_curve_does_not_depend_on_the_order_of_tied_rows() -> None:
+    """The bug that surfaced this: a stable argsort breaks ties by position.
+
+    Re-running the pipeline on a reordered feature frame moved the reported
+    optimum from 71.5 % to 56.5 % acceptance, for a profit difference of
+    0.4 %, because the rows arrived in a different order.
+    """
+    rng = np.random.default_rng(1)
+    pd_values = rng.choice(np.linspace(0.02, 0.3, 6), size=1_500)
+    y = rng.binomial(1, pd_values)
+    straight = strategy_curve(y, pd_values, ProfitAssumptions())
+    order = rng.permutation(pd_values.size)
+    shuffled = strategy_curve(y[order], pd_values[order], ProfitAssumptions())
+    for key in ("approval_rate", "bad_rate", "profit"):
+        assert np.allclose(straight[key], shuffled[key]), f"{key} depends on row order"
+
+
+def test_all_distinct_scores_still_give_a_full_curve() -> None:
+    """No regression where there are no ties: every cutoff is achievable."""
+    rng = np.random.default_rng(2)
+    pd_values = rng.uniform(0.01, 0.5, 400)
+    y = rng.binomial(1, pd_values)
+    curve = strategy_curve(y, pd_values, ProfitAssumptions(), n_points=201)
+    assert curve["approval_rate"][0] == 0.0
+    assert curve["approval_rate"][-1] == pytest.approx(1.0)
+    assert np.all(np.diff(curve["approval_rate"]) > 0)
+
+
+def test_a_dominant_tie_group_is_never_split() -> None:
+    """The extreme case: one score covering most of the book."""
+    pd_values = np.concatenate([np.full(900, 0.05), np.linspace(0.2, 0.6, 100)])
+    y = np.zeros(1_000, dtype=int)
+    curve = strategy_curve(y, pd_values, ProfitAssumptions(), n_points=201)
+    rates = curve["approval_rate"]
+    assert not any(0.0 < r < 0.9 for r in rates), (
+        f"the 900-case tie group was split: {[r for r in rates if 0 < r < 0.9][:5]}"
+    )

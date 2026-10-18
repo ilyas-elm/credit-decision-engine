@@ -272,7 +272,7 @@ not find net-negative, and the README works it through.
 
 ## 8. Reproducing
 
-`uv sync && uv run pytest`, 459 tests on synthetic fixtures; no competition
+`uv sync && uv run pytest`, 463 tests on synthetic fixtures; no competition
 data is committed and none is needed. Full-data results come from re-running
 the kernels in `kaggle/` from committed code: `make-sample`, `env-probe`,
 `features`, `models`, `sampling-bias`, `decision`.
