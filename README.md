@@ -534,7 +534,7 @@ Four things come out of this:
 
 2. **Severity matters more than method.** At a 10 % reject rate almost nothing
    helps and the gap is only 0.010 Gini to begin with. By 50 % the gap is 0.108
-   and three arms recover most of it.
+   and two arms recover most of it, A2 and A5, with A3 just under half.
 3. **The exploration budget fails everywhere, on variance rather than price.**
    Priced as profit at a fixed binding acceptance against realised loss on the
    loans bought to learn from, net is negative on the 3-seed mean of all
