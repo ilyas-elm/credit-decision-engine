@@ -10,7 +10,7 @@ team evaluates models: out-of-time, on calibration, stability and profit.
 > artefact it came from committed under [`docs/`](docs). A few figures in the
 > closing sections are measured on the 3 % local sample or on synthetic data
 > instead, and say which. The badge is CI on a fresh clone: `uv sync --frozen`,
-> lint, and the 481 of its 485 tests that need no competition data, since none
+> lint, and the 483 of its 487 tests that need no competition data, since none
 > of that is committed. [MODEL.md](MODEL.md) is the model documentation.
 
 ## The three questions, answered
@@ -733,10 +733,12 @@ not. Every number quoted above is committed:
 | [`reject_truth.csv`](docs/reject_truth.csv) | what is actually true of the rejects A2 labels bad |
 | [`sampling_bias_exploration.csv`](docs/sampling_bias_exploration.csv) | exploration cost against profit gain, per p |
 
-Memory, measured rather than assumed: the features stage on the 3% local sample
-peaks at 0.83 GB resident (`getrusage` and `/usr/bin/time -l` agree to within 1
-MB), against the brief's ~4 GB budget for an 8 GB machine. The build is polars
-lazy with `collect(engine="streaming")` and the features land as Float32.
+Memory, measured rather than assumed: the feature build on the 3% local sample
+peaks at 0.59-0.66 GB resident over five runs (`getrusage` and
+`/usr/bin/time -l` agree), against the brief's ~4 GB budget for an 8 GB
+machine. The build is polars lazy with `collect(engine="streaming")` and all 36
+features land as Float32. `scripts/memory_recon.py` re-takes the measurement
+and exits non-zero if either property stops holding.
 
 ## What is built
 
@@ -761,7 +763,7 @@ lazy with `collect(engine="streaming")` and the features land as Float32.
 | Feature screening + report | [`docs/feature_report.csv`](docs/feature_report.csv) | **done, full data** |
 | Sampling-bias experiment (arms A0-A6) | `src/sampling_bias.py` | **done, run on full data** |
 
-485 tests. The 481 CI runs need only generated fixtures; the other four check
+487 tests. The 483 CI runs need only generated fixtures; the other four check
 the feature build's column discovery against `data/sample` and skip without it.
 All six kernels have been run end to end on the real competition data.
 
