@@ -86,6 +86,11 @@ It is a real but unspectacular gain, bought with hundreds of trees against a
 champion's own binning so the challenger could not exploit relationships the
 scorecard was forbidden.
 
+![Weekly Gini, champion vs challenger](docs/figures/weekly_gini.png)
+
+The challenger leads in 20 of the 23 test weeks, and both trend lines rise, which is
+why the stability metric's falling-slope penalty never engages.
+
 **How big is a margin worth believing here?** The scorecard is deterministic,
 but the challenger bags 80 % of rows per iteration by position, so the order
 of the feature frame changes its fit. Two full-data runs on identical features
