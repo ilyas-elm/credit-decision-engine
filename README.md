@@ -10,7 +10,7 @@ team evaluates models: out-of-time, on calibration, stability and profit.
 > artefact it came from committed under [`docs/`](docs). A few figures in the
 > closing sections are measured on the 3 % local sample or on synthetic data
 > instead, and say which. The badge is CI on a fresh clone: `uv sync --frozen`,
-> lint, and the 461 of its 465 tests that need no competition data, since none
+> lint, and the 462 of its 466 tests that need no competition data, since none
 > of that is committed. [MODEL.md](MODEL.md) is the model documentation.
 
 ## The three questions, answered
@@ -84,6 +84,19 @@ It is a real but unspectacular gain, bought with hundreds of trees against a
 13-characteristic scorecard, under monotone constraints taken from the
 champion's own binning so the challenger could not exploit relationships the
 scorecard was forbidden.
+
+**How big is a margin worth believing here?** The scorecard is deterministic,
+but the challenger bags 80 % of rows per iteration by position, so the order
+of the feature frame changes its fit. Two full-data runs on identical features
+— bit-identical scorecard output, only the row order between them — moved its
+per-case PD by up to 0.13 and its test metrics by 0.00446 Gini, 0.0000188
+Brier and 0.00020 of worst-week calibration. Each is close to a sixth of the
+corresponding margin above (6.2×, 6.8× and 6.6×), so the three thin verdicts
+in that table are the right way round, but Brier and worst-week calibration
+are won by a few times the noise rather than decisively. That is one
+perturbation and not a spread; read it as an order of magnitude. The row order
+is now sorted and the stage reproduces exactly, which is why the figure can be
+quoted at all.
 
 **The profit comparison is degenerate, and that is the finding.** A loan is
 profitable in expectation while `p(default) < roi / (roi + E[loss])`. At the
@@ -714,7 +727,7 @@ lazy with `collect(engine="streaming")` and the features land as Float32.
 | Feature screening + report | [`docs/feature_report.csv`](docs/feature_report.csv) | **done, full data** |
 | Sampling-bias experiment (arms A0-A6) | `src/sampling_bias.py` | **done, run on full data** |
 
-465 tests. The 461 CI runs need only generated fixtures; the other four check
+466 tests. The 462 CI runs need only generated fixtures; the other four check
 the feature build's column discovery against `data/sample` and skip without it.
 All six kernels have been run end to end on the real competition data.
 

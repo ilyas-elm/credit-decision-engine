@@ -1237,6 +1237,42 @@ def test_the_anomaly_reverses_at_higher_reject_rates(arms, readme) -> None:
     )
 
 
+#: What one row-order change does to the challenger, measured between two
+#: full-data runs whose scorecard output was bit-identical: metric -> (size of
+#: the perturbation, ratio the README quotes against the champion margin).
+ROW_ORDER_PERTURBATION = {
+    "gini": (0.00446056, 6.2),
+    "brier": (0.00001880, 6.8),
+    "citl_max_abs_gap": (0.00019759, 6.6),
+}
+
+
+def test_the_thin_margins_are_quoted_against_the_noise_that_moves_them(
+    comparison, readme
+) -> None:
+    """Brier is awarded to the challenger on 0.00013 and worst-week calibration
+    on 0.0013. Margins that small mean nothing without a scale, and the
+    challenger has one: it bags by row position, so the frame's order moves its
+    fit even on identical features.
+
+    If a later run changes any of these margins, the published ratios stop
+    being true and have to be re-derived rather than left standing.
+    """
+    collapsed = " ".join(readme.split())
+    for metric, (perturbation, published) in ROW_ORDER_PERTURBATION.items():
+        margin = abs(
+            float(comparison["lightgbm"][metric]) - float(comparison["scorecard"][metric])
+        )
+        ratio = margin / perturbation
+        assert round(ratio, 1) == published, (
+            f"{metric}: margin {margin:.6f} is now {ratio:.1f}x the row-order "
+            f"perturbation {perturbation}, not the {published}x the README quotes"
+        )
+        assert f"{published}\u00d7" in collapsed, f"the README must quote {published}x"
+    # And the caveat that keeps one perturbation from reading as a spread.
+    assert "That is one perturbation and not a spread" in collapsed
+
+
 def test_the_pooled_recovery_rows_disclose_what_they_pool(arms, readme) -> None:
     """A4 and A6 are means over variants and seeds; the other rows are single
     fits. Pooling is only safe where the pooled fits agree, and these two do
