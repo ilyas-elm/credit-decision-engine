@@ -134,13 +134,30 @@ def check_chain(
             continue
         for upstream in upstreams:
             up_run = _latest_run(runs_root, upstream)
-            up_record = read_provenance(up_run) if up_run else None
+            if up_run is None:
+                continue  # never run here: nothing to be stale against
+            up_record = read_provenance(up_run)
             if up_record is None:
+                # Reporting this is the whole point. With no fingerprint on the
+                # upstream there is nothing to compare, so the comparison is
+                # skipped, and a silent skip reads exactly like a pass: the
+                # check says "no stale stage found" having checked nothing.
+                problems.append(
+                    {
+                        "stage": stage,
+                        "run": run.name,
+                        "upstream": upstream,
+                        "upstream_run": up_run.name,
+                        "issue": "unverifiable: upstream recorded no provenance",
+                    }
+                )
                 continue
+            compared = False
             for name, current in (up_record.get("outputs") or {}).items():
                 consumed = (record.get("inputs") or {}).get(name)
                 if current is None or consumed is None:
                     continue
+                compared = True
                 if consumed["sha256"] != current["sha256"]:
                     problems.append(
                         {
@@ -154,4 +171,16 @@ def check_chain(
                             "current_sha256": current["sha256"],
                         }
                     )
+            if not compared:
+                # Both sides recorded provenance and still shared no key, so
+                # the dependency is declared but never actually checked.
+                problems.append(
+                    {
+                        "stage": stage,
+                        "run": run.name,
+                        "upstream": upstream,
+                        "upstream_run": up_run.name,
+                        "issue": "unverifiable: no shared file between the two records",
+                    }
+                )
     return problems

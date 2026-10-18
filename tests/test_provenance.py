@@ -184,3 +184,55 @@ def test_each_dependency_in_the_chain_is_actually_fingerprinted() -> None:
                     "between them can never be detected"
                 )
     assert not unchecked, "; ".join(unchecked)
+
+
+def test_an_upstream_without_provenance_is_reported_not_skipped(tmp_path) -> None:
+    """A comparison that cannot be made must not read as one that passed.
+
+    Neither features nor models carried provenance, so every comparison in
+    the real chain was skipped and check_chain still printed "no stale stage
+    found". Silence and success looked identical.
+    """
+    (tmp_path / "features" / "r1").mkdir(parents=True)
+    write_provenance(tmp_path / "models" / "r1", "models",
+                     inputs={"features": tmp_path / "features" / "r1"})
+    problems = check_chain(tmp_path, {"models": ["features"]})
+    assert any("unverifiable" in p["issue"] for p in problems), (
+        "an upstream with no provenance must be reported"
+    )
+    assert not any(p["issue"].startswith("stale") for p in problems)
+
+
+def test_records_that_share_no_file_are_reported(tmp_path) -> None:
+    """Both sides recorded provenance and still nothing was compared."""
+    upstream = tmp_path / "features" / "r1"
+    upstream.mkdir(parents=True)
+    (upstream / "out.txt").write_text("x")
+    write_provenance(upstream, "features", outputs={"features": upstream / "out.txt"})
+
+    downstream = tmp_path / "models" / "r1"
+    downstream.mkdir(parents=True)
+    (downstream / "other.txt").write_text("y")
+    write_provenance(downstream, "models", inputs={"something_else": downstream / "other.txt"})
+
+    problems = check_chain(tmp_path, {"models": ["features"]})
+    assert any("no shared file" in p["issue"] for p in problems)
+
+
+def test_a_genuine_mismatch_is_still_distinguished_from_unverifiable(tmp_path) -> None:
+    """The two outcomes must stay separable: one fails the check, one does not."""
+    upstream = tmp_path / "features" / "r1"
+    upstream.mkdir(parents=True)
+    target = upstream / "out.txt"
+    target.write_text("first")
+    write_provenance(upstream, "features", outputs={"features": target})
+
+    downstream = tmp_path / "models" / "r1"
+    downstream.mkdir(parents=True)
+    write_provenance(downstream, "models", inputs={"features": target})
+
+    assert not check_chain(tmp_path, {"models": ["features"]})
+    target.write_text("second")
+    write_provenance(upstream, "features", outputs={"features": target})
+    problems = check_chain(tmp_path, {"models": ["features"]})
+    assert [p["issue"] for p in problems] == ["stale: consumed a superseded upstream output"]

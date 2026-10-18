@@ -163,27 +163,25 @@ its recoveries are bounded by that.
 
 **Sampling bias is large; reject inference helps only under severe selection.**
 A lender measuring on its own approved book **understates its Gini by
-0.05-0.16**, consistently at every reject rate, through range restriction
-rather than any modelling fault. Reject inference is a different story: at a 10
-% reject rate almost nothing helps and the gap is only 0.011 Gini, while at 50
-% the gap is 0.135 and three arms recover most of it. The best performer on
-Gini is **A2, the crudest arm**, label every reject bad with no model and no
-weighting, which recovers 97 % at a 30 % reject rate. It does so while being
-wrong about 93 % of the rejects, and pays in calibration: its Brier is 6.6x the
-oracle's and it over-predicts the default rate by 15 percentage points, rising
-to 29 at a 50 % reject rate. **By this document's own standard that
-disqualifies it**, since those probabilities cannot feed a cutoff or a profit
-calculation; A3 recovers less and stays calibrated. A random-exploration budget
-was harmful everywhere, and on variance rather than price: net is negative at
-every budget and the damage runs 2-53x the cost.
+0.05-0.16** at every reject rate, through range restriction rather than any
+modelling fault. Reject inference is a different story: at a 10 % reject rate
+almost nothing helps and the gap is only 0.011 Gini, while at 50 % it is 0.135
+and three arms recover most of it. The best performer on Gini is **A2, the
+crudest arm**, which labels every reject bad and recovers 97 % at a 30 % reject
+rate while being wrong about 93 % of them. It pays in calibration: Brier 6.6x
+the oracle's, over-predicting by 15 percentage points. **By this document's own
+standard that disqualifies it**, since those probabilities cannot feed a
+cutoff; A3 recovers less and stays calibrated. A random-exploration budget was
+harmful as a training set, net negative at every budget with the damage running
+2-53x the cost, though it is correctly sized for measurement, which §7 returns
+to.
 
 This agrees in direction with Kozodoi et al. (2024, arXiv:2407.13009; EJOR
 324(2), 2025): reject inference has modest potential, fixing evaluation matters
-more, and gains rise as acceptance falls. A5 reproduces that direction but
-turns positive far earlier than their 20 % threshold, because the selection
-here is simulated on an already-booked population. The hidden labels belong to
-applicants the original lender approved, which is the easier problem, so **the
-recoveries reported here are an upper bound**. The README gives the comparison.
+more, gains rise as acceptance falls. A5 reproduces the direction but turns
+positive far earlier than their 20 % threshold, because the selection here is
+simulated on an already-booked population, which is the easier problem, so
+**the recoveries are an upper bound**.
 
 **EMP assumptions are assumptions**, and at the literature's values the profit
 analysis is degenerate (§4). Every profit number is reported across a grid.
@@ -198,37 +196,24 @@ while under-predicting men's (-0.0052). This is miscalibration by group, not a
 threshold artefact, and it runs against the lower-risk group. **Audit only, no
 mitigation**, as scoped.
 
-**By age the disparity is larger.** Applicants in their 60s are approved at
-25.4 % and those 70+ at 11.8 %, against 61-67 % for everyone younger, while
-being the safest groups in the book (1.2-1.3 % default against 4.5 % for the
-20s). The model predicts them as the riskiest, mean PD 3.7-3.8 % against a
-realised 1.2 %, so a roughly threefold over-prediction becomes an approval gap
-at the cutoff. Age is excluded from recourse, so those applicants are told why
-and offered nothing to do about it.
-
-**The mechanism is a proxy, and it is drift.** Age is not an input. The 60+
-cohort gives up 19.6 scorecard points net, 21.1 of them on the two
-income-derived characteristics. Income comes from the tax registry, which
-records employment payments, so 96.3 % of the over-60s have no income record
-against 8.2 % of everyone younger: the absence is a 93.2 %-accurate test for
-being over 60. The scorecard does not treat it as risky. Its Missing bin scores
-the neutral 45.1 points, matching a 3.05 % event rate against the train weeks'
-3.13 %, and the absence is not riskier anywhere in the data. The gap is that
-the bin is frozen at fit time while everyone else moved: applicants with an
-income record averaged 46.4 points on `afford_annuity_to_taxincome` at fit time
-and 61.7 by the test weeks. The over-60s were not marked down; the rest drifted
-past them. The README works through it.
-
-That failure generalises: a static Missing bin becomes a relative penalty
-whenever the scored population moves, which belongs in the monitoring plan
-below rather than in a threshold constraint. The durable fix is a pension and
-benefit income source, so retirees leave the Missing bin altogether.
-
-An earlier cause of the same disparity was a bug in the income column, fixed
-before these numbers were produced and recorded in the README. Fixing it lifted
-the champion from Gini 0.376 to 0.396 and stability 0.340 to 0.360, left the
-challenger unmoved, and raised approval for the 70+ group from 8.6 % to 11.8 %.
-Attributed and partly reduced, not removed.
+**By age the disparity is larger, and it is a drift artefact.** Applicants in
+their 60s are approved at 25.4 % and those 70+ at 11.8 %, against 61-67 % for
+everyone younger, while defaulting at 1.2-1.3 % against 4.5 % for the 20s. The
+model predicts them as the riskiest, a mean PD of 3.7-3.8 % against a realised
+1.2 %. Age is not an input: 96.3 % of the over-60s have no tax-registry income
+record against 8.2 % of everyone younger, so its absence is a 93.2 %-accurate
+test for being over 60, and the two income characteristics account for 21.1 of
+the 19.6 points they give up net. The scorecard does not treat that absence as
+risky, scoring it at the neutral middle, and it is not riskier anywhere in the
+data. The gap is that the bin is frozen at fit time while everyone with a value
+drifted into better ones. **That generalises**: a static Missing bin becomes a
+relative penalty whenever the scored population moves, which belongs in the
+monitoring plan below rather than in a threshold constraint. The durable fix is
+a pension and benefit income source. An earlier cause was an outright bug in
+the income column, fixed before these numbers: it lifted the champion from Gini
+0.376 to 0.396 and raised approval for the 70+ group from 8.6 % to 11.8 %.
+Attributed and partly reduced, not removed. The README works through the
+mechanism.
 
 ## 7. Monitoring plan
 
@@ -270,30 +255,24 @@ recalibration will not fix it: only a refit moves a bin's points, so a
 sustained gap there is a refit trigger rather than a recalibration one.
 
 **A caveat on that trigger, from §6.** In production, outcomes are observed
-only for approved loans, so calibration-in-the-large is computed on the
-accepted book. The sampling-bias experiment measures what that does, and it is
-not a small attenuation. At a 50 % rejection rate this model over-predicts the
-default rate by +0.0176 across the population while the gap visible on its own
-approved book is -0.0009: twenty times smaller and the opposite sign. Against
-the threshold above, the true gap fires and the observable one stays quiet. The
-accepted population is the one the model was fitted towards, which is exactly
-where its levels look right, and the discrepancy grows with the rejection rate.
+only for approved loans, so this is computed on the accepted book, where it is
+flattered. At a 50 % rejection rate the model over-predicts by +0.0176 across
+the population while the gap visible on its own book is -0.0009: twenty times
+smaller, the opposite sign, and against the threshold above the true gap fires
+while the observable one stays quiet. The trigger therefore goes decorative
+exactly as the policy rejects more.
 
-So this trigger is informative while the policy rejects little and becomes
-decorative as it rejects more, which is the opposite of when it is needed. Two
-things help and neither is free. The **approved bad rate** row is defined on
-the observable population, so it does not suffer this, though it moves for
-population reasons as well as model ones. And a random-approval sample restores
-the measurement directly. That is the one use for an exploration budget this
-project's own question 3 did not find net-negative: there it was priced as a
-way to improve *training* and it lost, while here it buys *measurement*. Sized
-against this threshold it is small, 424 explored loans at a 30 % rejection rate
-and 930 at 50 %, under 1.3 % of the rejects either way, for a realised loss of
-9 to 15 units. The README works it through.
+Two things help. The **approved bad rate** row is defined on the observable
+population, so it does not suffer this, though it moves for population reasons
+as well as model ones. And a random-approval sample restores the measurement
+directly: sized against this threshold it takes 424 explored loans at a 30 %
+rejection rate and 930 at 50 %, under 1.3 % of the rejects, for 9 to 15 units
+of realised loss. That is the one use for an exploration budget question 3 did
+not find net-negative, and the README works it through.
 
 ## 8. Reproducing
 
-`uv sync && uv run pytest`, 277 tests on synthetic fixtures; no competition
+`uv sync && uv run pytest`, 457 tests on synthetic fixtures; no competition
 data is committed and none is needed. Full-data results come from re-running
 the kernels in `kaggle/` from committed code: `make-sample`, `env-probe`,
 `features`, `models`, `sampling-bias`, `decision`.

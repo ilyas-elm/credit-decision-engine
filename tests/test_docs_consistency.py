@@ -652,6 +652,13 @@ def test_the_quoted_test_count_is_the_real_one(readme) -> None:
         f"'{collected} tests' {occurrences} times, expected 2 "
         "(the status note and the build table)"
     )
+    # MODEL.md quotes it too, in section 8, and was left at 277 while the
+    # README was kept current. One check, both documents.
+    model_doc = _text("MODEL.md")
+    assert f"{collected} tests" in model_doc, (
+        f"MODEL.md does not say '{collected} tests'; it quotes a count in "
+        "section 8 and that count has to be this one"
+    )
 
 
 def test_the_residual_sd_in_prose_matches_the_table(comparison, readme) -> None:
