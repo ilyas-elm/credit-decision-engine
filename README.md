@@ -10,7 +10,7 @@ team evaluates models: out-of-time, on calibration, stability and profit.
 > artefact it came from committed under [`docs/`](docs). A few figures in the
 > closing sections are measured on the 3 % local sample or on synthetic data
 > instead, and say which. The badge is CI on a fresh clone: `uv sync --frozen`,
-> lint, and the 460 of its 464 tests that need no competition data, since none
+> lint, and the 461 of its 465 tests that need no competition data, since none
 > of that is committed. [MODEL.md](MODEL.md) is the model documentation.
 
 ## The three questions, answered
@@ -433,6 +433,15 @@ Gini (it is, at every reject rate):
 | A5 self-learning | n/a | 0.13 | **0.52** | **0.63** |
 | A6 exploration | n/a | -3.07 | -2.24 | -1.55 |
 
+A2, A3 and A5 are deterministic, so those rows are single fits. A4 and A6 are
+means over their variants and seeds — A4 over two uplifts k and three seeds,
+A6 over three budgets p and three seeds — and the two pool very differently.
+A6 is negative in all 27 of its fits at every reject rate, so its row means
+what it says. **A4's sign is not determined below r=50 %**: its six fits span
+-0.33 to +0.62 at 20 % (four positive) and -0.33 to +0.09 at 30 % (two
+positive), against means of +0.13 and -0.14. Read A4 as "no reliable
+recovery", not as the number in the cell.
+
 The recovery table above is measured in Gini, which is the metric that cannot
 see what A2 does. Here is the same run with calibration beside it, at a 30 %
 reject rate:
@@ -459,7 +468,10 @@ make it worst.
 assert them: they recover the most ranking and multiply Brier by 6.6 and 2.8.
 A3 and A4 carry the uncertainty as a weight or a draw instead: they recover
 less and stay within 1.2 % of the oracle's Brier. Among the arms that a lender
-could actually deploy, **A3 is the one that recovers anything at all**.
+could actually deploy, **A3 is the one that recovers anything at all** — and
+at 30 % and 50 % reject rates it clears A4's entire seed spread, not just its
+mean. At 20 % it does not, so the ranking of the two weighting arms there is
+unresolved.
 
 Four things come out of this:
 
@@ -702,7 +714,7 @@ lazy with `collect(engine="streaming")` and the features land as Float32.
 | Feature screening + report | [`docs/feature_report.csv`](docs/feature_report.csv) | **done, full data** |
 | Sampling-bias experiment (arms A0-A6) | `src/sampling_bias.py` | **done, run on full data** |
 
-464 tests. The 460 CI runs need only generated fixtures; the other four check
+465 tests. The 461 CI runs need only generated fixtures; the other four check
 the feature build's column discovery against `data/sample` and skip without it.
 All six kernels have been run end to end on the real competition data.
 

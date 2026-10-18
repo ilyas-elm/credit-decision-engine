@@ -1237,6 +1237,61 @@ def test_the_anomaly_reverses_at_higher_reject_rates(arms, readme) -> None:
     )
 
 
+def test_the_pooled_recovery_rows_disclose_what_they_pool(arms, readme) -> None:
+    """A4 and A6 are means over variants and seeds; the other rows are single
+    fits. Pooling is only safe where the pooled fits agree, and these two do
+    not agree equally: A6 is unanimous, A4 changes sign.
+
+    The recovery cell for A4 at a 20 % reject rate reads +0.13 off six fits
+    spanning -0.33 to +0.62. Quoting it without the spread is the same mistake
+    as the one-draw control, so the README must carry the caveat.
+    """
+    collapsed = " ".join(readme.split())
+    rows = [r for r in arms if r["model"] == "lightgbm" and r["recovery_share"]]
+
+    def shares(prefix: str, rate: str) -> list[float]:
+        return [
+            float(r["recovery_share"])
+            for r in rows
+            if r["arm"].startswith(prefix) and r["reject_rate"] == rate
+        ]
+
+    # A6 is unanimous, which is what lets its row stand unqualified.
+    a6 = [v for rate in ("20", "30", "50") for v in shares("A6_exploration", rate)]
+    assert len(a6) == 27 and all(v < 0 for v in a6), (
+        f"the README says all 27 A6 fits are negative; got {len(a6)} fits, "
+        f"{sum(v >= 0 for v in a6)} of them non-negative"
+    )
+    assert "negative in all 27 of its fits" in collapsed
+
+    # A4 is not, and the README has to say so rather than quote the mean.
+    for rate, positives in (("20", 4), ("30", 2)):
+        a4 = shares("A4_parcelling", rate)
+        assert len(a4) == 6, f"expected 2 uplifts x 3 seeds at r={rate} %, got {len(a4)}"
+        assert sum(v > 0 for v in a4) == positives, (
+            f"A4 at r={rate} % now has {sum(v > 0 for v in a4)} positive fits of 6, "
+            f"not {positives}; the README quotes the count"
+        )
+    assert "A4's sign is not determined below r=50 %" in collapsed
+
+    # The deployable-arm conclusion, only at the rates where A3 clears A4
+    # outright rather than on the mean.
+    a3 = {r["reject_rate"]: float(r["recovery_share"]) for r in rows if r["arm"] == "A3_fuzzy"}
+    for rate in ("30", "50"):
+        assert a3[rate] > max(shares("A4_parcelling", rate)), (
+            f"A3 no longer clears A4's whole spread at r={rate} %, which is the "
+            "claim the README makes for 30 % and 50 %"
+        )
+    assert a3["20"] < max(shares("A4_parcelling", "20")), (
+        "A3 now clears A4's spread at 20 % too; the README calls that one "
+        "unresolved and should be updated"
+    )
+    assert (
+        "At 20 % it does not, so the ranking of the two weighting arms there is "
+        "unresolved" in collapsed
+    )
+
+
 @pytest.fixture(scope="module")
 def exploration() -> list[dict[str, str]]:
     with (DOCS / "sampling_bias_exploration.csv").open() as fh:
