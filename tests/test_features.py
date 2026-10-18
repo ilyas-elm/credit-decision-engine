@@ -677,3 +677,23 @@ def test_the_payment_month_and_year_columns_are_named_as_the_build_expects() -> 
     assert paths
     names = set(pl.scan_parquet(paths[0]).collect_schema().names())
     assert {"pmts_month_158T", "pmts_year_1139T"} <= names
+
+
+def test_the_feature_frame_is_written_in_a_deterministic_order(tmp_path) -> None:
+    """The artefact has to be byte-reproducible for provenance to mean anything.
+
+    The streaming group_by and joins in the build do not promise a row order
+    and do not give the same one twice. Two full-data runs produced frames
+    that compared equal after sorting and differed as written, so every
+    re-run looked like a change to the chain check. Nothing downstream cares
+    about the order, which is exactly why it can be pinned.
+    """
+    tables, _ = make_dataset(n_cases=400, n_weeks=12, seed=5)
+    write_dataset(tmp_path, tables)
+    first, _ = build_features(tmp_path, FeatureParams())
+    second, _ = build_features(tmp_path, FeatureParams())
+
+    assert first["case_id"].to_list() == sorted(first["case_id"].to_list()), (
+        "the frame must come out sorted by case_id"
+    )
+    assert first.equals(second), "two builds of the same input must be identical as written"

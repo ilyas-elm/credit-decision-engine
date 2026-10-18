@@ -572,7 +572,16 @@ def build_features(
             family_of[column] = family
         out = out.join(frame, on="case_id", how="left")
 
-    collected = out.collect(engine="streaming")
+    collected = out.collect(engine="streaming").sort("case_id")
+    # Sorted before anything else is done to it. The streaming group_by and
+    # joins above do not promise a row order, and they do not give the same
+    # one twice: two runs of this stage on identical input produced frames
+    # that compared equal after sorting but differed as written, so the
+    # parquet was never byte-reproducible. Nothing downstream depends on the
+    # order, since everything joins on case_id, but the provenance
+    # fingerprint is a content hash of the file, so an unstable order made
+    # every re-run look like a change and the chain check cry wolf.
+    #
     # float32 on every feature: halves the parquet and keeps /kaggle/working
     # inside its limit. Keys and target stay integral.
     feature_cols = [c for c in collected.columns if c not in ("case_id", "WEEK_NUM", "target")]
