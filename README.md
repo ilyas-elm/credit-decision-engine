@@ -10,7 +10,7 @@ team evaluates models: out-of-time, on calibration, stability and profit.
 > artefact it came from committed under [`docs/`](docs). A few figures in the
 > closing sections are measured on the 3 % local sample or on synthetic data
 > instead, and say which. The badge is CI on a fresh clone: `uv sync --frozen`,
-> lint, and the 399 of its 434 tests that need no competition data, since none
+> lint, and the 399 of its 443 tests that need no competition data, since none
 > of that is committed. [MODEL.md](MODEL.md) is the model documentation.
 
 ## The three questions, answered
@@ -443,6 +443,34 @@ Gini (it is, at every reject rate):
 | A5 self-learning | -1.08 | -0.23 | 0.60 | 0.89 |
 | A6 exploration | -2.61 | -5.63 | -3.90 | -1.06 |
 
+The recovery table above is measured in Gini, which is the metric that cannot
+see what A2 does. Here is the same run with calibration beside it, at a 30 %
+reject rate:
+
+| arm | Gini | Brier | calibration-in-the-large |
+|---|---|---|---|
+| A0 oracle | 0.4405 | 0.02148 | -0.0006 |
+| A1 accepts-only | 0.3998 | 0.02169 | -0.0029 |
+| A2 hard cutoff | **0.4393** | **0.14201** | **+0.1493** |
+| **A3 fuzzy** | **0.4071** | **0.02158** | **-0.0028** |
+| A4 parcelling | 0.3925 | 0.02167 | -0.0010 |
+| A5 self-learning | 0.4241 | 0.06071 | +0.0529 |
+| A6 exploration | 0.2410 | 0.02202 | -0.0074 |
+
+Two things fall out of that column.
+
+**Sampling bias damages ranking, not calibration.** Hiding the rejects' labels
+costs 0.041 Gini, a tenth of the oracle's, but only 0.0002 Brier, a hundredth.
+There is almost no calibration to recover, so every arm can only leave it alone
+or make it worse, and the ones that recover the most Gini are the ones that
+make it worst.
+
+**The split is between asserting and weighting.** A2 and A5 invent labels and
+assert them: they recover the most ranking and multiply Brier by 6.6 and 2.8.
+A3 and A4 carry the uncertainty as a weight or a draw instead: they recover
+less and stay within 1 % of the oracle's Brier. Among the arms that a lender
+could actually deploy, **A3 is the one that recovers anything at all**.
+
 Four things come out of this:
 
 1. **The crudest method wins on Gini, and only on Gini.** A2 simply labels
@@ -602,7 +630,7 @@ lazy with `collect(engine="streaming")` and the features land as Float32.
 | Feature screening + report | [`docs/feature_report.csv`](docs/feature_report.csv) | **done, full data** |
 | Sampling-bias experiment (arms A0-A6) | `src/sampling_bias.py` | **done, run on full data** |
 
-434 tests. The 399 CI runs need only generated fixtures; the other four check
+443 tests. The 399 CI runs need only generated fixtures; the other four check
 the feature build's column discovery against `data/sample` and skip without it.
 All six kernels have been run end to end on the real competition data.
 

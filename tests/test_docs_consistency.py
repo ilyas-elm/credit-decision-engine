@@ -1004,3 +1004,71 @@ def test_the_rejected_region_really_is_riskier(reject_truth, readme) -> None:
         f"the README says about four times riskier; lifts are {lifts}"
     )
     assert "four times riskier" in " ".join(readme.split())
+
+
+@pytest.mark.parametrize(
+    "arm",
+    [
+        "A0_oracle",
+        "A1_accepts_only",
+        "A2_hard_cutoff",
+        "A3_fuzzy",
+        "A4_parcelling",
+        "A5_self_learning",
+        "A6_exploration",
+    ],
+)
+def test_every_cell_of_the_calibration_table_matches_the_run(arms, readme, arm) -> None:
+    collapsed = " ".join(readme.split())
+    for column, spec in (("gini_full", ".4f"), ("brier_full", ".5f"), ("citl_gap_full", "+.4f")):
+        value = format(_arm_mean(arms, arm, "30", column), spec)
+        assert value in collapsed, f"README omits {arm} {column} = {value}"
+
+
+def test_sampling_bias_costs_ranking_rather_than_calibration(arms, readme) -> None:
+    """The claim the whole table is built around.
+
+    If hiding the rejects' labels ever started costing calibration too, the
+    README's framing, that there is almost nothing to recover there, stops
+    being true and the arms would have to be read differently.
+    """
+    gini_cost = _arm_mean(arms, "A0_oracle", "30", "gini_full") - _arm_mean(
+        arms, "A1_accepts_only", "30", "gini_full"
+    )
+    oracle_brier = _arm_mean(arms, "A0_oracle", "30", "brier_full")
+    brier_cost = _arm_mean(arms, "A1_accepts_only", "30", "brier_full") - oracle_brier
+    relative_gini = gini_cost / _arm_mean(arms, "A0_oracle", "30", "gini_full")
+    relative_brier = brier_cost / oracle_brier
+    # The README rounds these to "a tenth" and "a hundredth" of the oracle.
+    # Asserted as bands rather than a ratio, because a ratio of the two is
+    # brittle when the denominator is this small: it is 9.4 here, and a
+    # threshold of 10 would fail on prose that is accurate.
+    assert 0.05 <= relative_gini <= 0.15, (
+        f"ranking costs {relative_gini:.1%}, which the README rounds to a tenth"
+    )
+    assert 0.005 <= relative_brier <= 0.015, (
+        f"calibration costs {relative_brier:.1%}, which the README rounds to a hundredth"
+    )
+    assert "damages ranking, not calibration" in " ".join(readme.split())
+
+
+def test_asserting_arms_wreck_calibration_and_weighting_arms_do_not(arms, readme) -> None:
+    """The structural split the README draws, over the arms it names."""
+    oracle = _arm_mean(arms, "A0_oracle", "30", "brier_full")
+    for arm in ("A2_hard_cutoff", "A5_self_learning"):
+        ratio = _arm_mean(arms, arm, "30", "brier_full") / oracle
+        assert ratio > 2.0, f"{arm} asserts labels and should wreck Brier; it is {ratio:.1f}x"
+    for arm in ("A3_fuzzy", "A4_parcelling"):
+        ratio = _arm_mean(arms, arm, "30", "brier_full") / oracle
+        assert abs(ratio - 1.0) < 0.01, (
+            f"{arm} carries uncertainty as weight and should stay within 1 % of the "
+            f"oracle's Brier; it is {ratio:.3f}x"
+        )
+    # And A3 must be the best-ranking arm among those that keep calibration.
+    keepers = {
+        arm: _arm_mean(arms, arm, "30", "gini_full")
+        for arm in ("A3_fuzzy", "A4_parcelling", "A6_exploration")
+    }
+    assert max(keepers, key=keepers.get) == "A3_fuzzy", (
+        f"the README names A3 as the deployable arm that recovers most; got {keepers}"
+    )
