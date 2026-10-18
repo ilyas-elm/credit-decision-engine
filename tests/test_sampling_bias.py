@@ -19,6 +19,7 @@ from sampling_bias import (
     evaluation_bias,
     exploration_budget_for_detection,
     exploration_cost,
+    exploration_economics,
     fit_plan,
     make_scenario,
     recovery_share,
@@ -567,3 +568,58 @@ def test_a_shorter_seed_tuple_still_plans_one_scorecard_fit() -> None:
     plan = fit_plan(params, arm_specs(params, reject_pd=None, accepted_pd=None))
     assert {seed for _, _, seed, _ in plan} == {7}
     assert sum(len(models) for *_, models in plan) == 20
+
+
+# --- exploration economics --------------------------------------------------
+
+
+def _arms_frame(a1_lightgbm_profits: list[float]) -> pd.DataFrame:
+    """A1 at one or several LightGBM seeds, the scorecard once, A6 at p=1."""
+    rows = [
+        {"reject_rate": 30, "arm": "A1_accepts_only", "base_arm": "A1_accepts_only",
+         "model": "lightgbm", "seed": seed, "profit_full": profit}
+        for seed, profit in enumerate(a1_lightgbm_profits)
+    ]
+    rows.append({"reject_rate": 30, "arm": "A1_accepts_only", "base_arm": "A1_accepts_only",
+                 "model": "scorecard", "seed": 0, "profit_full": 50.0})
+    for seed, profit in enumerate([90.0, 95.0, 100.0]):
+        for model, offset in (("lightgbm", 0.0), ("scorecard", -40.0)):
+            rows.append({"reject_rate": 30, "arm": "A6_exploration_p1",
+                         "base_arm": "A6_exploration", "model": model, "seed": seed,
+                         "profit_full": profit + offset})
+    return pd.DataFrame(rows)
+
+
+def _explore_frame() -> pd.DataFrame:
+    return pd.DataFrame(
+        {"reject_rate": [30, 30, 30], "explore_pct": [1, 1, 1], "seed": [0, 1, 2],
+         "realised_loss_cost": [10.0, 10.0, 10.0]}
+    )
+
+
+def test_exploration_gain_survives_a_baseline_fitted_at_several_seeds() -> None:
+    """The case that killed a full Kaggle run after the grid had finished.
+
+    With A1 at three LightGBM seeds, a baseline indexed by reject rate alone
+    returned a Series, every gain became one, and the next mean raised.
+    """
+    out = exploration_economics(_arms_frame([100.0, 110.0, 120.0]), _explore_frame())
+    gains = out["profit_gain_vs_A1_lightgbm"]
+    assert gains.dtype == float, f"gains are {gains.dtype}, not plain floats"
+    # Against the MEAN baseline of 110: 90-110, 95-110, 100-110.
+    assert gains.tolist() == [-20.0, -15.0, -10.0]
+    assert out["net_vs_A1_lightgbm"].tolist() == [-30.0, -25.0, -20.0]
+    out.groupby(["reject_rate", "explore_pct"])["net_vs_A1_lightgbm"].mean()
+
+
+def test_a_single_seed_baseline_gives_the_same_answer_as_before() -> None:
+    """The scorecard still runs A1 once; that path must be unchanged."""
+    out = exploration_economics(_arms_frame([110.0]), _explore_frame())
+    assert out["profit_gain_vs_A1_scorecard"].tolist() == [0.0, 5.0, 10.0]
+
+
+def test_a_duplicated_a6_fit_is_an_error_not_a_silent_series() -> None:
+    arms = _arms_frame([100.0])
+    dup = arms[arms["base_arm"] == "A6_exploration"].iloc[[0]]
+    with pytest.raises(ValueError, match="more than one fit"):
+        exploration_economics(pd.concat([arms, dup]), _explore_frame())

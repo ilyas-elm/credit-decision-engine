@@ -98,6 +98,7 @@ def main() -> None:
         build_arm,
         evaluation_bias,
         exploration_cost,
+        exploration_economics,
         fit_plan,
         make_scenario,
         recovery_share,
@@ -355,28 +356,7 @@ def main() -> None:
     # Exploration economics: what the budget BOUGHT, against what it cost.
     explore = pd.DataFrame(exploration_rows)
     if not explore.empty:
-        for model_type in ("lightgbm", "scorecard"):
-            base_profit = arms[
-                (arms.model == model_type) & (arms.base_arm == "A1_accepts_only")
-            ].set_index("reject_rate")["profit_full"]
-            arm_profit = arms[
-                (arms.model == model_type) & (arms.base_arm == "A6_exploration")
-            ].set_index(["reject_rate", "arm", "seed"])["profit_full"]
-            # itertuples, not iterrows: iterrows coerces each row to a single
-            # dtype, which turned explore_pct 1 into 1.0 and built the key
-            # "A6_exploration_p1.0", matching nothing and yielding silent NaN.
-            gains = [
-                arm_profit.get(
-                    (int(r.reject_rate), f"A6_exploration_p{int(r.explore_pct)}", int(r.seed)),
-                    float("nan"),
-                )
-                - base_profit.get(int(r.reject_rate), float("nan"))
-                for r in explore.itertuples()
-            ]
-            explore[f"profit_gain_vs_A1_{model_type}"] = gains
-            explore[f"net_vs_A1_{model_type}"] = (
-                explore[f"profit_gain_vs_A1_{model_type}"] - explore["realised_loss_cost"]
-            )
+        explore = exploration_economics(arms, explore)
         print("\n=== EXPLORATION ECONOMICS: gain vs cost (mean over seeds) ===", flush=True)
         print(
             explore.groupby(["reject_rate", "explore_pct"])[

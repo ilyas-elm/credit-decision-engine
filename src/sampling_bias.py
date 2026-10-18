@@ -59,6 +59,7 @@ __all__ = [
     "exploration_cost",
     "exploration_budget_for_detection",
     "arm_specs",
+    "exploration_economics",
     "fit_plan",
     "DRAWING_ARMS",
 ]
@@ -633,6 +634,47 @@ def evaluation_bias(
             else float("nan")
         ),
     }
+
+
+def exploration_economics(arms: pd.DataFrame, explore: pd.DataFrame) -> pd.DataFrame:
+    """Profit each exploration draw bought, against what it cost.
+
+    ``arms`` is the per-fit results table; ``explore`` has one row per
+    (reject_rate, explore_pct, seed) with its ``realised_loss_cost``. Adds, per
+    model, the A6 fit's profit minus the accepts-only baseline, and that gain
+    net of the realised loss.
+
+    The baseline is A1's profit AVERAGED over its seeds, per reject rate. It
+    was indexed by reject rate alone, which worked only while A1 ran once:
+    given three LightGBM seeds, the lookup returned a Series, every gain became
+    a Series, and the stage died on the next ``mean`` -- after the whole grid
+    had run. Averaging matches the recovery denominator, so each A6 seed's gain
+    carries A6's own spread rather than A1's.
+    """
+    out = explore.copy()
+    for model_type in ("lightgbm", "scorecard"):
+        mine = arms[arms["model"] == model_type]
+        base = mine[mine["base_arm"] == "A1_accepts_only"].groupby("reject_rate")[
+            "profit_full"
+        ].mean()
+        a6 = mine[mine["base_arm"] == "A6_exploration"]
+        if a6.duplicated(["reject_rate", "arm", "seed"]).any():
+            raise ValueError("A6 has more than one fit per (reject_rate, arm, seed)")
+        a6_profit = a6.set_index(["reject_rate", "arm", "seed"])["profit_full"]
+        gains = []
+        # itertuples, not iterrows: iterrows coerces each row to a single
+        # dtype, which turned explore_pct 1 into 1.0 and built the key
+        # "A6_exploration_p1.0", matching nothing and yielding silent NaN.
+        for r in out.itertuples():
+            key = (int(r.reject_rate), f"A6_exploration_p{int(r.explore_pct)}", int(r.seed))
+            gains.append(
+                float(a6_profit.get(key, np.nan)) - float(base.get(int(r.reject_rate), np.nan))
+            )
+        out[f"profit_gain_vs_A1_{model_type}"] = gains
+        out[f"net_vs_A1_{model_type}"] = out[f"profit_gain_vs_A1_{model_type}"] - out[
+            "realised_loss_cost"
+        ]
+    return out
 
 
 def exploration_cost(
