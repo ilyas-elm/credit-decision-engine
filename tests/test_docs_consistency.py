@@ -847,3 +847,158 @@ def test_the_advantage_shrinks_as_the_cutoff_loosens(ranking, readme) -> None:
     collapsed = " ".join(readme.split())
     assert f"{lift[0]:.1f} %" in collapsed or f"{lift[0]:.1f}%" in collapsed
     assert f"{lift[-1]:.1f} %" in collapsed or f"{lift[-1]:.1f}%" in collapsed
+
+
+# --- What A2 actually buys -----------------------------------------------
+#
+# The write-up used to explain A2's win by its label being roughly right. It
+# is wrong about most rejects, and what A2 really trades is calibration for
+# ranking. These pin the corrected explanation, because it is the project's
+# own question-1 standard applied to its own question-3 headline.
+
+
+def _arm_mean(arms, arm, reject_rate, column, model="lightgbm"):
+    values = [
+        float(r[column])
+        for r in arms
+        if r["model"] == model and r["base_arm"] == arm and r["reject_rate"] == reject_rate
+    ]
+    assert values, f"no {model} rows for {arm} at r={reject_rate}"
+    return sum(values) / len(values)
+
+
+def test_a2_recovers_ranking_while_wrecking_calibration(arms, readme) -> None:
+    oracle_brier = _arm_mean(arms, "A0_oracle", "30", "brier_full")
+    a2_brier = _arm_mean(arms, "A2_hard_cutoff", "30", "brier_full")
+    a2_gini = _arm_mean(arms, "A2_hard_cutoff", "30", "gini_full")
+    oracle_gini = _arm_mean(arms, "A0_oracle", "30", "gini_full")
+
+    assert a2_gini > 0.95 * oracle_gini, "A2 is supposed to nearly match the oracle's ranking"
+    ratio = a2_brier / oracle_brier
+    collapsed = " ".join(readme.split())
+    assert f"{ratio:.1f}×" in collapsed or f"{ratio:.1f}x" in collapsed, (
+        f"README must say A2's Brier is {ratio:.1f}x the oracle's"
+    )
+    assert f"{a2_brier:.3f}" in collapsed and f"{oracle_brier:.4f}" in collapsed
+
+
+def test_a2_over_predicts_by_the_quoted_margin(arms, readme) -> None:
+    collapsed = " ".join(readme.split())
+    for reject_rate, phrase in (("30", "15 percentage"), ("50", "29 points")):
+        citl = _arm_mean(arms, "A2_hard_cutoff", reject_rate, "citl_gap_full")
+        assert citl > 0, f"A2 should over-predict at r={reject_rate}, got {citl}"
+        assert round(citl * 100) == int(phrase.split()[0]), (
+            f"A2 over-predicts by {citl * 100:.0f} points at r={reject_rate}, "
+            f"README says {phrase}"
+        )
+
+
+def test_a3_is_the_calibrated_alternative_the_readme_recommends(arms, readme) -> None:
+    """The README points a lender at A3 instead. It has to still be true."""
+    oracle = _arm_mean(arms, "A0_oracle", "30", "brier_full")
+    a3 = _arm_mean(arms, "A3_fuzzy", "30", "brier_full")
+    a2 = _arm_mean(arms, "A2_hard_cutoff", "30", "brier_full")
+    assert a3 < a2, "A3 must be better calibrated than A2 for the recommendation to hold"
+    assert abs(a3 / oracle - 1) < 0.005, (
+        f"README says A3 is within 0.5 % of the oracle's Brier; it is {a3 / oracle - 1:+.2%}"
+    )
+    assert f"{a3:.5f}" in " ".join(readme.split())
+
+
+def test_accept_only_calibration_looks_better_than_it_is(arms, readme) -> None:
+    """The mirror of the Gini bias, and the reason it is worth reporting.
+
+    Gini on accepts is pessimistic, so a lender errs towards caution.
+    Calibration on accepts is flattering, so it does not. If a rerun ever
+    reverses that, the README's warning stops being true.
+    """
+    collapsed = " ".join(readme.split())
+    for reject_rate in ("10", "20", "30", "50"):
+        rows = [
+            r for r in arms if r["model"] == "scorecard" and r["reject_rate"] == reject_rate
+        ]
+        assert rows
+        full = sum(float(r["citl_gap_full"]) for r in rows) / len(rows)
+        accepted = sum(float(r["citl_gap_accepted_only"]) for r in rows) / len(rows)
+        assert abs(accepted) < abs(full), (
+            f"at r={reject_rate} the accepts-only calibration gap ({accepted:+.4f}) is "
+            f"not smaller than the true one ({full:+.4f}); the README says the "
+            "lender's own book flatters it"
+        )
+        assert f"{full:+.4f}" in collapsed, f"README omits the true gap at r={reject_rate}"
+        assert f"{accepted:+.4f}" in collapsed, f"README omits the accepts gap at r={reject_rate}"
+
+
+def test_the_two_evaluation_biases_point_opposite_ways(arms, readme) -> None:
+    """Gini understated, calibration overstated. The README leans on the contrast."""
+    rows = [r for r in arms if r["model"] == "scorecard" and r["reject_rate"] == "50"]
+    gini_bias = sum(float(r["evaluation_bias"]) for r in rows) / len(rows)
+    full = sum(float(r["citl_gap_full"]) for r in rows) / len(rows)
+    accepted = sum(float(r["citl_gap_accepted_only"]) for r in rows) / len(rows)
+    assert gini_bias < 0, "accepts-only must understate Gini"
+    assert full > 0 > accepted, (
+        "the model must over-predict on everyone while looking unbiased on accepts"
+    )
+    assert "opposite direction" in " ".join(readme.split())
+
+
+def test_the_monitoring_caveat_matches_the_threshold_it_qualifies(arms, model_doc) -> None:
+    """The plan's recalibration trigger is measured where it is flattered.
+
+    MODEL section 7 says the true gap fires its own threshold while the gap a
+    lender can observe stays quiet. Both halves have to keep holding, since
+    the caveat is the reason the trigger is not taken at face value.
+    """
+    rows = [r for r in arms if r["model"] == "scorecard" and r["reject_rate"] == "50"]
+    assert rows
+    full = sum(float(r["citl_gap_full"]) for r in rows) / len(rows)
+    accepted = sum(float(r["citl_gap_accepted_only"]) for r in rows) / len(rows)
+
+    # The threshold the plan sets for investigation.
+    plan = model_doc[model_doc.index("## 7. Monitoring plan") :]
+    assert "> 0.010" in plan, "the investigate threshold moved; the caveat quotes it"
+    assert abs(full) > 0.010, "the true gap must breach the threshold for the point to stand"
+    assert abs(accepted) < 0.010, "the observable gap must not breach it"
+    assert full > 0 > accepted, "the two must differ in sign, which the caveat states"
+    assert f"{full:+.4f}" in plan and f"{accepted:+.4f}" in plan
+    assert round(abs(full / accepted)) == 20, (
+        f"the caveat says twenty times; it is {abs(full / accepted):.0f}"
+    )
+
+
+@pytest.fixture(scope="module")
+def reject_truth() -> list[dict[str, float]]:
+    with (DOCS / "reject_truth.csv").open() as fh:
+        return [{k: float(v) for k, v in row.items()} for row in csv.DictReader(fh)]
+
+
+def test_a2s_label_is_wrong_about_most_rejects(reject_truth, readme) -> None:
+    """The measurement that replaced "close enough to true".
+
+    If a rerun ever made the rejects mostly bad, A2's label would genuinely be
+    roughly right and the explanation in the README would need reverting, not
+    just rewording.
+    """
+    at_30 = next(r for r in reject_truth if r["reject_rate"] == 30)
+    assert at_30["bad_rate_rejected"] < 0.5, (
+        "the README's point is that A2 is wrong about most rejects; they are "
+        f"now {at_30['bad_rate_rejected']:.1%} bad"
+    )
+    collapsed = " ".join(readme.split())
+    assert f"{at_30['bad_rate_rejected']:.1%}".replace("%", " %") in collapsed
+    assert f"{at_30['bad_rate_accepted']:.1%}".replace("%", " %") in collapsed
+    assert f"{at_30['share_of_rejects_actually_good']:.0%}".replace("%", " %") in collapsed
+
+
+def test_the_rejected_region_really_is_riskier(reject_truth, readme) -> None:
+    """What A2 does get right, and the reason it works at all."""
+    for row in reject_truth:
+        assert row["lift"] > 1.0, (
+            f"at r={row['reject_rate']} the rejects are not riskier, so the "
+            "direction A2 asserts would be wrong too"
+        )
+    lifts = [r["lift"] for r in reject_truth]
+    assert min(lifts) >= 3.5 and max(lifts) <= 4.5, (
+        f"the README says about four times riskier; lifts are {lifts}"
+    )
+    assert "four times riskier" in " ".join(readme.split())

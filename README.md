@@ -10,7 +10,7 @@ team evaluates models: out-of-time, on calibration, stability and profit.
 > artefact it came from committed under [`docs/`](docs). A few figures in the
 > closing sections are measured on the 3 % local sample or on synthetic data
 > instead, and say which. The badge is CI on a fresh clone: `uv sync --frozen`,
-> lint, and the 399 of its 426 tests that need no competition data, since none
+> lint, and the 399 of its 434 tests that need no competition data, since none
 > of that is committed. [MODEL.md](MODEL.md) is the model documentation.
 
 ## The three questions, answered
@@ -37,9 +37,11 @@ default class 0.747 against a 0.90 target, misses in all 23 test weeks, refers
 would its validation be, and which fix recovers the most per unit of cost:
 reject inference, or a small random-approval (exploration) budget?** Its own
 book understates Gini by 0.05 to 0.16, at every reject rate and always in the
-same direction. Of the fixes, the crudest reject-inference arm wins, labelling
-every reject bad recovers 97 % of the lost signal at a 30 % reject rate, while
-a random-approval budget is net negative at every setting tested, on variance
+same direction. Of the fixes, the crudest reject-inference arm wins *on Gini*,
+labelling every reject bad recovers 97 % of the lost signal at a 30 % reject
+rate, but it is wrong about 93 % of those rejects and wrecks calibration doing
+it, so by this project's own standard it is not the one to adopt. A
+random-approval budget is net negative at every setting tested, on variance
 rather than price. Fixing the evaluation matters more than fixing the training,
 which is what Kozodoi et al. (2024) also conclude.
 [Detail](#question-3-sampling-bias).
@@ -376,7 +378,7 @@ recalibration moves levels and only a refit moves a bin's points.
 
 ## Question 3: sampling bias
 
-Kernel `ilyaselmaazouzi/hc-sampling-bias`: 160 fits, 17.6 min
+Kernel `ilyaselmaazouzi/hc-sampling-bias`: 160 fits, 18.8 min
 ([`sampling_bias_summary.json`](docs/sampling_bias_summary.json)). Policy weeks
 0-22, development 23-63 (labels hidden for the rejected), test 64-91 with every
 label. 150k development cases per arm, identical features and fixed
@@ -403,6 +405,31 @@ points**, range restriction, not a modelling fault. The scorecard is hurt
 roughly twice as badly as the challenger, and its bias grows steadily with the
 reject rate while the challenger's does not.
 
+**Calibration is distorted too, in the opposite direction, which is worse.**
+Gini measured on accepts is pessimistic, so a lender at least errs towards
+caution. Calibration measured on accepts is *flattering*:
+
+| scorecard, calibration-in-the-large | 10 % | 20 % | 30 % | 50 % |
+|---|---|---|---|---|
+| on everyone (the truth) | +0.0026 | +0.0047 | +0.0082 | **+0.0176** |
+| on its own approved book | -0.0012 | -0.0017 | -0.0018 | **-0.0009** |
+
+At a 50 % reject rate the model over-predicts the default rate by 1.8
+percentage points across the population, and a lender checking its own book
+would see a gap of one tenth of that and conclude the model was well
+calibrated. The accepted population is the one the model was fitted towards, so
+it is exactly where the levels look right. The error is invisible from inside
+and grows with the reject rate: the more a policy rejects, the more reassuring
+and the more wrong its own calibration check becomes.
+
+That is the same lesson as the Gini bias and a sharper version of it. The usual
+monitoring response, "ranking has drifted but calibration is fine, so
+recalibrate rather than refit", is precisely the conclusion this artefact
+produces, and on the full population it is false. It lands on this project's
+own monitoring plan, which triggers recalibration from exactly this signal:
+[MODEL.md](MODEL.md) §7 now carries the caveat, because at a 50 % rejection
+rate the true gap breaches its threshold while the observable one stays quiet.
+
 ### Which fix recovers the most?
 
 Share of the A0 - A1 gap recovered, LightGBM, where that gap is at least 0.01
@@ -418,11 +445,30 @@ Gini (it is, at every reject rate):
 
 Four things come out of this:
 
-1. **The crudest method wins.** A2 simply labels every reject bad, no model, no
-   weighting, no uncertainty, and it recovers 97 % of the lost signal at a 30 %
-   reject rate. The more elaborate arms do not beat it. When a policy rejects
-   the worst 30 % by score, "these were bad" turns out to be close enough to
-   true to be worth asserting.
+1. **The crudest method wins on Gini, and only on Gini.** A2 simply labels
+   every reject bad, no model, no weighting, no uncertainty, and it recovers
+   97 % of the lost signal at a 30 % reject rate. The more elaborate arms do
+   not beat it. The obvious explanation would be that the label is roughly
+   right, and it is not: at a 30 % reject rate the rejects default at 7.3 %
+   against 1.9 % among accepts, so A2 is wrong about **93 % of them**
+   ([`reject_truth.csv`](docs/reject_truth.csv)).
+
+   What A2 gets right is the *direction*. The rejected region really is about
+   four times riskier, and asserting that crudely is enough to restore the
+   ranking. It pays for it in calibration, which the recovery metric cannot
+   see: at that same reject rate A2's Brier is **6.6× the oracle's** (0.142
+   against 0.0215) and it **over-predicts the default rate by 15 percentage
+   points**. At a 50 % reject rate it is 12.6× and 29 points. The arm that
+   wins question 3 produces probabilities this project's own cutoff and
+   profit machinery could not use at all.
+
+   That is question 1's thesis turned on this project's own result. The
+   headline is measured in Gini, and by the standard the rest of the repo
+   argues for, stability and calibration and profit rather than AUC alone, A2
+   is not the arm to adopt. **A3 fuzzy recovers less signal and stays
+   calibrated** (Brier 0.02158, within 0.5 % of the oracle), which is the
+   trade a lender would actually be making.
+
 2. **Severity matters more than method.** At a 10 % reject rate almost nothing
    helps and the gap is only 0.011 Gini to begin with. By 50 % the gap is 0.135
    and three arms recover most of it.
@@ -525,6 +571,7 @@ not. Every number quoted above is committed:
 | [`referral_economics.csv`](docs/referral_economics.csv) | share referred against loss avoided, by review cost |
 | [`decide_examples.json`](docs/decide_examples.json) | `decide()` output on real applicants, no identifiers |
 | [`sampling_bias_arms.csv`](docs/sampling_bias_arms.csv) | every arm, reject rate, seed and model |
+| [`reject_truth.csv`](docs/reject_truth.csv) | what is actually true of the rejects A2 labels bad |
 | [`sampling_bias_exploration.csv`](docs/sampling_bias_exploration.csv) | exploration cost against profit gain, per p |
 
 Memory, measured rather than assumed: the features stage on the 3% local sample
@@ -555,7 +602,7 @@ lazy with `collect(engine="streaming")` and the features land as Float32.
 | Feature screening + report | [`docs/feature_report.csv`](docs/feature_report.csv) | **done, full data** |
 | Sampling-bias experiment (arms A0-A6) | `src/sampling_bias.py` | **done, run on full data** |
 
-426 tests. The 399 CI runs need only generated fixtures; the other four check
+434 tests. The 399 CI runs need only generated fixtures; the other four check
 the feature build's column discovery against `data/sample` and skip without it.
 All six kernels have been run end to end on the real competition data.
 

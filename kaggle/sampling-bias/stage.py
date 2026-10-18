@@ -192,7 +192,7 @@ def main() -> None:
         return sc.predict_pd(X_te[chosen])
 
     dev_full = features.filter(pl.col("window") == "dev")
-    rows, exploration_rows = [], []
+    rows, exploration_rows, reject_truth_rows = [], [], []
 
     for reject_rate in params.reject_rates:
         scen_all = make_scenario(
@@ -217,6 +217,32 @@ def main() -> None:
         print(
             f"\n[sb] === reject rate {reject_rate}% : {n_sub:,} dev cases, "
             f"{scen.n_rejected:,} rejected ===",
+            flush=True,
+        )
+
+        # What is actually true of the rejects, which A2 asserts is "all bad".
+        # Recorded because the write-up explains A2's success by that label
+        # being roughly right, and nothing else in the output says whether it
+        # is. These are the hidden labels used for measurement only; no arm
+        # sees them except A0.
+        truth = scen.oracle_labels()
+        accepted_bad = float(truth[scen.accepted].mean())
+        rejected_bad = float(truth[scen.rejected].mean())
+        reject_truth_rows.append(
+            {
+                "reject_rate": reject_rate,
+                "n_accepted": int(scen.accepted.sum()),
+                "n_rejected": int(scen.n_rejected),
+                "bad_rate_accepted": accepted_bad,
+                "bad_rate_rejected": rejected_bad,
+                "lift": rejected_bad / accepted_bad if accepted_bad else float("nan"),
+                "share_of_rejects_actually_good": 1.0 - rejected_bad,
+            }
+        )
+        print(
+            f"[sb] rejects default at {rejected_bad:.3%} against {accepted_bad:.3%} "
+            f"among accepts ({rejected_bad / accepted_bad:.1f}x), so A2's label is "
+            f"wrong for {1 - rejected_bad:.1%} of them",
             flush=True,
         )
 
@@ -382,6 +408,9 @@ def main() -> None:
             flush=True,
         )
     explore.to_csv(OUTPUT / "exploration.csv", index=False)
+    pd.DataFrame(reject_truth_rows).to_csv(
+        OUTPUT / "reject_truth.csv", index=False
+    )
 
     print("\n=== RAW Gini on the full test population (mean over seeds) ===", flush=True)
     raw = (

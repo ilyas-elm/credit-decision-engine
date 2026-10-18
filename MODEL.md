@@ -166,12 +166,16 @@ A lender measuring on its own approved book **understates its Gini by
 0.05-0.16**, consistently at every reject rate, through range restriction
 rather than any modelling fault. Reject inference is a different story: at a 10
 % reject rate almost nothing helps and the gap is only 0.011 Gini, while at 50
-% the gap is 0.135 and three arms recover most of it. The best performer is
-**A2, the crudest arm**, label every reject bad with no model and no weighting,
-which recovers 97 % at a 30 % reject rate and is not beaten by any more
-elaborate method. A random-exploration budget was harmful everywhere, and on
-variance rather than price: net is negative at every budget and the damage runs
-2-53x the cost.
+% the gap is 0.135 and three arms recover most of it. The best performer on
+Gini is **A2, the crudest arm**, label every reject bad with no model and no
+weighting, which recovers 97 % at a 30 % reject rate. It does so while being
+wrong about 93 % of the rejects, and pays in calibration: its Brier is 6.6x the
+oracle's and it over-predicts the default rate by 15 percentage points, rising
+to 29 at a 50 % reject rate. **By this document's own standard that
+disqualifies it**, since those probabilities cannot feed a cutoff or a profit
+calculation; A3 recovers less and stays calibrated. A random-exploration budget
+was harmful everywhere, and on variance rather than price: net is negative at
+every budget and the damage runs 2-53x the cost.
 
 This agrees in direction with Kozodoi et al. (2024, arXiv:2407.13009; EJOR
 324(2), 2025): reject inference has modest potential, fixing evaluation matters
@@ -261,9 +265,29 @@ thresholds sit above the current level for the same reason the PSI ones do.
 
 Recalibration should be triggered by the calibration-in-the-large signal rather
 than by Gini: the model's ranking is more durable than its levels, which is
-what the drift evidence shows. This signal is different, and recalibration will
-not fix it: only a refit moves a bin's points, so a sustained Missing-bin gap
-is a refit trigger rather than a recalibration one.
+what the drift evidence shows. The Missing-bin signal is different, and
+recalibration will not fix it: only a refit moves a bin's points, so a
+sustained gap there is a refit trigger rather than a recalibration one.
+
+**A caveat on that trigger, from §6.** In production, outcomes are observed
+only for approved loans, so calibration-in-the-large is computed on the
+accepted book. The sampling-bias experiment measures what that does, and it is
+not a small attenuation. At a 50 % rejection rate this model over-predicts the
+default rate by +0.0176 across the population while the gap visible on its own
+approved book is -0.0009: twenty times smaller and the opposite sign. Against
+the threshold above, the true gap fires and the observable one stays quiet. The
+accepted population is the one the model was fitted towards, which is exactly
+where its levels look right, and the discrepancy grows with the rejection rate.
+
+So this trigger is informative while the policy rejects little and becomes
+decorative as it rejects more, which is the opposite of when it is needed. Two
+things help and neither is free. The **approved bad rate** row is defined on
+the observable population, so it does not suffer this, though it moves for
+population reasons as well as model ones. And a random-approval sample would
+restore the measurement directly, which is the one use for an exploration
+budget this project's own question 3 did not find net-negative: there it was
+priced as a way to improve *training*, and it lost; here it would be buying
+*measurement*, which is the thing that experiment concluded was worth more.
 
 ## 8. Reproducing
 
