@@ -204,7 +204,7 @@ approved. Between them the band refers nobody at all. So 11.1 % at α = 0.26 and
 desk sized on referral volume alone could pick the second, where the coverage
 it was buying has fallen to 0.329.
 
-![What α buys](docs/figures/alpha_sweep.png)
+The full sweep is plotted in [`alpha_sweep.png`](docs/figures/alpha_sweep.png).
 
 ### Where the cutoff sits
 
@@ -232,7 +232,6 @@ avoided (assuming a *perfect* reviewer, an upper bound, not an estimate),
 100,034 reviews cost 1,000 at 0.01 and 2,001 at 0.02, which turns net
 benefit from +931 to -70.
 
-![Referral economics](docs/figures/referral_economics.png)
 
 Also: [the strategy curve](docs/figures/strategy_curve.png), approval rate
 against bad rate and profit.
