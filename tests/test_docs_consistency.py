@@ -933,12 +933,7 @@ def test_accept_only_calibration_looks_better_than_it_is(arms, readme) -> None:
     """
     collapsed = " ".join(readme.split())
     for reject_rate in ("10", "20", "30", "50"):
-        rows = [
-            r for r in arms if r["model"] == "scorecard" and r["reject_rate"] == reject_rate
-        ]
-        assert rows
-        full = sum(float(r["citl_gap_full"]) for r in rows) / len(rows)
-        accepted = sum(float(r["citl_gap_accepted_only"]) for r in rows) / len(rows)
+        full, accepted = _a1_citl_gaps(reject_rate)
         assert abs(accepted) < abs(full), (
             f"at r={reject_rate} the accepts-only calibration gap ({accepted:+.4f}) is "
             f"not smaller than the true one ({full:+.4f}); the README says the "
@@ -946,44 +941,70 @@ def test_accept_only_calibration_looks_better_than_it_is(arms, readme) -> None:
         )
         assert f"{full:+.4f}" in collapsed, f"README omits the true gap at r={reject_rate}"
         assert f"{accepted:+.4f}" in collapsed, f"README omits the accepts gap at r={reject_rate}"
+        # The README now says the distortion is real but below the trigger. If a
+        # rerun pushes either figure past 0.010 that sentence has to change, and
+        # the sizing illustration stops being hypothetical.
+        assert abs(full) < 0.010 and abs(accepted) < 0.010, (
+            f"at r={reject_rate} a gap now breaches the 0.010 trigger "
+            f"(true {full:+.4f}, observable {accepted:+.4f}); the README says "
+            "none of them do"
+        )
+    assert "not yet large enough to change a decision" in collapsed
 
 
 def test_the_two_evaluation_biases_point_opposite_ways(arms, readme) -> None:
     """Gini understated, calibration overstated. The README leans on the contrast."""
-    rows = [r for r in arms if r["model"] == "scorecard" and r["reject_rate"] == "50"]
-    gini_bias = sum(float(r["evaluation_bias"]) for r in rows) / len(rows)
-    full = sum(float(r["citl_gap_full"]) for r in rows) / len(rows)
-    accepted = sum(float(r["citl_gap_accepted_only"]) for r in rows) / len(rows)
-    assert gini_bias < 0, "accepts-only must understate Gini"
-    assert full > 0 > accepted, (
-        "the model must over-predict on everyone while looking unbiased on accepts"
-    )
-    assert "opposite direction" in " ".join(readme.split())
+    rows = [
+        r
+        for r in arms
+        if r["model"] == "scorecard"
+        and r["reject_rate"] == "50"
+        and r["arm"] == "A1_accepts_only"
+    ]
+    assert len(rows) == 1
+    assert float(rows[0]["evaluation_bias"]) < 0, "accepts-only must understate Gini"
+    # Flattery is a MAGNITUDE claim, and holds at every rate. The sign flip is
+    # sharper but only happens at 20 % and 30 %; asserting it at 50 % is what
+    # the cross-arm average used to make look true.
+    full, accepted = _a1_citl_gaps("50")
+    assert abs(accepted) < abs(full), "the book must understate the gap"
+    for rate in ("20", "30"):
+        mid_full, mid_accepted = _a1_citl_gaps(rate)
+        assert mid_full > 0 > mid_accepted, (
+            f"at r={rate} the book no longer carries the opposite sign to the "
+            "population, which the README states"
+        )
+    collapsed = " ".join(readme.split())
+    assert "opposite direction" in collapsed and "opposite sign*" in collapsed
 
 
 def test_the_monitoring_caveat_matches_the_threshold_it_qualifies(arms, model_doc) -> None:
     """The plan's recalibration trigger is measured where it is flattered.
 
-    MODEL section 7 says the true gap fires its own threshold while the gap a
-    lender can observe stays quiet. Both halves have to keep holding, since
-    the caveat is the reason the trigger is not taken at face value.
+    MODEL section 7 used to say the true gap fires its own threshold while the
+    observable one stays quiet. It does not: both sit inside 0.010 at every
+    rejection rate tested, and the claim came from averaging the gap over all
+    ten arms. The caveat now says distorted rather than defeated, and this
+    pins it to the arithmetic that supports that weaker reading.
     """
-    rows = [r for r in arms if r["model"] == "scorecard" and r["reject_rate"] == "50"]
-    assert rows
-    full = sum(float(r["citl_gap_full"]) for r in rows) / len(rows)
-    accepted = sum(float(r["citl_gap_accepted_only"]) for r in rows) / len(rows)
-
-    # The threshold the plan sets for investigation.
+    full, accepted = _a1_citl_gaps("50")
     plan = model_doc[model_doc.index("## 7. Monitoring plan") :]
+    flat = " ".join(plan.split())
     assert "> 0.010" in plan, "the investigate threshold moved; the caveat quotes it"
-    assert abs(full) > 0.010, "the true gap must breach the threshold for the point to stand"
-    assert abs(accepted) < 0.010, "the observable gap must not breach it"
-    assert full > 0 > accepted, "the two must differ in sign, which the caveat states"
-    assert f"{full:+.4f}" in plan and f"{accepted:+.4f}" in plan
+    # Both inside the trigger: no breach to miss on this data.
+    for rate in ("10", "20", "30", "50"):
+        a, b = _a1_citl_gaps(rate)
+        assert abs(a) < 0.010 and abs(b) < 0.010, (
+            f"at r={rate} a gap breaches 0.010 (true {a:+.4f}, observable {b:+.4f}); "
+            "the caveat says none do and should be restored to the stronger claim"
+        )
+    assert abs(accepted) < abs(full), "the book must still understate the gap"
+    assert f"{abs(full):.4f}" in flat and f"{abs(accepted):.4f}" in flat
     ratio = abs(full / accepted)
-    assert f"{ratio:.0f} times" in " ".join(plan.split()), (
-        f"the caveat must say {ratio:.0f} times; the gap is {full:+.4f} against {accepted:+.4f}"
+    assert 3.5 <= ratio < 4.5 and "four times smaller" in flat, (
+        f"the caveat says four times smaller; the ratio is {ratio:.2f}"
     )
+    assert "distorted rather than defeated" in flat
 
 
 @pytest.fixture(scope="module")
@@ -1096,20 +1117,34 @@ def test_asserting_arms_wreck_calibration_and_weighting_arms_do_not(arms, readme
     )
 
 
-def _true_citl_gap_at_fifty() -> float:
-    """The population calibration gap the sizing is meant to detect.
+#: The population gap the sizing illustration assumes, twice the monitoring
+#: plan's 0.010 trigger. It is an assumption and not a measurement: every gap
+#: this experiment actually produces is INSIDE the trigger, so there is no
+#: breach here to size for, and ``exploration_budget_for_detection`` rightly
+#: refuses a gap below the threshold.
+HYPOTHETICAL_CITL_GAP = 0.020
 
-    Read from the run rather than written in, because it moves: it was 0.0176
-    and is now 0.0183, and a hardcoded copy would silently size for the wrong
-    target while still passing.
+
+def _a1_citl_gaps(reject_rate: str) -> tuple[float, float]:
+    """The accepts-only scorecard's calibration gap, on everyone and on its book.
+
+    A1 is the model a selected lender would actually hold, so A1 is what the
+    comparison is about. Averaging ``citl_gap_full`` over every arm instead --
+    which this file did, behind a helper called ``_true_citl_gap_at_fifty`` --
+    folds in A2's +0.296 and A5's +0.097 and reports the mean as "the truth".
+    That produced the +0.0183 the documents carried, and the published gap at a
+    50 % reject rate is in fact -0.0049, of the opposite sign.
     """
     with (DOCS / "sampling_bias_arms.csv").open() as fh:
-        gaps = [
-            float(row["citl_gap_full"])
+        rows = [
+            row
             for row in csv.DictReader(fh)
-            if row["model"] == "scorecard" and row["reject_rate"] == "50"
+            if row["model"] == "scorecard"
+            and row["reject_rate"] == reject_rate
+            and row["arm"] == "A1_accepts_only"
         ]
-    return sum(gaps) / len(gaps)
+    assert len(rows) == 1, f"A1 is a single fit; found {len(rows)} at r={reject_rate} %"
+    return float(rows[0]["citl_gap_full"]), float(rows[0]["citl_gap_accepted_only"])
 
 
 def test_the_exploration_sizing_in_the_documents_is_what_the_code_computes(
@@ -1119,7 +1154,8 @@ def test_the_exploration_sizing_in_the_documents_is_what_the_code_computes(
 
     It is the one number in question 3 that is analytic rather than measured
     by an arm, which makes it the easiest to leave behind when the inputs
-    change.
+    change. It was: sized for years off a gap averaged across all ten arms,
+    and the documents must now label it as the illustration it is.
     """
     import sys
 
@@ -1136,7 +1172,7 @@ def test_the_exploration_sizing_in_the_documents_is_what_the_code_computes(
         sized = exploration_budget_for_detection(
             row["bad_rate_rejected"],
             reject_rate / 100.0,
-            _true_citl_gap_at_fifty(),
+            HYPOTHETICAL_CITL_GAP,
             0.010,
             assumptions,
             n_rejected=int(row["n_rejected"]),
@@ -1146,6 +1182,11 @@ def test_the_exploration_sizing_in_the_documents_is_what_the_code_computes(
         assert loans in collapsed_model, f"MODEL omits {loans} explored loans"
         assert f"{sized['share_of_rejects']:.2%}".replace("%", " %") in collapsed_readme
         assert f"{sized['expected_cost']:.1f}" in collapsed_readme
+    # Both documents have to carry the assumption, not just the output.
+    assert "0.020, twice the trigger" in collapsed_readme
+    assert "not a measured result" in collapsed_readme or (
+        "not a measured result" in collapsed_model
+    )
 
 
 def test_the_smallest_arm_budget_is_the_right_order_for_measurement(
@@ -1163,14 +1204,16 @@ def test_the_smallest_arm_budget_is_the_right_order_for_measurement(
 
     row = next(r for r in reject_truth if r["reject_rate"] == 30)
     needed = exploration_budget_for_detection(
-        row["bad_rate_rejected"], 0.30, _true_citl_gap_at_fifty(), 0.010
+        row["bad_rate_rejected"], 0.30, HYPOTHETICAL_CITL_GAP, 0.010
     )["n_explored"]
     one_percent = 0.01 * row["n_rejected"]
-    assert 0.5 <= one_percent / needed <= 2.0, (
+    assert 1.0 <= one_percent / needed <= 3.0, (
         f"p=1 % buys {one_percent:.0f} loans against {needed:.0f} needed; the README "
-        "says it is roughly the right size"
+        "says the budget A6 already spends covers the measurement"
     )
-    assert "roughly the right size" in " ".join(readme.split())
+    assert "an expensive mistake as training data is affordable as measurement" in " ".join(
+        readme.split()
+    )
 
 
 def test_the_scorecard_anomaly_is_explained_with_its_control(arms, readme) -> None:
@@ -1293,6 +1336,29 @@ def test_the_thin_margins_are_quoted_against_the_noise_that_moves_them(
         )
     # And the caveat that keeps one perturbation from reading as a spread.
     assert "That is one perturbation and not a spread" in collapsed
+
+
+def test_the_summary_quotes_the_same_operating_point_as_the_body(summary, readme) -> None:
+    """The three-questions summary and the cutoff section must agree.
+
+    They did not: the summary said 71.5 % acceptance while the body and
+    ``decision_summary.json`` both said 56.3 %. The summary is the first thing
+    anyone reads and the last thing anyone updates, so it gets its own check
+    against the artefact rather than against the body's prose.
+    """
+    acceptance = float(summary["operating_point"]["acceptance_rate"])
+    # The documents put a space before the percent sign; the format does not.
+    quoted = f"{acceptance:.1%}".replace("%", " %")
+    collapsed = " ".join(readme.split())
+    occurrences = collapsed.count(quoted)
+    assert occurrences >= 2, (
+        f"the operating point is {quoted}; the README quotes it {occurrences} "
+        "time(s), expected the summary and the cutoff section"
+    )
+    assert str(summary["binding_points"]) + " of 21" in collapsed, (
+        f"{summary['binding_points']} of 21 assumption points bind; the summary "
+        "must quote that count"
+    )
 
 
 def test_the_a5_table_in_the_kozodoi_comparison_matches_the_run(arms, readme) -> None:

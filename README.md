@@ -10,7 +10,7 @@ team evaluates models: out-of-time, on calibration, stability and profit.
 > artefact it came from committed under [`docs/`](docs). A few figures in the
 > closing sections are measured on the 3 % local sample or on synthetic data
 > instead, and say which. The badge is CI on a fresh clone: `uv sync --frozen`,
-> lint, and the 463 of its 467 tests that need no competition data, since none
+> lint, and the 464 of its 468 tests that need no competition data, since none
 > of that is committed. [MODEL.md](MODEL.md) is the model documentation.
 
 ## The three questions, answered
@@ -18,15 +18,16 @@ team evaluates models: out-of-time, on calibration, stability and profit.
 **1. What does a gradient-boosted challenger add over a classic scorecard once
 stability, calibration and profit are measured, not just AUC?** About 3 Gini
 points (0.394 to 0.422), and it keeps them under the competition's stability
-metric (0.359 to 0.386). It is also better calibrated and its score
-distribution drifts less. But profit cannot separate the two at all: on this
+metric (0.359 to 0.386). It is also slightly better calibrated — by a few
+times the run-to-run noise, not decisively — and its score distribution drifts
+less. But profit cannot separate the two at all: on this
 book no approval cutoff binds and EMPCS is ≈0 for both, so the gain is real,
 modest, and not where the money is.
 [Detail](#question-1-what-the-challenger-adds).
 
 **2. Where should the approval cutoff and the manual-review band sit, and what
 do they cost?** The cutoff is degenerate at the literature's assumptions, so it
-is exercised at the tightest corner of a widened grid: 71.5 % acceptance, where
+is exercised at the tightest corner of a widened grid: 56.3 % acceptance, where
 only 8 of 21 assumption points make a cutoff bind at all. The conformal review
 band is the more interesting answer, and it is a negative one: it covers the
 default class 0.747 against a 0.90 target, misses in all 23 test weeks, refers
@@ -412,18 +413,23 @@ reject rate while the challenger's does not.
 Gini measured on accepts is pessimistic, so a lender at least errs towards
 caution. Calibration measured on accepts is *flattering*:
 
-| scorecard, calibration-in-the-large | 10 % | 20 % | 30 % | 50 % |
+| A1 scorecard, calibration-in-the-large | 10 % | 20 % | 30 % | 50 % |
 |---|---|---|---|---|
-| on everyone (the truth) | +0.0030 | +0.0061 | +0.0104 | **+0.0183** |
-| on its own approved book | -0.0006 | -0.0010 | -0.0011 | **-0.0006** |
+| on everyone (the truth) | +0.0022 | +0.0032 | +0.0022 | **-0.0049** |
+| on its own approved book | +0.0001 | -0.0008 | -0.0014 | **-0.0012** |
 
-At a 50 % reject rate the model over-predicts the default rate by 1.8
-percentage points across the population, and a lender checking its own book
-would see a gap of one tenth of that and conclude the model was well
-calibrated. The accepted population is the one the model was fitted towards, so
-it is exactly where the levels look right. The error is invisible from inside
-and grows with the reject rate: the more a policy rejects, the more reassuring
-and the more wrong its own calibration check becomes.
+The book never shows the error at full size. At a 50 % reject rate the model
+under-predicts the population default rate by 0.49 percentage points while its
+own book shows 0.12, a quarter of it. At 20 % and 30 % the book is worse than
+merely small: it carries the *opposite sign*, reporting under-prediction where
+the population has over-prediction. The accepted population is the one the
+model was fitted towards, so it is exactly where the levels look right.
+
+Note the size before reading anything into it. These gaps run 0.1 to 0.5
+percentage points, and every one of them — true and observable, at all four
+reject rates — sits inside the 0.010 calibration trigger in this project's own
+monitoring plan. The distortion is real and consistent in direction. On this
+data it is not yet large enough to change a decision.
 
 That is the same lesson as the Gini bias and a sharper version of it. The usual
 monitoring response, "ranking has drifted but calibration is fine, so
@@ -595,27 +601,40 @@ Four things come out of this:
    not yet much else. The GBM, which is not binning anything, has no overfit
    tail to lose and degrades monotonically from the start.
 
-**The same budget succeeds at a different job.** Exploration is priced above as
-a way to improve *training*, and it loses badly. Priced as a way to improve
-*measurement* it is cheap. The monitoring plan in [MODEL.md](MODEL.md) triggers
-recalibration on a calibration-in-the-large gap, and in production that is
-computed on approved loans, where the gap is flattered: at a 50 % rejection
-rate the true +0.0183 would breach its 0.010 threshold while the
-observable -0.0006 stays quiet. A random slice of rejects restores the measurement, and
-the slice is small.
+**The same budget would succeed at a different job, though not on this data.**
+Exploration is priced above as a way to improve *training*, and it loses
+badly. Priced as a way to improve *measurement* it is cheap. But this grid
+does not get to claim that win, and an earlier version of this section claimed
+it anyway, off a +0.0183 "true" gap that was an average across all ten arms
+and so carried A2's +0.296 and A5's +0.097 into a figure labelled as the
+scorecard's.
+
+The real numbers remove the occasion. The monitoring plan in
+[MODEL.md](MODEL.md) triggers recalibration on a calibration gap computed, in
+production, on approved loans — where it is flattered by the factor of four
+shown above. For that flattery to cost anything the population gap has to be
+on the far side of the trigger while the book's stays inside, and here it
+never is: 0.0022 to 0.0049 against a threshold of 0.010.
+
+So what follows is a sizing calculation under a stated assumption, not a
+measured result. Suppose the population gap were 0.020, twice the trigger,
+with the book still reading under it. A random slice of rejects restores the
+measurement, and the slice is small:
 
 | reject rate | explored loans needed | share of rejects | cost |
 |---|---|---|---|
-| 30 % | 352 | 0.78 % | 7.1 |
-| 50 % | 778 | 1.04 % | 12.3 |
+| 30 % | 245 | 0.54 % | 4.9 |
+| 50 % | 541 | 0.72 % | 8.5 |
 
-Those are the same budgets A6 already spends. Its p = 1 % buys 450 loans for a
-realised 7.2 at a 30 % reject rate, which is enough; at 50 % its 750 fall short
-and p = 2 % covers it. **So the experiment's smallest exploration budget is
-roughly the right size to buy the measurement, while being an expensive mistake
-as a training set.** That is this project's own data arriving at the paper's
-conclusion by a different route: the budget is worth spending on knowing where
-you stand, not on teaching the model.
+Those are inside the budgets A6 already spends and loses money on: its
+p = 1 % buys 450 loans at a 30 % reject rate and 750 at 50 %, for a realised
+10.0 and 12.3. The cost rises sharply as the gap approaches the trigger, since
+the sizing resolves half the margin between them — at 0.015 the same two rates
+need 980 and 2,163 loans. **The asymmetry is what survives: a budget that is
+an expensive mistake as training data is affordable as measurement, in any
+regime where there is something to measure.** The paper's conclusion, that
+fixing evaluation beats fixing training, is reached here through the
+evaluation-bias result above rather than through this calculation.
 
 The sizing is analytic rather than another arm. It treats the explored slice as
 a binomial sample of the rejects, which is what A6 draws, resolves the
@@ -742,7 +761,7 @@ lazy with `collect(engine="streaming")` and the features land as Float32.
 | Feature screening + report | [`docs/feature_report.csv`](docs/feature_report.csv) | **done, full data** |
 | Sampling-bias experiment (arms A0-A6) | `src/sampling_bias.py` | **done, run on full data** |
 
-467 tests. The 463 CI runs need only generated fixtures; the other four check
+468 tests. The 464 CI runs need only generated fixtures; the other four check
 the feature build's column discovery against `data/sample` and skip without it.
 All six kernels have been run end to end on the real competition data.
 

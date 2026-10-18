@@ -264,23 +264,28 @@ sustained gap there is a refit trigger rather than a recalibration one.
 
 **A caveat on that trigger, from §6.** In production, outcomes are observed
 only for approved loans, so this is computed on the accepted book, where it is
-flattered. At a 50 % rejection rate the model over-predicts by +0.0183 across
-the population while the gap visible on its own book is -0.0006: 33 times
-smaller, the opposite sign, and against the threshold above the true gap fires
-while the observable one stays quiet. The trigger therefore goes decorative
-exactly as the policy rejects more.
+flattered. At a 50 % rejection rate the model under-predicts by 0.0049 across
+the population while its own book shows 0.0012, four times smaller; at 20 %
+and 30 % the book carries the opposite sign to the population. Both figures
+stay inside the 0.010 threshold above at every rejection rate tested, so on
+this data the trigger is distorted rather than defeated. It would go
+decorative once the population gap crosses while the book's stays under, a
+regime this grid does not reach.
 
 Two things help. The **approved bad rate** row is defined on the observable
 population, so it does not suffer this, though it moves for population reasons
 as well as model ones. And a random-approval sample restores the measurement
-directly: sized against this threshold it takes 352 explored loans at a 30 %
-rejection rate and 778 at 50 %, about 1 % of the rejects, for 7 to 12 units of
-realised loss. That is the one use for an exploration budget question 3 did
-not find net-negative, and the README works it through.
+directly. Sizing it needs a gap worth resolving, which this data does not
+supply, so take a population gap of 0.020 against the 0.010 trigger as an
+assumption: it then takes 245 explored loans at a 30 % rejection rate and 541
+at 50 %, under 1 % of the rejects, for 5 to 9 units of realised loss. That is
+the one use for an exploration budget question 3 did not find net-negative,
+and the README works it through, including the caveat that it is an
+illustration and not a measured result.
 
 ## 8. Reproducing
 
-`uv sync && uv run pytest`, 467 tests, of which 463 run on synthetic
+`uv sync && uv run pytest`, 468 tests, of which 464 run on synthetic
 fixtures alone and four skip without the local sample; no competition
 data is committed and none is needed. Full-data results come from re-running
 the kernels in `kaggle/` from committed code: `make-sample`, `env-probe`,
